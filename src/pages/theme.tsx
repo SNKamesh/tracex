@@ -1,4 +1,3 @@
-export const dynamic = "force-dynamic";
 import { useState } from "react"
 import AppShell from "@/components/AppShell"
 import Button from "@/components/Button"
