@@ -2,158 +2,114 @@ import { useState } from "react";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
 import SectionCard from "@/components/SectionCard";
+enum SignupStep {
+  Start = 1,
+  Phone = 2,
+  OTP = 3,
+  Profile = 4,
+  Safety = 5,
+  Email = 10,
+  EmailOTP = 11,
+}
+async function authRequest(payload: {
+  action: "send_otp" | "verify_otp";
+  channel: "phone" | "email";
+  target: string;
+  otp?: string;
+}) {
+  const response = await fetch("/api/auth", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 
-export default function Signup() {
-  const [step, setStep] = useState(1 as 1 | 2 | 3 | 4 | 5 | 10 | 11);
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error ?? "Request failed");
+  }
 
+  return data;
+}
+export default function SignupPage() {
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [otp, setOtp] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
+  const [step, setStep] = useState(SignupStep.Start);
 
-  const phoneValid = /^\+[0-9]{7,15}$/.test(phone);
+  async function handleSendOtp(channel: "phone" | "email", target: string, nextStep: SignupStep) {
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+    setOtp("");
+    try {
+      await authRequest({ action: "send_otp", channel, target });
+      setNotice(`OTP sent to ${target}`);
+      setStep(nextStep);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to send OTP");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerifyOtp(channel: "phone" | "email", target: string) {
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      await authRequest({ action: "verify_otp", channel, target, otp });
+      setNotice("OTP verified successfully");
+      setStep(SignupStep.Profile);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to verify OTP");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white px-4">
-      <div className="w-full max-w-lg">
-
-        {/* STEP 1 */}
-        {step === 1 && (
-          <>
-            <h1 className="text-center text-4xl font-bold mb-6">
-              Welcome to <span className="text-cyan-400">TraceX</span>
-            </h1>
-
-            <div className="flex flex-col gap-3">
-              <Button onClick={() => setStep(10)}>Continue with Email</Button>
-              <Button variant="secondary" onClick={() => setStep(2)}>
-                Continue with Phone
-              </Button>
-              <Button variant="secondary">Continue with Apple</Button>
-              <Button variant="secondary">Continue with Facebook</Button>
-            </div>
-
-            <p
-              className="text-center mt-4 cursor-pointer text-slate-400"
-              onClick={() => setStep(2)}
-            >
-              Create a full TraceX account
-            </p>
-          </>
-        )}
-
-        {/* STEP 2 */}
-        {step === 2 && (
-          <SectionCard title="Phone Number" description="Enter your number to get OTP">
-            <Input
-              placeholder="+91XXXXXXXXXX"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-
-            {!phoneValid && phone.length > 0 && (
-              <p className="text-red-400 text-xs mt-1">
-                Only international format allowed. Example: +919876543210
-              </p>
-            )}
-
-            <Button
-              className="mt-4"
-              disabled={!phoneValid}
-              onClick={() => setStep(3)}
-            >
-              Send OTP
-            </Button>
-          </SectionCard>
-        )}
-
-        {/* STEP 3 */}
-        {step === 3 && (
-          <SectionCard title="Enter OTP" description={`OTP sent to ${phone}`}>
-            <Input
-              placeholder="123456"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-            />
-
-            <Button
-              className="mt-4"
-              disabled={otp.length < 6}
-              onClick={() => setStep(4)}
-            >
-              Verify OTP
-            </Button>
-          </SectionCard>
-        )}
-
-        {/* STEP 4 */}
-        {step === 4 && (
-          <SectionCard title="Profile Details" description="Tell us about yourself">
-            <Input
-              placeholder="Full Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-
-            <Button
-              className="mt-4"
-              disabled={!name}
-              onClick={() => setStep(5)}
-            >
-              Continue
-            </Button>
-          </SectionCard>
-        )}
-
-        {/* STEP 5 */}
-        {step === 5 && (
-          <SectionCard title="Safety First" description="Accept to continue">
-            <p className="text-sm text-slate-300 mb-4">
-              No harmful, abusive, or vulgar content allowed.
-            </p>
-
-            <Button className="mt-4">I Accept</Button>
-          </SectionCard>
-        )}
-
-        {/* STEP 10 — EMAIL */}
-        {step === 10 && (
-          <SectionCard title="Email Login" description="Enter your email">
-            <Input
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-
-            <Button
-              className="mt-4"
-              disabled={!email.includes("@")}
-              onClick={() => setStep(11)}
-            >
-              Send OTP
-            </Button>
-          </SectionCard>
-        )}
-
-        {/* STEP 11 — EMAIL OTP */}
-        {step === 11 && (
-          <SectionCard title="Verify Email OTP">
-            <Input
-              placeholder="123456"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-            />
-
-            <Button
-              className="mt-4"
-              disabled={otp.length < 6}
-              onClick={() => setStep(4)}
-            >
-              Verify Email
-            </Button>
-          </SectionCard>
-        )}
+    <div className="min-h-screen flex items-center justify-center bg-black text-green-400 px-4">
+      {notice && <p className="mb-4 rounded-md bg-emerald-900/30 border border-emerald-700 px-3 py-2 text-sm text-green-400">{notice}</p>}
+      {error && <p className="mb-4 rounded-md bg-emerald-900/30 border border-emerald-700 px-3 py-2 text-sm text-green-400">{error}</p>}
+      <div>
+        Welcome to <span className="text-green-400">TraceX</span>
       </div>
+      <p className="text-center text-green-400 mb-10">Your ultimate study companion</p>
+      <Button onClick={() => setStep(SignupStep.Email)}>Continue with Email</Button>
+      <Button variant="secondary" onClick={() => setStep(SignupStep.Phone)}></Button>
+      <p className="text-center mt-4 cursor-pointer text-green-400" onClick={() => setStep(SignupStep.Phone)}></p>
+      <SectionCard title="Phone Number" description="Enter your number to receive OTP">
+        <Input placeholder="+91XXXXXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <p className="text-green-400 text-xs mt-1">Only international format allowed. Example: +919876543210</p>
+        <Button disabled={phone.length === 0 || loading} onClick={() => handleSendOtp("phone", phone, SignupStep.OTP)}>{loading ? "Sending..." : "Send OTP"}</Button>
+      </SectionCard>
+      <SectionCard title="Verify OTP" description={`OTP sent to ${phone}`}>
+        <Input placeholder="6-digit OTP" value={otp} onChange={(e) => setOtp(e.target.value)} />
+        <Button disabled={otp.length < 6 || loading} onClick={() => handleVerifyOtp("phone", phone)}>Verify OTP</Button>
+      </SectionCard>
+      <SectionCard title="Profile Details" description="Tell us about yourself">
+        <Input placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Button className="mt-4" disabled={!name} onClick={() => setStep(SignupStep.Safety)}>Continue</Button>
+      </SectionCard>
+      <SectionCard title="Safety First" description="Accept to continue">
+        <p className="text-sm text-green-400 mb-4">
+          No harmful, abusive, or vulgar content. Violations lead to immediate suspension.
+        </p>
+        <Button onClick={() => setStep(SignupStep.Email)}>I Agree</Button>
+      </SectionCard>
+      <SectionCard title="Email" description="Enter your email to continue">
+        <Input placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Button disabled={email.length === 0 || loading} onClick={() => handleSendOtp("email", email, SignupStep.EmailOTP)}>{loading ? "Sending..." : "Send OTP"}</Button>
+      </SectionCard>
+      <SectionCard title="Verify Email OTP" description={`OTP sent to ${email}`}>
+        <Input placeholder="6-digit OTP" value={otp} onChange={(e) => setOtp(e.target.value)} />
+        <Button disabled={otp.length < 6 || loading} onClick={() => handleVerifyOtp("email", email)}>{loading ? "Verifying..." : "Verify OTP"}</Button>
+      </SectionCard>
     </div>
   );
 }
