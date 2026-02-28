@@ -57,7 +57,12 @@ export default function Signup() {
       setNotice(`OTP sent to ${target}`);
       setStep(nextStep);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to send OTP");
+      const message = requestError instanceof Error ? requestError.message : "Unable to send OTP";
+      if (message.includes("SMS service is not configured")) {
+        setError("Phone OTP is currently unavailable. Please continue with Email.");
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -120,6 +125,17 @@ export default function Signup() {
               onClick={() => handleSendOtp("phone", phone, SignupStep.OTP)}
             >
               {loading ? "Sending..." : "Send OTP"}
+            </Button>
+            <Button
+              className="mt-3"
+              variant="secondary"
+              onClick={() => {
+                setError(null);
+                setNotice(null);
+                setStep(SignupStep.Email);
+              }}
+            >
+              Use Email Instead
             </Button>
           </SectionCard>
         )}

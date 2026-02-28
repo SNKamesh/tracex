@@ -145,5 +145,6 @@ export default async function handler(
     res.status(200).json({ status: "ok", message: "OTP verified" });
     return;
   }
+
   res.status(400).json({ error: "Unsupported action" });
 }
