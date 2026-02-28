@@ -3,8 +3,6 @@ import Input from "@/components/Input";
 import Button from "@/components/Button";
 import SectionCard from "@/components/SectionCard";
 
-const OTP_SENDER_EMAIL = "tracex.ai2026@gmail.com";
-
 enum SignupStep {
   Start = 1,
   Phone = 2,
@@ -15,79 +13,29 @@ enum SignupStep {
   EmailOTP = 11,
 }
 
-async function authRequest(payload: {
-  action: "send_otp" | "verify_otp";
-  channel: "phone" | "email";
-  target: string;
-  otp?: string;
-}) {
-  const response = await fetch("/api/auth", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error ?? "Request failed");
-  }
-
-  return data;
-}
-
 export default function Signup() {
   const [step, setStep] = useState<SignupStep>(SignupStep.Start);
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const phoneValid = /^\+[0-9]{7,15}$/.test(phone);
   const emailValid = /^[^@]+@[^@]+\.[^@]+$/.test(email);
 
-  async function handleSendOtp(channel: "phone" | "email", target: string, nextStep: SignupStep) {
-    setLoading(true);
+  function handleSendOtp(_channel: "phone" | "email", _target: string, nextStep: SignupStep) {
     setError(null);
-    setNotice(null);
+    setNotice("OTP step skipped. Continuing signup.");
     setOtp("");
-
-    try {
-      await authRequest({ action: "send_otp", channel, target });
-      if (channel === "email") {
-        setNotice(`OTP sent to ${target} from ${OTP_SENDER_EMAIL}`);
-      } else {
-        setNotice(`OTP sent to ${target}`);
-      }
-      setStep(nextStep);
-    } catch (requestError) {
-      const message = requestError instanceof Error ? requestError.message : "Unable to send OTP";
-      if (message.includes("SMS service is not configured")) {
-        setError("Phone OTP is currently unavailable. Please continue with Email.");
-      } else {
-        setError(message);
-      }
-    } finally {
-      setLoading(false);
-    }
+    setStep(nextStep);
   }
 
-  async function handleVerifyOtp(channel: "phone" | "email", target: string) {
-    setLoading(true);
+  function handleVerifyOtp(_channel: "phone" | "email", _target: string) {
     setError(null);
-    setNotice(null);
-
-    try {
-      await authRequest({ action: "verify_otp", channel, target, otp });
-      setNotice("OTP verified successfully");
-      setStep(SignupStep.Profile);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to verify OTP");
-    } finally {
-      setLoading(false);
-    }
+    setNotice("Verification skipped. Continuing signup.");
+    setStep(SignupStep.Profile);
   }
 
   return (
@@ -104,13 +52,13 @@ export default function Signup() {
             <p className="text-center text-slate-400 mb-10">Your ultimate study companion</p>
 
             <div className="flex flex-col gap-3">
-              <Button onClick={() => setStep(SignupStep.Email)}>Continue with Email</Button>
-              <Button variant="secondary" onClick={() => setStep(SignupStep.Phone)}>
+              <Button onClick={() => setStep(SignupStep.Profile)}>Continue with Email</Button>
+              <Button variant="secondary" onClick={() => setStep(SignupStep.Profile)}>
                 Continue with Phone
               </Button>
-              <Button variant="secondary">Continue with Apple</Button>
-              <Button variant="secondary">Continue with Facebook</Button>
-              <p className="text-center mt-4 cursor-pointer text-slate-400" onClick={() => setStep(SignupStep.Phone)}>
+              <Button variant="secondary" onClick={() => setStep(SignupStep.Profile)}>Continue with Apple</Button>
+              <Button variant="secondary" onClick={() => setStep(SignupStep.Profile)}>Continue with Facebook</Button>
+              <p className="text-center mt-4 cursor-pointer text-slate-400" onClick={() => setStep(SignupStep.Profile)}>
                 Create a full TraceX account
               </p>
             </div>
@@ -127,21 +75,10 @@ export default function Signup() {
 
             <Button
               className="mt-4"
-              disabled={!phoneValid || loading}
-              onClick={() => handleSendOtp("phone", phone, SignupStep.OTP)}
+              disabled={!phoneValid}
+              onClick={() => handleSendOtp("phone", phone, SignupStep.Profile)}
             >
-              {loading ? "Sending..." : "Send OTP"}
-            </Button>
-            <Button
-              className="mt-3"
-              variant="secondary"
-              onClick={() => {
-                setError(null);
-                setNotice(null);
-                setStep(SignupStep.Email);
-              }}
-            >
-              Use Email Instead
+              Continue
             </Button>
           </SectionCard>
         )}
@@ -151,10 +88,10 @@ export default function Signup() {
             <Input placeholder="6-digit OTP" value={otp} onChange={(e) => setOtp(e.target.value)} />
             <Button
               className="mt-4"
-              disabled={otp.length < 6 || loading}
+              disabled={otp.length < 6}
               onClick={() => handleVerifyOtp("phone", phone)}
             >
-              {loading ? "Verifying..." : "Verify"}
+              Verify
             </Button>
           </SectionCard>
         )}
@@ -180,29 +117,29 @@ export default function Signup() {
         )}
 
         {step === SignupStep.Email && (
-          <SectionCard title="Email Login" description={`Enter your email. OTP sender: ${OTP_SENDER_EMAIL}`}>
+          <SectionCard title="Email Login" description="Enter your email">
             <Input placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
 
             <Button
               className="mt-4"
-              disabled={!emailValid || loading}
-              onClick={() => handleSendOtp("email", email, SignupStep.EmailOTP)}
+              disabled={!emailValid}
+              onClick={() => handleSendOtp("email", email, SignupStep.Profile)}
             >
-              {loading ? "Sending..." : "Send OTP"}
+              Continue
             </Button>
           </SectionCard>
         )}
 
         {step === SignupStep.EmailOTP && (
-          <SectionCard title="Verify Email OTP" description={`Check inbox for mail from ${OTP_SENDER_EMAIL}`}>
+          <SectionCard title="Verify Email OTP">
             <Input placeholder="6-digit OTP" value={otp} onChange={(e) => setOtp(e.target.value)} />
 
             <Button
               className="mt-4"
-              disabled={otp.length < 6 || loading}
+              disabled={otp.length < 6}
               onClick={() => handleVerifyOtp("email", email)}
             >
-              {loading ? "Verifying..." : "Verify Email"}
+              Verify Email
             </Button>
           </SectionCard>
         )}
