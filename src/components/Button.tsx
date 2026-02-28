@@ -1,17 +1,21 @@
-import { ButtonHTMLAttributes } from "react"
+"use client";
 
-type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost"
-}
+export default function Button({
+  children,
+  variant = "primary",
+  ...props
+}: any) {
+  const base =
+    "px-4 py-2 rounded-xl text-sm font-medium transition active:scale-95";
 
-const base =
-  "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition"
-const variants = {
-  primary: "bg-tracex-500 text-white hover:bg-tracex-400",
-  secondary: "bg-slate-800 text-slate-100 hover:bg-slate-700",
-  ghost: "bg-transparent text-slate-200 hover:bg-slate-800"
-}
+  const styles =
+    variant === "secondary"
+      ? "bg-slate-700 hover:bg-slate-600"
+      : "bg-tracex-500 hover:bg-tracex-400";
 
-export default function Button({ variant = "primary", className, ...props }: Props) {
-  return <button className={`${base} ${variants[variant]} ${className ?? ""}`} {...props} />
+  return (
+    <button className={`${base} ${styles}`} {...props}>
+      {children}
+    </button>
+  );
 }

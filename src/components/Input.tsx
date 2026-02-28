@@ -1,12 +1,10 @@
-import { InputHTMLAttributes } from "react"
+"use client";
 
-type Props = InputHTMLAttributes<HTMLInputElement>
-
-export default function Input({ className, ...props }: Props) {
+export default function Input(props: any) {
   return (
     <input
-      className={`w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-tracex-400 focus:outline-none ${className ?? ""}`}
       {...props}
+      className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"
     />
-  )
+  );
 }

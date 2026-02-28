@@ -1,16 +1,13 @@
-type Props = {
-  visible: boolean
-}
+"use client";
 
-export default function AdsBanner({ visible }: Props) {
-  if (!visible) return null
+export default function AdsBanner({ visible = true }: { visible?: boolean }) {
+  if (!visible) return null;
+
   return (
-    <div className="glass card flex items-center justify-between bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800">
-      <div>
-        <p className="text-sm font-semibold text-white">Freemium Ads</p>
-        <p className="text-xs text-slate-400">Upgrade to remove ads and unlock Pro or Supreme.</p>
-      </div>
-      <span className="chip">Ad Slot</span>
+    <div className="my-4 rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-center text-sm text-slate-300">
+      <span className="opacity-75">
+        🔔 Ads display only for Freemium users. Upgrade to remove ads.
+      </span>
     </div>
-  )
+  );
 }

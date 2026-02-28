@@ -1,8 +1,8 @@
-import AppShell from "@/components/AppShell"
-import Button from "@/components/Button"
-import Input from "@/components/Input"
-import PageHeader from "@/components/PageHeader"
-import SectionCard from "@/components/SectionCard"
+import AppShell from "@/ThemeClient.tsx/AppShell"
+import Button from "@/ThemeClient.tsx/Button"
+import Input from "@/ThemeClient.tsx/Input"
+import PageHeader from "@/ThemeClient.tsx/PageHeader"
+import SectionCard from "@/ThemeClient.tsx/SectionCard"
 
 const requests = ["TRX9L2KQ8P", "TRX4N7ZJ3M"]
 const friends = [

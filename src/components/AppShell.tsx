@@ -1,17 +1,11 @@
-import { ReactNode } from "react"
-import Sidebar from "@/components/Sidebar"
+"use client";
 
-type Props = {
-  children: ReactNode
-}
-
-export default function AppShell({ children }: Props) {
+import Sidebar from "./Sidebar";
+export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-slate-950">
-      <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 gap-6 px-6 py-8 lg:grid-cols-[280px_1fr]">
-        <Sidebar />
-        <main className="space-y-6">{children}</main>
-      </div>
+    <div className="flex min-h-screen bg-slate-950 text-white">
+      <Sidebar />
+      <main className="flex-1 p-6">{children}</main>
     </div>
-  )
+  );
 }

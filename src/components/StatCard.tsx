@@ -1,17 +1,10 @@
-type Props = {
-  label: string
-  value: string
-  accent?: string
-}
+"use client";
 
-export default function StatCard({ label, value, accent }: Props) {
+export default function StatCard({ label, value }: any) {
   return (
-    <div className="glass card flex items-center justify-between">
-      <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{label}</p>
-        <p className="text-2xl font-semibold text-white">{value}</p>
-      </div>
-      <span className={`chip ${accent ?? ""}`}>{label}</span>
+    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+      <p className="text-slate-400 text-sm">{label}</p>
+      <p className="text-xl font-bold mt-1">{value}</p>
     </div>
-  )
+  );
 }

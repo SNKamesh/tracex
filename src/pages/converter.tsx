@@ -1,9 +1,9 @@
-import AppShell from "@/components/AppShell"
-import Button from "@/components/Button"
-import PageHeader from "@/components/PageHeader"
-import SectionCard from "@/components/SectionCard"
-import Select from "@/components/Select"
-import Toggle from "@/components/Toggle"
+import AppShell from "@/ThemeClient.tsx/AppShell"
+import Button from "@/ThemeClient.tsx/Button"
+import PageHeader from "@/ThemeClient.tsx/PageHeader"
+import SectionCard from "@/ThemeClient.tsx/SectionCard"
+import Select from "@/ThemeClient.tsx/Select"
+import Toggle from "@/ThemeClient.tsx/Toggle"
 
 export default function Converter() {
   return (

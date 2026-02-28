@@ -1,13 +1,26 @@
 {
   "manifest_version": 3,
-  "name": "TraceX Blocker",
-  "version": "0.1.0",
-  "action": {
-    "default_popup": "popup.html"
-  },
+  "name": "TraceX Website Blocker",
+  "version": "1.0",
+  "description": "Blocks distracting websites and syncs with TraceX Focus System.",
+  "permissions": [
+    "tabs",
+    "storage",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["storage", "tabs"],
-  "host_permissions": ["<all_urls>"]
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "icon.png",
+    "32": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
 }

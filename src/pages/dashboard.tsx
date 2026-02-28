@@ -1,7 +1,7 @@
-import AppShell from "@/components/AppShell"
-import PageHeader from "@/components/PageHeader"
-import SectionCard from "@/components/SectionCard"
-import StatCard from "@/components/StatCard"
+import AppShell from "@/ThemeClient.tsx/AppShell"
+import PageHeader from "@/ThemeClient.tsx/PageHeader"
+import SectionCard from "@/ThemeClient.tsx/SectionCard"
+import StatCard from "@/ThemeClient.tsx/StatCard"
 
 const weeklyStats = [
   { label: "Total Study Hours", value: "26h 40m" },
