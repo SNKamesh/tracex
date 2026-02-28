@@ -74,7 +74,7 @@ export default function StudyPlanList() {
     syncPlan(updated)
   }
 
--    setItems((prev) => [
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-[2fr_1fr_auto]">
