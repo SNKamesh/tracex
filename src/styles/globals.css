@@ -8,7 +8,22 @@ body {
 }
 
 body {
-  @apply bg-slate-950 text-slate-100;
+  @apply transition-colors duration-200;
+}
+
+body.tracex-theme-amoled {
+  background-color: #000000;
+  color: #f8fafc;
+}
+
+body.tracex-theme-dark {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+body.tracex-theme-light {
+  background-color: #e2e8f0;
+  color: #0f172a;
 }
 
 .glass {
