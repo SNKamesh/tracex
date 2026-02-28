@@ -1,10 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: "standalone", 
   experimental: {
     optimizePackageImports: ["react"],
-  },
-  output: "standalone",   // ⭐ ADD THIS LINE
-};
-
+  },};
 module.exports = nextConfig;
