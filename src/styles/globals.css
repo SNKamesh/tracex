@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-950 text-slate-100;
+}
+
+.glass {
+  @apply bg-slate-900/70 backdrop-blur border border-slate-800;
+}
+
+.card {
+  @apply rounded-2xl p-5 shadow-lg shadow-slate-950/30;
+}
+
+.chip {
+  @apply rounded-full px-3 py-1 text-xs font-medium bg-slate-800 text-slate-200;
+}

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TraceX Blocker</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #0b0f1a;
+        color: #f8fafc;
+      }
+      .wrap {
+        padding: 16px;
+        width: 280px;
+      }
+      input {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid #1f2937;
+        background: #0f172a;
+        color: #fff;
+        margin-bottom: 8px;
+      }
+      button {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 999px;
+        border: 0;
+        background: #4d67ff;
+        color: #fff;
+        font-weight: 600;
+      }
+      .chip {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #1f2937;
+        color: #cbd5f5;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h3>TraceX Blocker</h3>
+      <p class="chip">Beast Mode Ready</p>
+      <input id="siteInput" placeholder="Add website to block" />
+      <button id="saveBtn">Save Block</button>
+      <button id="syncBtn" style="margin-top: 8px; background: #1f2937">Sync Study Plan</button>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
