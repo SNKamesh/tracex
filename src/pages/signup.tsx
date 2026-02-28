@@ -4,82 +4,49 @@ import { useState } from "react";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
 import SectionCard from "@/components/SectionCard";
-import PageHeader from "@/components/PageHeader";
-
-/* ------------------------------
-   STEP ENUM (BEST PRACTICE)
------------------------------- */
-enum SignupStep {
-  Start = 1,
-  Phone = 2,
-  OTP = 3,
-  Profile = 4,
-  Safety = 5,
-  Email = 10,
-  EmailOTP = 11,
-}
 
 export default function Signup() {
-  const [step, setStep] = useState<SignupStep>(SignupStep.Start);
+  const [step, setStep] = useState(1 as 1 | 2 | 3 | 4 | 5 | 10 | 11);
 
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
 
-  // phone validation
   const phoneValid = /^\+[0-9]{7,15}$/.test(phone);
-  const emailValid = /^[^@]+@[^@]+\.[^@]+$/.test(email);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white px-4">
       <div className="w-full max-w-lg">
 
-        {/* ------------------------------ */}
-        {/* STEP 1: LOGIN OPTIONS         */}
-        {/* ------------------------------ */}
-        {step === SignupStep.Start && (
+        {/* STEP 1 */}
+        {step === 1 && (
           <>
             <h1 className="text-center text-4xl font-bold mb-6">
               Welcome to <span className="text-cyan-400">TraceX</span>
             </h1>
-            <p className="text-center text-slate-400 mb-10">
-              Your ultimate study companion
-            </p>
 
             <div className="flex flex-col gap-3">
-              <Button onClick={() => setStep(SignupStep.Email)}>
-                Continue with Email
-              </Button>
-
-              <Button
-                variant="secondary"
-                onClick={() => setStep(SignupStep.Phone)}
-              >
+              <Button onClick={() => setStep(10)}>Continue with Email</Button>
+              <Button variant="secondary" onClick={() => setStep(2)}>
                 Continue with Phone
               </Button>
-
               <Button variant="secondary">Continue with Apple</Button>
               <Button variant="secondary">Continue with Facebook</Button>
-
-              <p
-                className="text-center mt-4 cursor-pointer text-slate-400"
-                onClick={() => setStep(SignupStep.Phone)}
-              >
-                Create a full TraceX account
-              </p>
             </div>
+
+            <p
+              className="text-center mt-4 cursor-pointer text-slate-400"
+              onClick={() => setStep(2)}
+            >
+              Create a full TraceX account
+            </p>
           </>
         )}
 
-        {/* ------------------------------ */}
-        {/* STEP 2: ENTER PHONE NUMBER     */}
-        {/* ------------------------------ */}
-        {step === SignupStep.Phone && (
-          <SectionCard
-            title="Phone Number"
-            description="Enter your number to receive OTP"
-          >
+        {/* STEP 2 */}
+        {step === 2 && (
+          <SectionCard title="Phone Number" description="Enter your number to get OTP">
             <Input
               placeholder="+91XXXXXXXXXX"
               value={phone}
@@ -95,47 +62,35 @@ export default function Signup() {
             <Button
               className="mt-4"
               disabled={!phoneValid}
-              onClick={() => {
-                setOtp("");
-                setStep(SignupStep.OTP);
-              }}
+              onClick={() => setStep(3)}
             >
               Send OTP
             </Button>
           </SectionCard>
         )}
 
-        {/* ------------------------------ */}
-        {/* STEP 3: PHONE OTP              */}
-        {/* ------------------------------ */}
-        {step === SignupStep.OTP && (
-          <SectionCard
-            title="Verify OTP"
-            description={`OTP sent to ${phone}`}
-          >
+        {/* STEP 3 */}
+        {step === 3 && (
+          <SectionCard title="Enter OTP" description={`OTP sent to ${phone}`}>
             <Input
-              placeholder="6-digit OTP"
+              placeholder="123456"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
             />
+
             <Button
               className="mt-4"
               disabled={otp.length < 6}
-              onClick={() => setStep(SignupStep.Profile)}
+              onClick={() => setStep(4)}
             >
-              Verify
+              Verify OTP
             </Button>
           </SectionCard>
         )}
 
-        {/* ------------------------------ */}
-        {/* STEP 4: PROFILE DETAILS        */}
-        {/* ------------------------------ */}
-        {step === SignupStep.Profile && (
-          <SectionCard
-            title="Profile Details"
-            description="Tell us about yourself"
-          >
+        {/* STEP 4 */}
+        {step === 4 && (
+          <SectionCard title="Profile Details" description="Tell us about yourself">
             <Input
               placeholder="Full Name"
               value={name}
@@ -145,34 +100,26 @@ export default function Signup() {
             <Button
               className="mt-4"
               disabled={!name}
-              onClick={() => setStep(SignupStep.Safety)}
+              onClick={() => setStep(5)}
             >
               Continue
             </Button>
           </SectionCard>
         )}
 
-        {/* ------------------------------ */}
-        {/* STEP 5: SAFETY GUIDELINES      */}
-        {/* ------------------------------ */}
-        {step === SignupStep.Safety && (
-          <SectionCard
-            title="Safety First"
-            description="Accept to continue"
-          >
+        {/* STEP 5 */}
+        {step === 5 && (
+          <SectionCard title="Safety First" description="Accept to continue">
             <p className="text-sm text-slate-300 mb-4">
-              No harmful, abusive, or vulgar content. Violations lead to
-              immediate suspension.
+              No harmful, abusive, or vulgar content allowed.
             </p>
 
             <Button className="mt-4">I Accept</Button>
           </SectionCard>
         )}
 
-        {/* ------------------------------ */}
-        {/* STEP 10: EMAIL LOGIN           */}
-        {/* ------------------------------ */}
-        {step === SignupStep.Email && (
+        {/* STEP 10 — EMAIL */}
+        {step === 10 && (
           <SectionCard title="Email Login" description="Enter your email">
             <Input
               placeholder="your@email.com"
@@ -182,21 +129,19 @@ export default function Signup() {
 
             <Button
               className="mt-4"
-              disabled={!emailValid}
-              onClick={() => setStep(SignupStep.EmailOTP)}
+              disabled={!email.includes("@")}
+              onClick={() => setStep(11)}
             >
               Send OTP
             </Button>
           </SectionCard>
         )}
 
-        {/* ------------------------------ */}
-        {/* STEP 11: EMAIL OTP             */}
-        {/* ------------------------------ */}
-        {step === SignupStep.EmailOTP && (
+        {/* STEP 11 — EMAIL OTP */}
+        {step === 11 && (
           <SectionCard title="Verify Email OTP">
             <Input
-              placeholder="6-digit OTP"
+              placeholder="123456"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
             />
@@ -204,7 +149,7 @@ export default function Signup() {
             <Button
               className="mt-4"
               disabled={otp.length < 6}
-              onClick={() => setStep(SignupStep.Profile)}
+              onClick={() => setStep(4)}
             >
               Verify Email
             </Button>
