@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { useState } from "react"
 import AppShell from "@/components/AppShell"
 import AdsBanner from "@/components/AdsBanner"
