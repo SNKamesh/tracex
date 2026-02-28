@@ -3,6 +3,8 @@ import Input from "@/components/Input";
 import Button from "@/components/Button";
 import SectionCard from "@/components/SectionCard";
 
+const OTP_SENDER_EMAIL = "tracex.ai2026@gmail.com";
+
 enum SignupStep {
   Start = 1,
   Phone = 2,
@@ -54,7 +56,11 @@ export default function Signup() {
 
     try {
       await authRequest({ action: "send_otp", channel, target });
-      setNotice(`OTP sent to ${target}`);
+      if (channel === "email") {
+        setNotice(`OTP sent to ${target} from ${OTP_SENDER_EMAIL}`);
+      } else {
+        setNotice(`OTP sent to ${target}`);
+      }
       setStep(nextStep);
     } catch (requestError) {
       const message = requestError instanceof Error ? requestError.message : "Unable to send OTP";
@@ -174,7 +180,7 @@ export default function Signup() {
         )}
 
         {step === SignupStep.Email && (
-          <SectionCard title="Email Login" description="Enter your email">
+          <SectionCard title="Email Login" description={`Enter your email. OTP sender: ${OTP_SENDER_EMAIL}`}>
             <Input placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
 
             <Button
@@ -188,7 +194,7 @@ export default function Signup() {
         )}
 
         {step === SignupStep.EmailOTP && (
-          <SectionCard title="Verify Email OTP">
+          <SectionCard title="Verify Email OTP" description={`Check inbox for mail from ${OTP_SENDER_EMAIL}`}>
             <Input placeholder="6-digit OTP" value={otp} onChange={(e) => setOtp(e.target.value)} />
 
             <Button
