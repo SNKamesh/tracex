@@ -1,21 +1,24 @@
 "use client";
 
-export default function Button({
-  children,
-  variant = "primary",
-  ...props
-}: any) {
-  const base =
-    "px-4 py-2 rounded-xl text-sm font-medium transition active:scale-95";
+interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "ghost";
+}
 
-  const styles =
-    variant === "secondary"
-      ? "bg-slate-700 hover:bg-slate-600"
-      : "bg-tracex-500 hover:bg-tracex-400";
+export default function Button({ variant = "primary", className, ...props }: ButtonProps) {
+  const base =
+    "px-4 py-2 rounded-lg font-medium cursor-pointer transition active:scale-[0.97]";
+
+  const styles = {
+    primary: "bg-blue-600 hover:bg-blue-700 text-white",
+    secondary: "bg-slate-800 hover:bg-slate-700 text-white",
+    ghost: "bg-transparent hover:bg-slate-800 text-white border border-slate-700",
+  };
 
   return (
-    <button className={`${base} ${styles}`} {...props}>
-      {children}
-    </button>
+    <button
+      {...props}
+      className={`${base} ${styles[variant]} ${className ?? ""}`}
+    />
   );
 }
