@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AdsBanner from "./AdsBanner";
 import AppShell from "./AppShell";
 import Button from "./Button";
@@ -25,21 +25,48 @@ const stats = [
   { label: "Streak", value: "12 days" },
 ];
 
+type OnboardingData = {
+  name?: string;
+  studyType?: string;
+};
+
+function greetingByHour(hour: number) {
+  if (hour < 12) return "Good Morning";
+  if (hour < 17) return "Good Afternoon";
+  return "Good Evening";
+}
+
 export default function HomeClient() {
   const [isPremium, setIsPremium] = useState(false);
+  const [onboarding, setOnboarding] = useState<OnboardingData>({});
+  const [timeZone, setTimeZone] = useState("your region");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("tracex:onboarding");
+    if (stored) {
+      try {
+        setOnboarding(JSON.parse(stored));
+      } catch {
+        setOnboarding({});
+      }
+    }
+
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    setTimeZone(tz || "your region");
+  }, []);
+
+  const greeting = useMemo(() => greetingByHour(new Date().getHours()), []);
+  const title = `${greeting}${onboarding.name ? `, ${onboarding.name}` : ", Scholar"}`;
+  const subtitle = onboarding.studyType
+    ? `${timeZone} • ${onboarding.studyType} learner • TraceX dashboard is active.`
+    : `${timeZone} • Your TraceX dashboard is active.`;
 
   return (
     <AppShell>
       <PageHeader
-        title="Good Evening, Scholar"
-        subtitle="Your TraceX dashboard is active."
-        rightSlot={
-          <Toggle
-            checked={isPremium}
-            onChange={setIsPremium}
-            label="Premium"
-          />
-        }
+        title={title}
+        subtitle={subtitle}
+        rightSlot={<Toggle checked={isPremium} onChange={setIsPremium} label="Premium" />}
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -50,17 +77,11 @@ export default function HomeClient() {
 
       <AdsBanner visible={!isPremium} />
 
-      <SectionCard
-        title="Today’s Study Plan"
-        description="Add, edit, delete, reorder — syncs instantly."
-      >
+      <SectionCard title="Today’s Study Plan" description="Add, edit, delete, reorder — syncs instantly.">
         <StudyPlanList />
       </SectionCard>
 
-      <SectionCard
-        title="Quick Actions"
-        description="Open focus tools instantly."
-      >
+      <SectionCard title="Quick Actions" description="Open focus tools instantly.">
         <div className="flex flex-wrap gap-3">
           <Button>Solo Session</Button>
           <Button variant="secondary">Create Session</Button>
@@ -69,10 +90,7 @@ export default function HomeClient() {
         </div>
       </SectionCard>
 
-      <SectionCard
-        title="Recently Opened"
-        description="Resume your recent work fast."
-      >
+      <SectionCard title="Recently Opened" description="Resume your recent work fast.">
         <div className="grid gap-3 md:grid-cols-2">
           {recentItems.map((item) => (
             <div

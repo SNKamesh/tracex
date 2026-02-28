@@ -1,58 +1,60 @@
 "use client";
+
 import { useState } from "react";
-import AppShell from "./AppShell";
-import PageHeader from "./PageHeader";
+import { useRouter } from "next/router";
 import Button from "./Button";
 import ThemePreview from "./ThemePreview";
 
 const themes = [
   {
-    name: "AMOLED Black",
+    name: "AMOLED",
     description: "Pure black for deep contrast.",
     background: "bg-black",
-    accent: "bg-white text-black",
   },
   {
     name: "Dark",
     description: "Soft dark theme for night study.",
     background: "bg-slate-900",
-    accent: "bg-slate-700 text-white",
   },
   {
     name: "Light",
     description: "Clean and bright for daytime.",
     background: "bg-slate-100",
-    accent: "bg-slate-200 text-black",
   },
 ];
 
 export default function ThemeClient() {
-  const [selected, setSelected] = useState("AMOLED Black");
+  const router = useRouter();
+  const [selected, setSelected] = useState("AMOLED");
+
+  function applyThemeAndContinue() {
+    localStorage.setItem("tracex:theme", selected.toLowerCase());
+    router.push("/home");
+  }
 
   return (
-    <AppShell>
-      <PageHeader
-        title="Theme Selection"
-        subtitle="Choose a theme for your TraceX experience."
-      />
+    <div className="min-h-screen bg-black text-white px-4 py-10 flex items-center justify-center">
+      <div className="w-full max-w-5xl">
+        <h1 className="text-center text-3xl font-bold mb-2">Choose your Theme</h1>
+        <p className="text-center text-slate-400 mb-8">Pick one before entering Home.</p>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {themes.map((theme) => (
-          <button
-            key={theme.name}
-            type="button"
-            onClick={() => setSelected(theme.name)}
-            className="text-left"
-          >
-            <ThemePreview theme={theme} selected={selected === theme.name} />
-          </button>
-        ))}
-      </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {themes.map((theme) => (
+            <button
+              key={theme.name}
+              type="button"
+              onClick={() => setSelected(theme.name)}
+              className="text-left"
+            >
+              <ThemePreview theme={theme} selected={selected === theme.name} />
+            </button>
+          ))}
+        </div>
 
-      <div className="flex items-center gap-4 mt-4">
-        <Button>Save Theme</Button>
-        <span className="chip">Selected: {selected}</span>
+        <div className="flex justify-center mt-8">
+          <Button onClick={applyThemeAndContinue}>Continue to Home</Button>
+        </div>
       </div>
-    </AppShell>
+    </div>
   );
 }
