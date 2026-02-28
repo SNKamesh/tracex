@@ -1,11 +1,18 @@
 "use client";
 
+import React from "react";
 import Sidebar from "./Sidebar";
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen w-full flex bg-[#0a0f1a] text-white">
+      {/* LEFT — SIDEBAR */}
       <Sidebar />
-      <main className="flex-1 p-6">{children}</main>
+
+      {/* RIGHT — MAIN CONTENT */}
+      <main className="flex-1 p-10">
+        {children}
+      </main>
     </div>
   );
 }
