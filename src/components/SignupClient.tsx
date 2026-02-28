@@ -25,6 +25,7 @@ export default function SignupClient() {
   const [passkey, setPasskey] = useState(false);
   const [accept, setAccept] = useState(false);
 
+  // Auto TraceX ID
   const traceId = useMemo(() => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     return Array.from({ length: 10 })
@@ -36,17 +37,53 @@ export default function SignupClient() {
     <AppShell>
       <PageHeader title="Sign Up" subtitle="Create your TraceX account." />
 
-      <SectionCard title="OTP Verification" description="Secure login & device verification.">
+      {/* OTP Verification */}
+      <SectionCard
+        title="OTP Verification"
+        description="Secure login & device verification."
+      >
         <div className="grid gap-3 md:grid-cols-2">
-          <Input value={otp} placeholder="Enter OTP" onChange={(e) => setOtp(e.target.value)} />
-          <Toggle checked={passkey} onChange={setPasskey} label="Use Passkey/Biometrics" />
+
+          {/* FIXED TYPE HERE */}
+          <Input
+            value={otp}
+            placeholder="Enter OTP"
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setOtp(e.target.value)
+            }
+          />
+
+          <Toggle
+            checked={passkey}
+            onChange={setPasskey}
+            label="Use Passkey/Biometrics"
+          />
         </div>
       </SectionCard>
 
-      <SectionCard title="Profile Details" description="Personalize your learning account.">
+      {/* Profile Details */}
+      <SectionCard
+        title="Profile Details"
+        description="Personalize your learning account."
+      >
         <div className="grid gap-3 md:grid-cols-2">
-          <Input placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <Select value={userType} onChange={(e) => setUserType(e.target.value)}>
+
+          {/* FIXED TYPE HERE */}
+          <Input
+            placeholder="Full Name"
+            value={name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setName(e.target.value)
+            }
+          />
+
+          {/* FIXED TYPE HERE */}
+          <Select
+            value={userType}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setUserType(e.target.value)
+            }
+          >
             {userTypes.map((u) => (
               <option key={u}>{u}</option>
             ))}
@@ -62,9 +99,13 @@ export default function SignupClient() {
         </div>
       </SectionCard>
 
+      {/* Safety */}
       <SectionCard title="Safety" description="Required to use TraceX.">
         <div className="flex justify-between items-center">
-          <p className="text-sm text-slate-300">No abusive/vulgar content allowed.</p>
+          <p className="text-sm text-slate-300">
+            No abusive/vulgar content allowed.
+          </p>
+
           <Toggle checked={accept} onChange={setAccept} label="Accept" />
         </div>
       </SectionCard>

@@ -1,10 +1,12 @@
 "use client";
 
-export default function Select(props: any) {
-  return (
-    <select
-      {...props}
-      className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"
-    />
-  );
+import React from "react";
+
+interface SelectProps
+  extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+}
+
+export default function Select(props: SelectProps) {
+  return <select {...props} />;
 }

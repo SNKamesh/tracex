@@ -18,49 +18,37 @@ export default function SettingsClient() {
   const [theme, setTheme] = useState("Dark");
 
   // --------------------------
-  // FIXED TYPE for <Select />
+  // FIXED — Select uses event
   // --------------------------
-  const handleThemeChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
+  const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setTheme(e.target.value);
   };
 
   // --------------------------
-  // FIXED TYPE for <Toggle />
+  // FIXED — Toggle DOES NOT use event!
+  // Toggle passes (value: boolean), not (event)
   // --------------------------
-  const handleNotificationsChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setNotifications(e.target.checked);
+  const handleNotificationsChange = (value: boolean) => {
+    setNotifications(value);
   };
 
-  const handleBackupChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setBackup(e.target.checked);
+  const handleBackupChange = (value: boolean) => {
+    setBackup(value);
   };
 
-  const handlePrivacyChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setPrivacyMode(e.target.checked);
+  const handlePrivacyChange = (value: boolean) => {
+    setPrivacyMode(value);
   };
 
-  const handleMicChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setMic(e.target.checked);
+  const handleMicChange = (value: boolean) => {
+    setMic(value);
   };
 
   return (
     <AppShell>
       <PageHeader title="Settings" />
 
-      <SectionCard
-        title="Theme"
-        description="Choose your interface theme"
-      >
+      <SectionCard title="Theme" description="Choose your interface theme">
         <Select value={theme} onChange={handleThemeChange}>
           <option value="Dark">Dark</option>
           <option value="Light">Light</option>
@@ -69,10 +57,7 @@ export default function SettingsClient() {
       </SectionCard>
 
       <SectionCard title="Notifications">
-        <Toggle
-          checked={notifications}
-          onChange={handleNotificationsChange}
-        />
+        <Toggle checked={notifications} onChange={handleNotificationsChange} />
       </SectionCard>
 
       <SectionCard title="Cloud Backup">
