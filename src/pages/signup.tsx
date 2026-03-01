@@ -21,12 +21,12 @@ import {
 // 🔴 PASTE YOUR REAL FIREBASE CREDENTIALS HERE
 // Firebase Console → Project Settings → Your apps → Web app → SDK setup
 const firebaseConfig = {
-  apiKey: "AIzaSyAinCVrryK24iInAUQCLDbLkorsXiaXXD0",
-  authDomain: "tracex-10c51.firebaseapp.com",
-  projectId: "tracex-10c51",
-  storageBucket: "tracex-10c51.firebasestorage.app",
-  messagingSenderId: "826609904842",
-  appId: "1:826609904842:web:bf2ff43a81dab33245d833",
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_AUTH_DOMAIN",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId:             "YOUR_APP_ID",
 };
 
 const app  = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -219,10 +219,12 @@ export default function Signup() {
         setPhoneError("Invalid phone number.");
       } else if (msg.includes("too-many-requests")) {
         setPhoneError("Too many attempts. Try again later.");
-      } else if (msg.includes("not-found") || msg.includes("no user")) {
-        setPhoneError("Account doesn't exist.");
+      } else if (msg.includes("too-many-requests")) {
+        setPhoneError("Too many attempts. Please try again later.");
+      } else if (msg.includes("network-request-failed")) {
+        setPhoneError("Network error. Check your connection.");
       } else {
-        setPhoneError("Failed to send OTP. Check Firebase setup.");
+        setPhoneError("Failed to send OTP. Make sure Phone Auth is enabled in Firebase Console and your domain is authorized.");
       }
       verifierRef.current?.render().then((id: number) =>
         (window as any).grecaptcha?.reset(id)
