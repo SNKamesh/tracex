@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppShell from "@/components/AppShell";
 import PageHeader from "@/components/PageHeader";
+
+const THEME_KEY = "tracex:theme";
 
 function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -67,8 +69,19 @@ export default function SettingsClient() {
   const [backup, setBackup] = useState(false);
   const [privacyMode, setPrivacyMode] = useState(false);
   const [mic, setMic] = useState(false);
-  const [theme, setTheme] = useState("Dark");
+  const [theme, setTheme] = useState("amoled");
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(THEME_KEY) || "amoled";
+    setTheme(saved);
+  }, []);
+
+  function handleThemeChange(val: string) {
+    setTheme(val);
+    localStorage.setItem(THEME_KEY, val);
+    window.dispatchEvent(new CustomEvent("tracex-theme-change", { detail: val }));
+  }
 
   function handleSave() {
     setSaved(true);
@@ -82,14 +95,14 @@ export default function SettingsClient() {
 
         <Section title="APPEARANCE">
           <SettingRow icon="🌙" title="Theme" description="Choose your interface theme" last>
-            <select value={theme} onChange={(e) => setTheme(e.target.value)} style={{
+            <select value={theme} onChange={(e) => handleThemeChange(e.target.value)} style={{
               padding: "8px 12px", backgroundColor: "#1F2937", color: "white",
               border: "1px solid #374151", borderRadius: "8px", fontSize: "14px",
               cursor: "pointer", outline: "none",
             }}>
-              <option value="Dark">🌑 Dark</option>
-              <option value="AMOLED">⚫ AMOLED</option>
-              <option value="Light">☀️ Light</option>
+              <option value="amoled">⚫ AMOLED</option>
+              <option value="dark">🌑 Dark</option>
+              <option value="light">☀️ Light</option>
             </select>
           </SettingRow>
         </Section>
