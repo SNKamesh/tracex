@@ -55,7 +55,6 @@ async function sendOtpEmail(toEmail: string, otp: string): Promise<boolean> {
         user_id:     EMAILJS_PUBLIC_KEY,
         template_params: {
           to_email: toEmail,
-          otp_code: otp,
           passcode: otp,
           app_name: "TraceX",
         },
