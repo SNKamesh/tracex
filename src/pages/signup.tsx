@@ -37,7 +37,7 @@ function getFirebaseAuth() {
 // ─── EmailJS OTP sender ────────────────────────────────────────────────────────
 // 🔴 Replace with your EmailJS credentials from emailjs.com (free)
 const EMAILJS_SERVICE_ID  = "service_ri49ei2";
-const EMAILJS_TEMPLATE_ID = "template_b85idtq";
+const EMAILJS_TEMPLATE_ID = "sk378id";
 const EMAILJS_PUBLIC_KEY  = "qsOgPP31asLWMeneB";
 
 function generateOtp(): string {
@@ -55,6 +55,7 @@ async function sendOtpEmail(toEmail: string, otp: string): Promise<boolean> {
         user_id:     EMAILJS_PUBLIC_KEY,
         template_params: {
           to_email: toEmail,
+          otp_code: otp,
           passcode: otp,
           app_name: "TraceX",
         },
@@ -141,24 +142,17 @@ export default function Signup() {
       const auth = getFirebaseAuth();
       if (!auth) throw new Error("Firebase not ready");
 
-      // Check if account exists first
-      const methods = await fetchSignInMethodsForEmail(auth, siEmail);
-      if (methods.length === 0) {
-        setSiEmailErr("Account doesn't exist. Please create a TraceX account first.");
-        setSiLoading(false);
-        return;
-      }
-
-      // Account exists — try signing in
+      // Sign in directly — Firebase errors handle all cases
       await signInWithEmailAndPassword(auth, siEmail, siPass);
       router.push("/home");
     } catch (err: any) {
       const code = err?.code || "";
-      if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+      if (code === "auth/user-not-found") {
         setSiEmailErr("Account doesn't exist. Please create a TraceX account first.");
       } else if (
         code === "auth/wrong-password" ||
-        code === "auth/invalid-login-credentials"
+        code === "auth/invalid-login-credentials" ||
+        code === "auth/invalid-credential"
       ) {
         setSiPassErr("Invalid password.");
       } else if (code === "auth/too-many-requests") {
