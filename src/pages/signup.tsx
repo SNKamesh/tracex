@@ -37,7 +37,7 @@ function getFirebaseAuth() {
 // ─── EmailJS OTP sender ────────────────────────────────────────────────────────
 // 🔴 Replace with your EmailJS credentials from emailjs.com (free)
 const EMAILJS_SERVICE_ID  = "service_ri49ei2";
-const EMAILJS_TEMPLATE_ID = "sk378id";
+const EMAILJS_TEMPLATE_ID = "template_b85idtq";
 const EMAILJS_PUBLIC_KEY  = "qsOgPP31asLWMeneB";
 
 function generateOtp(): string {
