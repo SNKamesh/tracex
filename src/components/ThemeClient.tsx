@@ -8,24 +8,9 @@ import ThemePreview from "./ThemePreview";
 const THEME_KEY = "tracex:theme";
 
 const themes = [
-  {
-    name: "AMOLED",
-    key: "amoled",
-    description: "Pure black for deep contrast.",
-    background: "bg-black",
-  },
-  {
-    name: "Dark",
-    key: "dark",
-    description: "Soft dark theme for night study.",
-    background: "bg-slate-900",
-  },
-  {
-    name: "Light",
-    key: "light",
-    description: "Clean and bright for daytime.",
-    background: "bg-slate-200",
-  },
+  { name: "AMOLED", key: "amoled", description: "Pure black for deep contrast.", bg: "#000000" },
+  { name: "Dark",   key: "dark",   description: "Soft dark theme for night study.", bg: "#0f172a" },
+  { name: "Light",  key: "light",  description: "Clean and bright for daytime.", bg: "#e2e8f0" },
 ];
 
 function applyTheme(themeKey: string) {
@@ -44,8 +29,10 @@ export default function ThemeClient() {
     applyTheme(saved);
   }, []);
 
-  const textTone = useMemo(() => (selected === "light" ? "text-slate-900" : "text-white"), [selected]);
-  const subTone = useMemo(() => (selected === "light" ? "text-slate-600" : "text-slate-400"), [selected]);
+  const currentTheme = themes.find((t) => t.key === selected) || themes[0];
+  const isLight = selected === "light";
+  const textColor = isLight ? "#0f172a" : "#f8fafc";
+  const subColor  = isLight ? "#475569" : "#94a3b8";
 
   function chooseTheme(themeKey: string) {
     setSelected(themeKey);
@@ -60,25 +47,37 @@ export default function ThemeClient() {
   }
 
   return (
-    <div className={`min-h-screen px-4 py-10 flex items-center justify-center transition-colors ${textTone}`}>
-      <div className="w-full max-w-5xl">
-        <h1 className="text-center text-3xl font-bold mb-2">Choose your Theme</h1>
-        <p className={`text-center mb-8 ${subTone}`}>Pick one before entering Home.</p>
+    <div style={{
+      minHeight: "100vh",
+      backgroundColor: currentTheme.bg,
+      color: textColor,
+      transition: "background-color 0.3s, color 0.3s",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "40px 16px",
+    }}>
+      <div style={{ width: "100%", maxWidth: "900px" }}>
+        <h1 style={{ textAlign: "center", fontSize: "28px", fontWeight: 700, marginBottom: "8px" }}>
+          Choose your Theme
+        </h1>
+        <p style={{ textAlign: "center", color: subColor, marginBottom: "32px" }}>
+          Pick one before entering Home.
+        </p>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" }}>
           {themes.map((theme) => (
             <button
-              key={theme.name}
-              type="button"
+              key={theme.key}
               onClick={() => chooseTheme(theme.key)}
-              className="text-left"
+              style={{ textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
             >
-              <ThemePreview theme={theme} selected={selected === theme.key} />
+              <ThemePreview theme={theme} selected={selected === theme.key} isLight={isLight} />
             </button>
           ))}
         </div>
 
-        <div className="flex justify-center mt-8">
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "32px" }}>
           <Button onClick={applyThemeAndContinue}>Continue to Home</Button>
         </div>
       </div>
