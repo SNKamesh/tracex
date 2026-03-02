@@ -36,37 +36,22 @@ function getFirebaseAuth() {
 
 // ─── EmailJS OTP sender ────────────────────────────────────────────────────────
 // 🔴 Replace with your EmailJS credentials from emailjs.com (free)
-const EMAILJS_SERVICE_ID  = "service_ri49ei2";
-const EMAILJS_TEMPLATE_ID = "sk378id";
-const EMAILJS_PUBLIC_KEY  = "qsOgPP31asLWMeneB";
-
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 async function sendOtpEmail(toEmail: string, otp: string): Promise<boolean> {
   try {
-    const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+    const res = await fetch("/api/send-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        service_id:  EMAILJS_SERVICE_ID,
-        template_id: EMAILJS_TEMPLATE_ID,
-        user_id:     EMAILJS_PUBLIC_KEY,
-        template_params: {
-          to_email: toEmail,
-          otp_code: otp,
-          passcode: otp,
-          app_name: "TraceX",
-        },
-      }),
+      body: JSON.stringify({ email: toEmail, otp }),
     });
     return res.ok;
   } catch {
     return false;
   }
 }
-
 // ─── Steps ────────────────────────────────────────────────────────────────────
 type Step = "start" | "signin" | "create_form" | "create_otp" | "profile" | "safety";
 
