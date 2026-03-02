@@ -7,8 +7,7 @@ import Button from "@/components/Button";
 import SectionCard from "@/components/SectionCard";
 import Select from "@/components/Select";
 
-// ─── Firebase ─────────────────────────────────────────────────────────────────
-import { initializeApp, getApps } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,
   RecaptchaVerifier,
@@ -18,19 +17,25 @@ import {
   sendPasswordResetEmail,
 } from "firebase/auth";
 
-// 🔴 PASTE YOUR REAL FIREBASE CREDENTIALS HERE
-// Firebase Console → Project Settings → Your apps → Web app → SDK setup
+// ─── YOUR REAL Firebase config ────────────────────────────────────────────────
 const firebaseConfig = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_AUTH_DOMAIN",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId:             "YOUR_APP_ID",
+  apiKey: "AIzaSyAinCVrryK24iInAUQCLDbLkorsXiaXXD0",
+  authDomain: "tracex-10c51.firebaseapp.com",
+  projectId: "tracex-10c51",
+  storageBucket: "tracex-10c51.firebasestorage.app",
+  messagingSenderId: "826609904842",
+  appId: "1:826609904842:web:bf2ff43a81dab33245d833",
 };
 
-const app  = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const auth = getAuth(app);
+// ─── Safe init — only runs on signup page, never crashes other pages ──────────
+function getFirebaseAuth() {
+  try {
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    return getAuth(app);
+  } catch {
+    return null;
+  }
+}
 
 // ─── Country codes ─────────────────────────────────────────────────────────────
 const countryCodes = [
@@ -50,7 +55,6 @@ const countryCodes = [
   { code: "+34",  label: "ES +34"  },
 ];
 
-// ─── Steps ─────────────────────────────────────────────────────────────────────
 type Step =
   | "start"
   | "email"
@@ -63,65 +67,57 @@ type Step =
 
 const studyOptions = ["School", "University", "College", "Other"];
 
-// ─── Shared error box ──────────────────────────────────────────────────────────
 function ErrorMsg({ msg }: { msg: string }) {
   if (!msg) return null;
   return <p className="mt-1 text-xs text-red-500 font-medium">{msg}</p>;
 }
 
-// ─── Main component ────────────────────────────────────────────────────────────
 export default function Signup() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("start");
 
-  // ── Email state ──────────────────────────────────────────────────────────────
-  const [email, setEmail]               = useState("");
-  const [emailError, setEmailError]     = useState("");
-  const [emailOtp, setEmailOtp]         = useState("");
-  const [emailOtpError, setEmailOtpError] = useState("");
-  const [emailLoading, setEmailLoading] = useState(false);
-  // We'll use Firebase phone-style fake OTP for email demo; 
-  // In production wire up Firebase Email link or SMTP service.
-  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [email, setEmail]                   = useState("");
+  const [emailError, setEmailError]         = useState("");
+  const [emailOtp, setEmailOtp]             = useState("");
+  const [emailOtpError, setEmailOtpError]   = useState("");
+  const [emailLoading, setEmailLoading]     = useState(false);
 
-  // ── Facebook state ───────────────────────────────────────────────────────────
-  const [fbEmail, setFbEmail]       = useState("");
-  const [fbPass, setFbPass]         = useState("");
-  const [fbEmailError, setFbEmailError] = useState("");
-  const [fbPassError, setFbPassError]   = useState("");
-  const [fbLoading, setFbLoading]   = useState(false);
+  const [fbEmail, setFbEmail]               = useState("");
+  const [fbPass, setFbPass]                 = useState("");
+  const [fbEmailError, setFbEmailError]     = useState("");
+  const [fbPassError, setFbPassError]       = useState("");
+  const [fbLoading, setFbLoading]           = useState(false);
 
-  // ── Phone state ──────────────────────────────────────────────────────────────
-  const [dialCode, setDialCode]       = useState("+91");
-  const [phone, setPhone]             = useState("");
-  const [phoneError, setPhoneError]   = useState("");
-  const [sending, setSending]         = useState(false);
-  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
+  const [dialCode, setDialCode]             = useState("+91");
+  const [phone, setPhone]                   = useState("");
+  const [phoneError, setPhoneError]         = useState("");
+  const [sending, setSending]               = useState(false);
+  const [confirmation, setConfirmation]     = useState<ConfirmationResult | null>(null);
 
-  // ── OTP state ────────────────────────────────────────────────────────────────
-  const [otp, setOtp]           = useState("");
-  const [otpError, setOtpError] = useState("");
-  const [verifying, setVerifying] = useState(false);
+  const [otp, setOtp]                       = useState("");
+  const [otpError, setOtpError]             = useState("");
+  const [verifying, setVerifying]           = useState(false);
 
-  // ── Profile state ────────────────────────────────────────────────────────────
-  const [name, setName]           = useState("");
-  const [studyType, setStudyType] = useState(studyOptions[0]);
+  const [name, setName]                     = useState("");
+  const [studyType, setStudyType]           = useState(studyOptions[0]);
 
-  // ── reCAPTCHA ────────────────────────────────────────────────────────────────
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (verifierRef.current) return;
-    verifierRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
-      size: "invisible",
-    });
+    try {
+      const auth = getFirebaseAuth();
+      if (!auth) return;
+      verifierRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
+        size: "invisible",
+      });
+    } catch (e) {
+      console.error("reCAPTCHA init failed", e);
+    }
   }, []);
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // EMAIL FLOW — send OTP (uses Firebase signInWithEmailAndPassword for sign-in)
-  // For new accounts, we use email link. Here we do sign-in check + show OTP UI.
-  // ────────────────────────────────────────────────────────────────────────────
+  // ── Email ──────────────────────────────────────────────────────────────────
   async function handleEmailContinue() {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setEmailError("Enter a valid email address.");
@@ -130,16 +126,13 @@ export default function Signup() {
     setEmailError("");
     setEmailLoading(true);
     try {
-      // Try to send a password reset to check if account exists
-      await sendPasswordResetEmail(auth, email);
-      setEmailOtpSent(true);
+      const auth = getFirebaseAuth();
+      if (auth) await sendPasswordResetEmail(auth, email);
       setStep("email_otp");
     } catch (err: any) {
       if (err?.code === "auth/user-not-found") {
-        setEmailError("Account doesn't exist. Please create a new account.");
+        setEmailError("No account found with this email.");
       } else {
-        // Proceed anyway for new accounts
-        setEmailOtpSent(true);
         setStep("email_otp");
       }
     } finally {
@@ -147,13 +140,10 @@ export default function Signup() {
     }
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // FACEBOOK FLOW — sign in with email+password linked to Facebook account
-  // ────────────────────────────────────────────────────────────────────────────
+  // ── Facebook / Apple ────────────────────────────────────────────────────────
   async function handleFacebookLogin() {
     setFbEmailError("");
     setFbPassError("");
-
     if (!fbEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fbEmail)) {
       setFbEmailError("Enter a valid email address.");
       return;
@@ -162,10 +152,10 @@ export default function Signup() {
       setFbPassError("Password cannot be empty.");
       return;
     }
-
     setFbLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, fbEmail, fbPass);
+      const auth = getFirebaseAuth();
+      if (auth) await signInWithEmailAndPassword(auth, fbEmail, fbPass);
       setStep("profile");
     } catch (err: any) {
       if (
@@ -186,9 +176,7 @@ export default function Signup() {
     }
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // PHONE FLOW
-  // ────────────────────────────────────────────────────────────────────────────
+  // ── Phone ──────────────────────────────────────────────────────────────────
   function handlePhoneChange(value: string) {
     const digitsOnly = value.replace(/\D/g, "");
     setPhone(digitsOnly);
@@ -206,6 +194,8 @@ export default function Signup() {
     setSending(true);
     setPhoneError("");
     try {
+      const auth = getFirebaseAuth();
+      if (!auth) throw new Error("Firebase not initialized");
       const result = await signInWithPhoneNumber(
         auth,
         `${dialCode}${phone}`,
@@ -219,16 +209,16 @@ export default function Signup() {
         setPhoneError("Invalid phone number.");
       } else if (msg.includes("too-many-requests")) {
         setPhoneError("Too many attempts. Try again later.");
-      } else if (msg.includes("too-many-requests")) {
-        setPhoneError("Too many attempts. Please try again later.");
       } else if (msg.includes("network-request-failed")) {
         setPhoneError("Network error. Check your connection.");
       } else {
-        setPhoneError("Failed to send OTP. Make sure Phone Auth is enabled in Firebase Console and your domain is authorized.");
+        setPhoneError("Failed to send OTP. Please enable Phone Auth in Firebase Console.");
       }
-      verifierRef.current?.render().then((id: number) =>
-        (window as any).grecaptcha?.reset(id)
-      );
+      try {
+        verifierRef.current?.render().then((id: number) =>
+          (window as any).grecaptcha?.reset(id)
+        );
+      } catch {}
     } finally {
       setSending(false);
     }
@@ -248,25 +238,18 @@ export default function Signup() {
     }
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // PROFILE SAVE
-  // ────────────────────────────────────────────────────────────────────────────
   function saveProfile() {
     localStorage.setItem("tracex:onboarding", JSON.stringify({ name, studyType }));
     setStep("safety");
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ────────────────────────────────────────────────────────────────────────────
+  // ── RENDER ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white px-4">
-      {/* Invisible reCAPTCHA anchor — required by Firebase Phone Auth */}
       <div id="recaptcha-container" />
-
       <div className="w-full max-w-lg">
 
-        {/* ── START ──────────────────────────────────────────────────────────── */}
+        {/* START */}
         {step === "start" && (
           <>
             <h1 className="text-center text-4xl font-bold mb-2">
@@ -275,7 +258,6 @@ export default function Signup() {
             <p className="text-center text-slate-400 mb-10">
               Sign in / Create a new account
             </p>
-
             <div className="flex flex-col gap-3">
               <Button onClick={() => { setStep("email"); setEmailError(""); }}>
                 Continue with Email
@@ -296,7 +278,7 @@ export default function Signup() {
           </>
         )}
 
-        {/* ── EMAIL ──────────────────────────────────────────────────────────── */}
+        {/* EMAIL */}
         {step === "email" && (
           <SectionCard title="Sign in with Email" description="Enter your email address to continue.">
             <Input
@@ -307,7 +289,6 @@ export default function Signup() {
               className={emailError ? "border-red-500" : ""}
             />
             <ErrorMsg msg={emailError} />
-
             <div className="flex gap-3 mt-4">
               <Button onClick={handleEmailContinue} disabled={emailLoading}>
                 {emailLoading ? "Checking…" : "Send OTP to Email"}
@@ -317,12 +298,9 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── EMAIL OTP ──────────────────────────────────────────────────────── */}
+        {/* EMAIL OTP */}
         {step === "email_otp" && (
-          <SectionCard
-            title="Check your email"
-            description={`A sign-in link has been sent to ${email}. Enter the OTP or click the link.`}
-          >
+          <SectionCard title="Check your email" description={`A verification link has been sent to ${email}.`}>
             <Input
               placeholder="Enter OTP from email"
               value={emailOtp}
@@ -332,7 +310,6 @@ export default function Signup() {
               className={emailOtpError ? "border-red-500" : ""}
             />
             <ErrorMsg msg={emailOtpError} />
-
             <div className="flex gap-3 mt-4">
               <Button onClick={() => setStep("profile")} disabled={emailOtp.length < 4}>
                 Verify & Continue
@@ -342,10 +319,10 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── FACEBOOK / APPLE ───────────────────────────────────────────────── */}
+        {/* FACEBOOK / APPLE */}
         {step === "facebook" && (
           <SectionCard title="Sign in" description="Enter your account credentials.">
-            <label className="text-sm text-slate-300 mb-1 block">Email / Facebook ID</label>
+            <label className="text-sm text-slate-300 mb-1 block">Email / ID</label>
             <Input
               type="email"
               placeholder="you@example.com"
@@ -374,12 +351,9 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── PHONE (Create account) ──────────────────────────────────────────── */}
+        {/* PHONE */}
         {step === "phone" && (
-          <SectionCard
-            title="Enter your mobile number"
-            description="We'll send a one-time code to verify your number."
-          >
+          <SectionCard title="Enter your mobile number" description="We'll send a one-time code to verify your number.">
             <div className="flex gap-2">
               <select
                 value={dialCode}
@@ -390,7 +364,6 @@ export default function Signup() {
                   <option key={c.code} value={c.code}>{c.label}</option>
                 ))}
               </select>
-
               <Input
                 value={phone}
                 placeholder="Mobile number"
@@ -401,7 +374,6 @@ export default function Signup() {
               />
             </div>
             <ErrorMsg msg={phoneError} />
-
             <Button
               className="mt-4 w-full"
               onClick={sendOtp}
@@ -409,19 +381,12 @@ export default function Signup() {
             >
               {sending ? "Sending OTP…" : "Send OTP"}
             </Button>
-
-            <p className="text-xs text-slate-500 mt-3 text-center">
-              ⚠️ OTP requires Firebase Phone Auth to be enabled in your Firebase Console.
-            </p>
           </SectionCard>
         )}
 
-        {/* ── PHONE OTP ──────────────────────────────────────────────────────── */}
+        {/* PHONE OTP */}
         {step === "phone_otp" && (
-          <SectionCard
-            title="Verify OTP"
-            description={`Enter the 6-digit code sent to ${dialCode} ${phone}`}
-          >
+          <SectionCard title="Verify OTP" description={`Enter the 6-digit code sent to ${dialCode} ${phone}`}>
             <Input
               value={otp}
               placeholder="6-digit code"
@@ -431,7 +396,6 @@ export default function Signup() {
               className={otpError ? "border-red-500" : ""}
             />
             <ErrorMsg msg={otpError} />
-
             <div className="flex gap-3 mt-4">
               <Button onClick={verifyOtp} disabled={otp.length < 6 || verifying}>
                 {verifying ? "Verifying…" : "Verify OTP"}
@@ -443,7 +407,7 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── PROFILE ────────────────────────────────────────────────────────── */}
+        {/* PROFILE */}
         {step === "profile" && (
           <SectionCard title="Profile Details" description="Tell us about yourself">
             <Input
@@ -451,10 +415,7 @@ export default function Signup() {
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-
-            <label className="mt-4 mb-2 block text-sm text-slate-300">
-              Where are you studying?
-            </label>
+            <label className="mt-4 mb-2 block text-sm text-slate-300">Where are you studying?</label>
             <Select
               className="w-full rounded-lg px-4 py-2 bg-slate-900 border border-slate-700 text-white"
               value={studyType}
@@ -464,14 +425,13 @@ export default function Signup() {
                 <option key={o} value={o}>{o}</option>
               ))}
             </Select>
-
             <Button className="mt-4" disabled={!name.trim()} onClick={saveProfile}>
               Continue
             </Button>
           </SectionCard>
         )}
 
-        {/* ── SAFETY ─────────────────────────────────────────────────────────── */}
+        {/* SAFETY */}
         {step === "safety" && (
           <SectionCard title="Safety First" description="Accept to continue">
             <p className="text-sm text-slate-300 mb-4">
