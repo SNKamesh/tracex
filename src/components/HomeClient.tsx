@@ -42,14 +42,29 @@ export default function HomeClient() {
   const [timeZone, setTimeZone] = useState("your region");
 
   useEffect(() => {
-    const stored = localStorage.getItem("tracex:onboarding");
-    if (stored) {
-      try {
-        setOnboarding(JSON.parse(stored));
-      } catch {
-        setOnboarding({});
-      }
-    }
+    import("firebase/auth").then(({ getAuth, onAuthStateChanged }) => {
+      const auth = getAuth();
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          // Load onboarding data specific to this user's UID
+          const stored = localStorage.getItem(`tracex:onboarding:${user.uid}`);
+          if (stored) {
+            try { setOnboarding(JSON.parse(stored)); } catch { setOnboarding({}); }
+          } else {
+            // Fallback: check old key (for existing users)
+            const old = localStorage.getItem("tracex:onboarding");
+            if (old) {
+              try {
+                const parsed = JSON.parse(old);
+                setOnboarding(parsed);
+                // Migrate to UID-based key
+                localStorage.setItem(`tracex:onboarding:${user.uid}`, old);
+              } catch { setOnboarding({}); }
+            }
+          }
+        }
+      });
+    });
 
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setTimeZone(tz || "your region");

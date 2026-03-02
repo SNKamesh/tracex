@@ -237,7 +237,14 @@ export default function Signup() {
 
   // ── PROFILE SAVE ──────────────────────────────────────────────────────────
   function saveProfile() {
-    localStorage.setItem("tracex:onboarding", JSON.stringify({ name, studyType }));
+    import("firebase/auth").then(({ getAuth }) => {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      const data = JSON.stringify({ name, studyType });
+      // Save to both UID-based key and old key
+      if (user) localStorage.setItem(`tracex:onboarding:${user.uid}`, data);
+      localStorage.setItem("tracex:onboarding", data);
+    });
     setStep("safety");
   }
 
