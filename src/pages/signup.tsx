@@ -56,6 +56,7 @@ async function sendOtpEmail(toEmail: string, otp: string): Promise<boolean> {
         template_params: {
           to_email: toEmail,
           otp_code: otp,
+          passcode: otp,
           app_name: "TraceX",
         },
       }),
@@ -164,7 +165,7 @@ export default function Signup() {
       } else if (code === "auth/too-many-requests") {
         setSiPassErr("Too many attempts. Try again later.");
       } else {
-        setSiPassErr("Sign in failed. Please try again.");
+        setSiPassErr("Something went wrong. Please try again.");
       }
     } finally {
       setSiLoading(false);
@@ -206,7 +207,7 @@ export default function Signup() {
       setGeneratedOtp(otp);
       const sent = await sendOtpEmail(caEmail, otp);
       if (!sent) {
-        setCaEmailErr("Failed to send OTP. Please check your EmailJS setup.");
+        setCaEmailErr("Unable to send verification code. Please try again.");
         return;
       }
       setStep("create_otp");
@@ -238,7 +239,7 @@ export default function Signup() {
       if (code === "auth/email-already-in-use") {
         setOtpErr("Account already exists. Please sign in.");
       } else {
-        setOtpErr("Failed to create account. Please try again.");
+        setOtpErr("Something went wrong. Please try again.");
       }
     } finally {
       setOtpLoading(false);
