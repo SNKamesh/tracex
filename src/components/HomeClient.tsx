@@ -18,7 +18,7 @@ const recentItems = [
 ];
 
 const stats = [
-  { label: "Today’s Hours", value: "3h 20m" },
+  { label: "Today's Hours", value: "3h 20m" },
   { label: "Focus Hours", value: "2h 45m" },
   { label: "Distraction Hours", value: "0h 35m" },
   { label: "Total Hours", value: "28h 10m" },
@@ -39,42 +39,47 @@ function greetingByHour(hour: number) {
 export default function HomeClient() {
   const [isPremium, setIsPremium] = useState(false);
   const [onboarding, setOnboarding] = useState<OnboardingData>({});
-  const [timeZone, setTimeZone] = useState("your region");
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     import("firebase/auth").then(({ getAuth, onAuthStateChanged }) => {
       const auth = getAuth();
       onAuthStateChanged(auth, (user) => {
         if (user) {
-          // Load onboarding data specific to this user's UID
-          const stored = localStorage.getItem(`tracex:onboarding:${user.uid}`);
-          if (stored) {
-            try { setOnboarding(JSON.parse(stored)); } catch { setOnboarding({}); }
+          // Always use UID-based key first
+          const uidKey = localStorage.getItem(`tracex:onboarding:${user.uid}`);
+          if (uidKey) {
+            try { setOnboarding(JSON.parse(uidKey)); } catch { setOnboarding({}); }
           } else {
-            // Fallback: check old key (for existing users)
+            // Fallback for existing users — migrate old key
             const old = localStorage.getItem("tracex:onboarding");
             if (old) {
               try {
                 const parsed = JSON.parse(old);
                 setOnboarding(parsed);
-                // Migrate to UID-based key
                 localStorage.setItem(`tracex:onboarding:${user.uid}`, old);
+                localStorage.removeItem("tracex:onboarding"); // remove shared key
               } catch { setOnboarding({}); }
             }
           }
+        } else {
+          setOnboarding({});
         }
+        setLoaded(true);
       });
     });
-
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    setTimeZone(tz || "your region");
   }, []);
 
   const greeting = useMemo(() => greetingByHour(new Date().getHours()), []);
-  const title = `${greeting}${onboarding.name ? `, ${onboarding.name}` : ", Scholar"}`;
+
+  // Only show name after loaded to avoid flashing wrong name
+  const title = loaded
+    ? `${greeting}, ${onboarding.name || "Scholar"}`
+    : greeting;
+
   const subtitle = onboarding.studyType
-    ? `${timeZone} • ${onboarding.studyType} learner • TraceX dashboard is active.`
-    : `${timeZone} • Your TraceX dashboard is active.`;
+    ? `${onboarding.studyType} learner • TraceX dashboard is active.`
+    : "TraceX dashboard is active.";
 
   return (
     <AppShell>
@@ -92,7 +97,7 @@ export default function HomeClient() {
 
       <AdsBanner visible={!isPremium} />
 
-      <SectionCard title="Today’s Study Plan" description="Add, edit, delete, reorder — syncs instantly.">
+      <SectionCard title="Today's Study Plan" description="Add, edit, delete, reorder — syncs instantly.">
         <StudyPlanList />
       </SectionCard>
 
