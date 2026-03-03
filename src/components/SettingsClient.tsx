@@ -84,13 +84,17 @@ export default function SettingsClient() {
   }
 
   function handleSignOut() {
-    const confirmed = window.confirm("Are you sure you want to sign out?");
-    if (!confirmed) return;
+    if (!window.confirm("Are you sure you want to sign out?")) return;
     import("firebase/auth").then(({ getAuth, signOut }) => {
       const auth = getAuth();
       signOut(auth).then(() => {
         localStorage.clear();
-        window.location.href = "/";
+        window.location.replace("/");
+      }).catch((err) => {
+        console.error("Sign out error:", err);
+        // Force redirect even if signOut fails
+        localStorage.clear();
+        window.location.replace("/");
       });
     });
   }
