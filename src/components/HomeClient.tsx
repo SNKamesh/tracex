@@ -46,26 +46,24 @@ export default function HomeClient() {
       const auth = getAuth();
       onAuthStateChanged(auth, (user) => {
         if (user) {
-          // Always use UID-based key first
-          const uidKey = localStorage.getItem(`tracex:onboarding:${user.uid}`);
-          if (uidKey) {
-            try { setOnboarding(JSON.parse(uidKey)); } catch { setOnboarding({}); }
-          } else {
-            // Fallback for existing users — migrate old key
-            const old = localStorage.getItem("tracex:onboarding");
-            if (old) {
-              try {
-                const parsed = JSON.parse(old);
-                setOnboarding(parsed);
-                localStorage.setItem(`tracex:onboarding:${user.uid}`, old);
-                localStorage.removeItem("tracex:onboarding"); // remove shared key
-              } catch { setOnboarding({}); }
-            }
-          }
-        } else {
-          setOnboarding({});
+          // Load from Firestore first
+          import("firebase/firestore").then(({ getFirestore, doc, getDoc }) => {
+            const db = getFirestore();
+            getDoc(doc(db, "users", user.uid)).then((snap) => {
+              if (snap.exists()) {
+                const data = snap.data();
+                setOnboarding({ name: data.name, studyType: data.studyType });
+              } else {
+                // Fallback to localStorage for old users
+                const stored = localStorage.getItem(`tracex:onboarding:${user.uid}`);
+                if (stored) {
+                  try { setOnboarding(JSON.parse(stored)); } catch { setOnboarding({}); }
+                }
+              }
+              setLoaded(true);
+            });
+          });
         }
-        setLoaded(true);
       });
     });
   }, []);

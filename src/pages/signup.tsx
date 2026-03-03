@@ -238,12 +238,22 @@ export default function Signup() {
   // ── PROFILE SAVE ──────────────────────────────────────────────────────────
   function saveProfile() {
     import("firebase/auth").then(({ getAuth }) => {
-      const auth = getAuth();
-      const user = auth.currentUser;
-      const data = JSON.stringify({ name, studyType });
-      // Save to both UID-based key and old key
-      if (user) localStorage.setItem(`tracex:onboarding:${user.uid}`, data);
-      localStorage.setItem("tracex:onboarding", data);
+      import("firebase/firestore").then(({ getFirestore, doc, setDoc }) => {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (user) {
+          const db = getFirestore();
+          // Save to Firestore — tied to user's UID forever
+          setDoc(doc(db, "users", user.uid), {
+            name,
+            studyType,
+            email: user.email,
+            createdAt: Date.now(),
+          });
+          // Keep localStorage as backup
+          localStorage.setItem(`tracex:onboarding:${user.uid}`, JSON.stringify({ name, studyType }));
+        }
+      });
     });
     setStep("safety");
   }
