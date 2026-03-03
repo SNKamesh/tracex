@@ -15,7 +15,7 @@ import {
   fetchSignInMethodsForEmail,
 } from "firebase/auth";
 
-// ─── Firebase config ───────────────────────────────────────────────────────────
+// ─── Firebase config ────────────────────────────────────────────────────────
 const firebaseConfig = {
   apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -34,17 +34,30 @@ function getFirebaseAuth() {
   }
 }
 
-// ─── Generate unique TraceX ID ─────────────────────────────────────────────────
-function generateTracexId(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0,O,1,I to avoid confusion
-  let id = "TRX-";
-  for (let i = 0; i < 6; i++) {
-    id += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return id;
+// ─── Abuse filter ────────────────────────────────────────────────────────────
+const BANNED_WORDS = [
+  "fuck", "f**k", "fuk", "fuck",
+  "shit", "sh1t", "s**t",
+  "bitch", "b**ch", "b1tch",
+  "ass", "a**", "a55",
+  "bastard", "dick", "d**k",
+  "cunt", "c**t",
+  "pussy", "p***y",
+  "nigga", "nigger", "n***a",
+  "whore", "wh**e",
+  "slut", "sl*t",
+  "idiot", "stupid", "moron", "retard",
+  "kill", "rape", "r*pe",
+  "sex", "porn", "xxx",
+  "hate", "nazi", "terrorist",
+];
+
+function containsAbusiveContent(text: string): boolean {
+  const lower = text.toLowerCase().replace(/\s+/g, "");
+  return BANNED_WORDS.some((word) => lower.includes(word.replace(/\*/g, "")));
 }
 
-// ─── EmailJS OTP sender ────────────────────────────────────────────────────────
+// ─── OTP helpers ────────────────────────────────────────────────────────────
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -62,7 +75,17 @@ async function sendOtpEmail(toEmail: string, otp: string): Promise<boolean> {
   }
 }
 
-// ─── Steps ────────────────────────────────────────────────────────────────────
+// ─── Generate TraceX ID ──────────────────────────────────────────────────────
+function generateTracexId(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let id = "TRX-";
+  for (let i = 0; i < 6; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return id;
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 type Step = "start" | "signin" | "create_form" | "create_otp" | "profile" | "safety";
 
 const studyOptions = ["School", "University", "College", "Other"];
@@ -72,19 +95,19 @@ function ErrorMsg({ msg }: { msg: string }) {
   return <p className="mt-1 text-xs text-red-500 font-medium">{msg}</p>;
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main ────────────────────────────────────────────────────────────────────
 export default function Signup() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("start");
 
-  // Sign in state
+  // Sign in
   const [siEmail, setSiEmail]       = useState("");
   const [siPass, setSiPass]         = useState("");
   const [siEmailErr, setSiEmailErr] = useState("");
   const [siPassErr, setSiPassErr]   = useState("");
   const [siLoading, setSiLoading]   = useState(false);
 
-  // Create account state
+  // Create account
   const [caEmail, setCaEmail]       = useState("");
   const [caPass, setCaPass]         = useState("");
   const [caPass2, setCaPass2]       = useState("");
@@ -92,7 +115,7 @@ export default function Signup() {
   const [caPassErr, setCaPassErr]   = useState("");
   const [caLoading, setCaLoading]   = useState(false);
 
-  // OTP state
+  // OTP
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [enteredOtp, setEnteredOtp]     = useState("");
   const [otpErr, setOtpErr]             = useState("");
@@ -100,11 +123,12 @@ export default function Signup() {
   const [otpTimer, setOtpTimer]         = useState(60);
   const [canResend, setCanResend]       = useState(false);
 
-  // Profile state
+  // Profile
   const [name, setName]           = useState("");
+  const [nameErr, setNameErr]     = useState("");
   const [studyType, setStudyType] = useState(studyOptions[0]);
 
-  // OTP countdown timer
+  // OTP countdown
   useEffect(() => {
     if (step !== "create_otp") return;
     setOtpTimer(60);
@@ -118,13 +142,19 @@ export default function Signup() {
     return () => clearInterval(interval);
   }, [step]);
 
-  // ── SIGN IN ────────────────────────────────────────────────────────────────
+  // ── SIGN IN ───────────────────────────────────────────────────────────────
   async function handleSignIn() {
     setSiEmailErr("");
     setSiPassErr("");
 
     if (!siEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(siEmail)) {
       setSiEmailErr("Enter a valid email address.");
+      return;
+    }
+    // Abuse check on email local part (before @)
+    const emailLocal = siEmail.split("@")[0];
+    if (containsAbusiveContent(emailLocal)) {
+      setSiEmailErr("Please enter a proper name. Keep it respectful");
       return;
     }
     if (!siPass) {
@@ -158,13 +188,19 @@ export default function Signup() {
     }
   }
 
-  // ── CREATE — validate then send OTP ───────────────────────────────────────
+  // ── CREATE — send OTP ─────────────────────────────────────────────────────
   async function handleSendOtp() {
     setCaEmailErr("");
     setCaPassErr("");
 
     if (!caEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(caEmail)) {
       setCaEmailErr("Enter a valid email address.");
+      return;
+    }
+    // Abuse check on email local part
+    const emailLocal = caEmail.split("@")[0];
+    if (containsAbusiveContent(emailLocal)) {
+      setCaEmailErr("Please enter a proper name. Keep it respectful");
       return;
     }
     if (caPass.length < 6) {
@@ -186,7 +222,6 @@ export default function Signup() {
           return;
         }
       }
-
       const otp = generateOtp();
       setGeneratedOtp(otp);
       const sent = await sendOtpEmail(caEmail, otp);
@@ -200,7 +235,7 @@ export default function Signup() {
     }
   }
 
-  // ── VERIFY OTP ─────────────────────────────────────────────────────────────
+  // ── VERIFY OTP ────────────────────────────────────────────────────────────
   async function handleVerifyOtp() {
     setOtpErr("");
     if (enteredOtp.length < 6) {
@@ -211,7 +246,6 @@ export default function Signup() {
       setOtpErr("Incorrect OTP. Please try again.");
       return;
     }
-
     setOtpLoading(true);
     try {
       const auth = getFirebaseAuth();
@@ -230,7 +264,7 @@ export default function Signup() {
     }
   }
 
-  // ── RESEND OTP ─────────────────────────────────────────────────────────────
+  // ── RESEND OTP ────────────────────────────────────────────────────────────
   async function handleResendOtp() {
     const otp = generateOtp();
     setGeneratedOtp(otp);
@@ -243,8 +277,24 @@ export default function Signup() {
 
   // ── PROFILE SAVE ──────────────────────────────────────────────────────────
   async function saveProfile() {
+    setNameErr("");
+
+    // Abuse check on name
+    if (containsAbusiveContent(name)) {
+      setNameErr("Please enter a proper name. Keep it respectful");
+      return;
+    }
+    // Only letters, spaces, dots, hyphens allowed in name
+    if (!/^[a-zA-Z\s.\-']+$/.test(name.trim())) {
+      setNameErr("Name can only contain letters, spaces, and basic punctuation.");
+      return;
+    }
+
     const { getAuth } = await import("firebase/auth");
-    const { getFirestore, doc, setDoc, collection, query, where, getDocs } = await import("firebase/firestore");
+    const {
+      getFirestore, doc, setDoc,
+      collection, query, where, getDocs,
+    } = await import("firebase/firestore");
 
     const auth = getAuth();
     const user = auth.currentUser;
@@ -252,10 +302,8 @@ export default function Signup() {
 
     const db = getFirestore();
 
-    // ── Generate a unique TraceX ID ──────────────────────────────────────────
+    // Generate unique TraceX ID
     let tracexId = generateTracexId();
-
-    // Make sure it doesn't already exist in Firestore (collision check)
     let isUnique = false;
     while (!isUnique) {
       const q = query(collection(db, "users"), where("tracexId", "==", tracexId));
@@ -263,11 +311,11 @@ export default function Signup() {
       if (snap.empty) {
         isUnique = true;
       } else {
-        tracexId = generateTracexId(); // regenerate if collision
+        tracexId = generateTracexId();
       }
     }
 
-    // ── Save to Firestore ────────────────────────────────────────────────────
+    // Save to Firestore
     await setDoc(doc(db, "users", user.uid), {
       name,
       studyType,
@@ -276,7 +324,6 @@ export default function Signup() {
       createdAt: Date.now(),
     });
 
-    // Keep as backup in localStorage
     localStorage.setItem(
       `tracex:onboarding:${user.uid}`,
       JSON.stringify({ name, studyType, tracexId })
@@ -285,12 +332,12 @@ export default function Signup() {
     setStep("safety");
   }
 
-  // ── RENDER ─────────────────────────────────────────────────────────────────
+  // ── RENDER ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white px-4">
       <div className="w-full max-w-lg">
 
-        {/* ── START ─────────────────────────────────────────────────────────── */}
+        {/* START */}
         {step === "start" && (
           <>
             <h1 className="text-center text-4xl font-bold mb-2">
@@ -300,12 +347,20 @@ export default function Signup() {
               Sign in / Create a new account
             </p>
             <div className="flex flex-col gap-3">
-              <Button onClick={() => { setStep("signin"); setSiEmailErr(""); setSiPassErr(""); setSiEmail(""); setSiPass(""); }}>
+              <Button onClick={() => {
+                setStep("signin");
+                setSiEmailErr(""); setSiPassErr("");
+                setSiEmail(""); setSiPass("");
+              }}>
                 Continue with Email
               </Button>
               <p
                 className="text-center mt-4 cursor-pointer text-slate-400 hover:text-white transition text-sm"
-                onClick={() => { setStep("create_form"); setCaEmailErr(""); setCaPassErr(""); setCaEmail(""); setCaPass(""); setCaPass2(""); }}
+                onClick={() => {
+                  setStep("create_form");
+                  setCaEmailErr(""); setCaPassErr("");
+                  setCaEmail(""); setCaPass(""); setCaPass2("");
+                }}
               >
                 Create a full TraceX account
               </p>
@@ -313,7 +368,7 @@ export default function Signup() {
           </>
         )}
 
-        {/* ── SIGN IN ───────────────────────────────────────────────────────── */}
+        {/* SIGN IN */}
         {step === "signin" && (
           <SectionCard title="Sign In" description="Enter your TraceX email and password.">
             <label className="text-sm text-slate-300 mb-1 block">Email</label>
@@ -342,7 +397,6 @@ export default function Signup() {
               </Button>
               <Button variant="ghost" onClick={() => setStep("start")}>← Back</Button>
             </div>
-
             <p className="text-xs text-slate-500 mt-4 text-center">
               Don't have an account?{" "}
               <span
@@ -355,11 +409,11 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── CREATE ACCOUNT ────────────────────────────────────────────────── */}
+        {/* CREATE ACCOUNT */}
         {step === "create_form" && (
           <SectionCard
             title="Create Your TraceX Account"
-            description="Enter your email and set a password. A 6-digit OTP will be sent to your email to verify."
+            description="Enter your email and set a password. A 6-digit OTP will be sent to verify."
           >
             <label className="text-sm text-slate-300 mb-1 block">Email Address</label>
             <Input
@@ -396,7 +450,6 @@ export default function Signup() {
               </Button>
               <Button variant="ghost" onClick={() => setStep("start")}>← Back</Button>
             </div>
-
             <p className="text-xs text-slate-500 mt-4 text-center">
               Already have an account?{" "}
               <span
@@ -409,11 +462,11 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── OTP VERIFY ────────────────────────────────────────────────────── */}
+        {/* OTP */}
         {step === "create_otp" && (
           <SectionCard
             title="Enter OTP 📧"
-            description={`A 6-digit OTP has been sent to ${caEmail}. Check your inbox and enter it below.`}
+            description={`A 6-digit OTP has been sent to ${caEmail}. Check your inbox.`}
           >
             <Input
               placeholder="Enter 6-digit OTP"
@@ -424,18 +477,13 @@ export default function Signup() {
               className={otpErr ? "border-red-500" : ""}
             />
             <ErrorMsg msg={otpErr} />
-
             {!canResend ? (
               <p className="text-xs text-slate-400 mt-2">Resend OTP in {otpTimer}s</p>
             ) : (
-              <button
-                className="text-xs text-cyan-400 mt-2 hover:underline"
-                onClick={handleResendOtp}
-              >
+              <button className="text-xs text-cyan-400 mt-2 hover:underline" onClick={handleResendOtp}>
                 Resend OTP
               </button>
             )}
-
             <div className="flex gap-3 mt-4">
               <Button onClick={handleVerifyOtp} disabled={enteredOtp.length < 6 || otpLoading}>
                 {otpLoading ? "Verifying…" : "Verify OTP"}
@@ -447,14 +495,17 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── PROFILE ───────────────────────────────────────────────────────── */}
+        {/* PROFILE */}
         {step === "profile" && (
           <SectionCard title="Profile Details" description="Tell us about yourself">
             <Input
               placeholder="Full Name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); setNameErr(""); }}
+              className={nameErr ? "border-red-500" : ""}
             />
+            <ErrorMsg msg={nameErr} />
+
             <label className="mt-4 mb-2 block text-sm text-slate-300">
               Where are you studying?
             </label>
@@ -473,7 +524,7 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── SAFETY ────────────────────────────────────────────────────────── */}
+        {/* SAFETY */}
         {step === "safety" && (
           <SectionCard title="Safety First" description="Accept to continue">
             <p className="text-sm text-slate-300 mb-4">
