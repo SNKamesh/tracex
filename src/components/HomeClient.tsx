@@ -37,6 +37,15 @@ function greetingByHour(hour: number) {
   return "Good Evening";
 }
 
+function generateTracexId(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let id = "TRX-";
+  for (let i = 0; i < 6; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return id;
+}
+
 export default function HomeClient() {
   const [isPremium, setIsPremium] = useState(false);
   const [onboarding, setOnboarding] = useState<OnboardingData>({});
@@ -44,33 +53,104 @@ export default function HomeClient() {
   const [idCopied, setIdCopied] = useState(false);
 
   useEffect(() => {
-    import("firebase/auth").then(({ getAuth, onAuthStateChanged }) => {
+    let cancelled = false;
+
+    async function init() {
+      const { getAuth, onAuthStateChanged } = await import("firebase/auth");
       const auth = getAuth();
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          import("firebase/firestore").then(({ getFirestore, doc, getDoc }) => {
-            const db = getFirestore();
-            getDoc(doc(db, "users", user.uid)).then((snap) => {
-              if (snap.exists()) {
-                const data = snap.data();
-                setOnboarding({
-                  name: data.name,
-                  studyType: data.studyType,
-                  tracexId: data.tracexId,
-                });
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user || cancelled) return;
+
+        try {
+          const {
+            getFirestore,
+            doc,
+            getDoc,
+            updateDoc,
+            setDoc,
+            collection,
+            query,
+            where,
+            getDocs,
+          } = await import("firebase/firestore");
+
+          const db = getFirestore();
+          const userRef = doc(db, "users", user.uid);
+          const snap = await getDoc(userRef);
+
+          let data: Record<string, any> = {};
+
+          if (snap.exists()) {
+            data = snap.data() as Record<string, any>;
+          } else {
+            try {
+              const stored = localStorage.getItem(`tracex:onboarding:${user.uid}`);
+              if (stored) data = JSON.parse(stored);
+            } catch {
+              data = {};
+            }
+          }
+
+          // Auto-generate TraceX ID if missing — works for NEW and EXISTING users
+          if (!data.tracexId) {
+            let tracexId = generateTracexId();
+
+            // Collision check
+            let isUnique = false;
+            while (!isUnique) {
+              const q = query(
+                collection(db, "users"),
+                where("tracexId", "==", tracexId)
+              );
+              const existing = await getDocs(q);
+              if (existing.empty) {
+                isUnique = true;
               } else {
-                // Fallback to localStorage for old users
-                const stored = localStorage.getItem(`tracex:onboarding:${user.uid}`);
-                if (stored) {
-                  try { setOnboarding(JSON.parse(stored)); } catch { setOnboarding({}); }
-                }
+                tracexId = generateTracexId();
               }
-              setLoaded(true);
+            }
+
+            // Save to Firestore silently
+            if (snap.exists()) {
+              await updateDoc(userRef, { tracexId });
+            } else {
+              await setDoc(userRef, {
+                name: data.name || "",
+                studyType: data.studyType || "",
+                email: user.email ?? "",
+                tracexId,
+                createdAt: Date.now(),
+              });
+            }
+
+            data.tracexId = tracexId;
+
+            try {
+              localStorage.setItem(
+                `tracex:onboarding:${user.uid}`,
+                JSON.stringify({ ...data, tracexId })
+              );
+            } catch { /* ignore */ }
+          }
+
+          if (!cancelled) {
+            setOnboarding({
+              name: data.name,
+              studyType: data.studyType,
+              tracexId: data.tracexId,
             });
-          });
+            setLoaded(true);
+          }
+        } catch (err) {
+          console.error("HomeClient init error:", err);
+          if (!cancelled) setLoaded(true);
         }
       });
-    });
+    }
+
+    init();
+    return () => { cancelled = true; };
   }, []);
 
   const greeting = useMemo(() => greetingByHour(new Date().getHours()), []);
@@ -84,11 +164,11 @@ export default function HomeClient() {
     : "TraceX dashboard is active.";
 
   function handleCopyId() {
-    if (onboarding.tracexId) {
-      navigator.clipboard.writeText(onboarding.tracexId);
+    if (!onboarding.tracexId) return;
+    navigator.clipboard.writeText(onboarding.tracexId).then(() => {
       setIdCopied(true);
       setTimeout(() => setIdCopied(false), 2000);
-    }
+    });
   }
 
   return (
@@ -99,30 +179,37 @@ export default function HomeClient() {
         rightSlot={<Toggle checked={isPremium} onChange={setIsPremium} label="Premium" />}
       />
 
-      {/* ── TraceX ID Badge ──────────────────────────────────────────────────── */}
-      {loaded && onboarding.tracexId && (
-        <div className="flex items-center gap-2 -mt-2 mb-2">
-          <span className="text-xs text-slate-500">TraceX ID:</span>
-          <span
-            className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md"
-            style={{
-              background: "rgba(0,216,255,0.08)",
-              color: "#00d8ff",
-              border: "1px solid rgba(0,216,255,0.2)",
-              letterSpacing: "0.05em",
-            }}
-          >
-            {onboarding.tracexId}
-          </span>
-          <button
-            onClick={handleCopyId}
-            className="text-xs text-slate-500 hover:text-cyan-400 transition"
-            title="Copy TraceX ID"
-          >
-            {idCopied ? "✓ Copied" : "Copy"}
-          </button>
-        </div>
-      )}
+      {/* TraceX ID Badge */}
+      <div className="flex items-center gap-2 -mt-2 mb-4">
+        <span className="text-xs text-slate-500">TraceX ID:</span>
+        {loaded ? (
+          onboarding.tracexId ? (
+            <>
+              <span
+                className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md"
+                style={{
+                  background: "rgba(0,216,255,0.08)",
+                  color: "#00d8ff",
+                  border: "1px solid rgba(0,216,255,0.2)",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                {onboarding.tracexId}
+              </span>
+              <button
+                onClick={handleCopyId}
+                className="text-xs text-slate-500 hover:text-cyan-400 transition-colors"
+              >
+                {idCopied ? "✓ Copied" : "Copy"}
+              </button>
+            </>
+          ) : (
+            <span className="text-xs text-slate-600 italic">Generating…</span>
+          )
+        ) : (
+          <span className="text-xs text-slate-700 italic">Loading…</span>
+        )}
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {stats.map((s) => (
