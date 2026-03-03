@@ -34,8 +34,17 @@ function getFirebaseAuth() {
   }
 }
 
+// ─── Generate unique TraceX ID ─────────────────────────────────────────────────
+function generateTracexId(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0,O,1,I to avoid confusion
+  let id = "TRX-";
+  for (let i = 0; i < 6; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return id;
+}
+
 // ─── EmailJS OTP sender ────────────────────────────────────────────────────────
-// 🔴 Replace with your EmailJS credentials from emailjs.com (free)
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -52,6 +61,7 @@ async function sendOtpEmail(toEmail: string, otp: string): Promise<boolean> {
     return false;
   }
 }
+
 // ─── Steps ────────────────────────────────────────────────────────────────────
 type Step = "start" | "signin" | "create_form" | "create_otp" | "profile" | "safety";
 
@@ -126,8 +136,6 @@ export default function Signup() {
     try {
       const auth = getFirebaseAuth();
       if (!auth) throw new Error("Firebase not ready");
-
-      // Sign in directly — Firebase errors handle all cases
       await signInWithEmailAndPassword(auth, siEmail, siPass);
       router.push("/home");
     } catch (err: any) {
@@ -170,7 +178,6 @@ export default function Signup() {
 
     setCaLoading(true);
     try {
-      // Check if account already exists
       const auth = getFirebaseAuth();
       if (auth) {
         const methods = await fetchSignInMethodsForEmail(auth, caEmail);
@@ -180,7 +187,6 @@ export default function Signup() {
         }
       }
 
-      // Generate and send OTP
       const otp = generateOtp();
       setGeneratedOtp(otp);
       const sent = await sendOtpEmail(caEmail, otp);
@@ -236,36 +242,46 @@ export default function Signup() {
   }
 
   // ── PROFILE SAVE ──────────────────────────────────────────────────────────
-  function saveProfile() {
-    import("firebase/auth").then(({ getAuth }) => {
-      import("firebase/firestore").then(({ getFirestore, doc, setDoc }) => {
-        const auth = getAuth();
-        const user = auth.currentUser;
-        if (user) {
-          const db = getFirestore();
-          // Save to Firestore
-          setDoc(doc(db, "users", user.uid), {
-            name,
-            studyType,
-            email: user.email,
-            createdAt: Date.now(),
-          });
-          // Call setup API to generate TraceX ID
-          fetch("/api/users/setup", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              uid: user.uid,
-              name,
-              studyType,
-              email: user.email,
-            }),
-          });
-          // Keep as backup
-          localStorage.setItem(`tracex:onboarding:${user.uid}`, JSON.stringify({ name, studyType }));
-        }
-      });
+  async function saveProfile() {
+    const { getAuth } = await import("firebase/auth");
+    const { getFirestore, doc, setDoc, collection, query, where, getDocs } = await import("firebase/firestore");
+
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const db = getFirestore();
+
+    // ── Generate a unique TraceX ID ──────────────────────────────────────────
+    let tracexId = generateTracexId();
+
+    // Make sure it doesn't already exist in Firestore (collision check)
+    let isUnique = false;
+    while (!isUnique) {
+      const q = query(collection(db, "users"), where("tracexId", "==", tracexId));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        isUnique = true;
+      } else {
+        tracexId = generateTracexId(); // regenerate if collision
+      }
+    }
+
+    // ── Save to Firestore ────────────────────────────────────────────────────
+    await setDoc(doc(db, "users", user.uid), {
+      name,
+      studyType,
+      email: user.email,
+      tracexId,
+      createdAt: Date.now(),
     });
+
+    // Keep as backup in localStorage
+    localStorage.setItem(
+      `tracex:onboarding:${user.uid}`,
+      JSON.stringify({ name, studyType, tracexId })
+    );
+
     setStep("safety");
   }
 

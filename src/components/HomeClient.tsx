@@ -28,6 +28,7 @@ const stats = [
 type OnboardingData = {
   name?: string;
   studyType?: string;
+  tracexId?: string;
 };
 
 function greetingByHour(hour: number) {
@@ -40,19 +41,23 @@ export default function HomeClient() {
   const [isPremium, setIsPremium] = useState(false);
   const [onboarding, setOnboarding] = useState<OnboardingData>({});
   const [loaded, setLoaded] = useState(false);
+  const [idCopied, setIdCopied] = useState(false);
 
   useEffect(() => {
     import("firebase/auth").then(({ getAuth, onAuthStateChanged }) => {
       const auth = getAuth();
       onAuthStateChanged(auth, (user) => {
         if (user) {
-          // Load from Firestore first
           import("firebase/firestore").then(({ getFirestore, doc, getDoc }) => {
             const db = getFirestore();
             getDoc(doc(db, "users", user.uid)).then((snap) => {
               if (snap.exists()) {
                 const data = snap.data();
-                setOnboarding({ name: data.name, studyType: data.studyType });
+                setOnboarding({
+                  name: data.name,
+                  studyType: data.studyType,
+                  tracexId: data.tracexId,
+                });
               } else {
                 // Fallback to localStorage for old users
                 const stored = localStorage.getItem(`tracex:onboarding:${user.uid}`);
@@ -70,7 +75,6 @@ export default function HomeClient() {
 
   const greeting = useMemo(() => greetingByHour(new Date().getHours()), []);
 
-  // Only show name after loaded to avoid flashing wrong name
   const title = loaded
     ? `${greeting}, ${onboarding.name || "Scholar"}`
     : greeting;
@@ -79,6 +83,14 @@ export default function HomeClient() {
     ? `${onboarding.studyType} learner • TraceX dashboard is active.`
     : "TraceX dashboard is active.";
 
+  function handleCopyId() {
+    if (onboarding.tracexId) {
+      navigator.clipboard.writeText(onboarding.tracexId);
+      setIdCopied(true);
+      setTimeout(() => setIdCopied(false), 2000);
+    }
+  }
+
   return (
     <AppShell>
       <PageHeader
@@ -86,6 +98,31 @@ export default function HomeClient() {
         subtitle={subtitle}
         rightSlot={<Toggle checked={isPremium} onChange={setIsPremium} label="Premium" />}
       />
+
+      {/* ── TraceX ID Badge ──────────────────────────────────────────────────── */}
+      {loaded && onboarding.tracexId && (
+        <div className="flex items-center gap-2 -mt-2 mb-2">
+          <span className="text-xs text-slate-500">TraceX ID:</span>
+          <span
+            className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md"
+            style={{
+              background: "rgba(0,216,255,0.08)",
+              color: "#00d8ff",
+              border: "1px solid rgba(0,216,255,0.2)",
+              letterSpacing: "0.05em",
+            }}
+          >
+            {onboarding.tracexId}
+          </span>
+          <button
+            onClick={handleCopyId}
+            className="text-xs text-slate-500 hover:text-cyan-400 transition"
+            title="Copy TraceX ID"
+          >
+            {idCopied ? "✓ Copied" : "Copy"}
+          </button>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         {stats.map((s) => (
