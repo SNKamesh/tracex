@@ -332,13 +332,6 @@ export default function Signup() {
     }
     setFpLoading(true);
     try {
-      const auth = getFirebaseAuth();
-      if (auth) {
-        const methods = await fetchSignInMethodsForEmail(auth, fpEmail);
-        if (methods.length === 0) {
-          setFpEmailErr("Account doesn't exist. Please create a TraceX account first."); return;
-        }
-      }
       const otp = generateOtp();
       setGeneratedOtp(otp);
       const sent = await sendOtpEmail(fpEmail, otp);
