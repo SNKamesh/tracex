@@ -243,14 +243,25 @@ export default function Signup() {
         const user = auth.currentUser;
         if (user) {
           const db = getFirestore();
-          // Save to Firestore — tied to user's UID forever
+          // Save to Firestore
           setDoc(doc(db, "users", user.uid), {
             name,
             studyType,
             email: user.email,
             createdAt: Date.now(),
           });
-          // Keep localStorage as backup
+          // Call setup API to generate TraceX ID
+          fetch("/api/users/setup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              uid: user.uid,
+              name,
+              studyType,
+              email: user.email,
+            }),
+          });
+          // Keep as backup
           localStorage.setItem(`tracex:onboarding:${user.uid}`, JSON.stringify({ name, studyType }));
         }
       });
