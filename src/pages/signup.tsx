@@ -105,11 +105,12 @@ export default function Signup() {
   const [step, setStep] = useState<Step>("start");
 
   // ── Sign In state ──────────────────────────────────────────────────────────
-  const [siEmail, setSiEmail]       = useState("");
-  const [siPass, setSiPass]         = useState("");
-  const [siEmailErr, setSiEmailErr] = useState("");
-  const [siPassErr, setSiPassErr]   = useState("");
-  const [siLoading, setSiLoading]   = useState(false);
+  const [siEmail, setSiEmail]                   = useState("");
+  const [siPass, setSiPass]                     = useState("");
+  const [siEmailErr, setSiEmailErr]             = useState("");
+  const [siPassErr, setSiPassErr]               = useState("");
+  const [siLoading, setSiLoading]               = useState(false);
+  const [passwordResetSuccess, setPasswordResetSuccess] = useState(false);
 
   // ── Create Account state ───────────────────────────────────────────────────
   const [caEmail, setCaEmail]       = useState("");
@@ -212,7 +213,7 @@ export default function Signup() {
 
   // ── SIGN IN ───────────────────────────────────────────────────────────────
   async function handleSignIn() {
-    setSiEmailErr(""); setSiPassErr("");
+    setSiEmailErr(""); setSiPassErr(""); setPasswordResetSuccess(false);
     if (!siEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(siEmail)) {
       setSiEmailErr("Enter a valid email address."); return;
     }
@@ -324,7 +325,7 @@ export default function Signup() {
     setStep("safety");
   }
 
-  // ── FORGOT PASSWORD — Step 1: check email & send OTP ──────────────────────
+  // ── FORGOT PASSWORD — Step 1: send OTP ────────────────────────────────────
   async function handleForgotSendOtp() {
     setFpEmailErr("");
     if (!fpEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fpEmail)) {
@@ -350,7 +351,7 @@ export default function Signup() {
     setStep("forgot_newpass");
   }
 
-  // ── FORGOT PASSWORD — Step 3: set new password via API ────────────────────
+  // ── FORGOT PASSWORD — Step 3: set new password ────────────────────────────
   async function handleForgotSetPassword() {
     setFpPassErr("");
     if (fpNewPass.length < 6) { setFpPassErr("Password must be at least 6 characters."); return; }
@@ -364,8 +365,12 @@ export default function Signup() {
         body: JSON.stringify({ email: fpEmail, newPassword: fpNewPass }),
       });
       if (!res.ok) throw new Error("Reset failed");
-      // Redirect to sign in with email pre-filled
-      setSiEmail(fpEmail); setSiPass(""); setSiEmailErr(""); setSiPassErr("");
+      // ── Redirect to sign in with success message ──
+      setSiEmail(fpEmail);
+      setSiPass("");
+      setSiEmailErr("");
+      setSiPassErr("");
+      setPasswordResetSuccess(true);
       setStep("signin");
     } catch {
       setFpPassErr("Failed to update password. Please try again.");
@@ -385,7 +390,7 @@ export default function Signup() {
             </h1>
             <p className="text-center text-slate-400 mb-10">Sign in / Create a new account</p>
             <div className="flex flex-col gap-3">
-              <Button onClick={() => { setStep("signin"); setSiEmailErr(""); setSiPassErr(""); setSiEmail(""); setSiPass(""); }}>
+              <Button onClick={() => { setStep("signin"); setSiEmailErr(""); setSiPassErr(""); setSiEmail(""); setSiPass(""); setPasswordResetSuccess(false); }}>
                 Continue with Email
               </Button>
               <p className="text-center mt-4 cursor-pointer text-slate-400 hover:text-white transition text-sm"
@@ -401,21 +406,28 @@ export default function Signup() {
           <SectionCard title="Sign In" description="Enter your TraceX email and password.">
             <label className="text-sm text-slate-300 mb-1 block">Email</label>
             <Input type="email" placeholder="you@gmail.com" value={siEmail}
-              onChange={(e) => { setSiEmail(e.target.value); setSiEmailErr(""); }}
+              onChange={(e) => { setSiEmail(e.target.value); setSiEmailErr(""); setPasswordResetSuccess(false); }}
               className={siEmailErr ? "border-red-500" : ""} />
             <ErrorMsg msg={siEmailErr} />
 
             <label className="text-sm text-slate-300 mt-4 mb-1 block">Password</label>
             <Input type="password" placeholder="Password" value={siPass}
-              onChange={(e) => { setSiPass(e.target.value); setSiPassErr(""); }}
+              onChange={(e) => { setSiPass(e.target.value); setSiPassErr(""); setPasswordResetSuccess(false); }}
               className={siPassErr ? "border-red-500" : ""} />
             <ErrorMsg msg={siPassErr} />
+
+            {/* ── Password reset success message ── */}
+            {passwordResetSuccess && (
+              <p className="mt-1 text-xs text-green-400 font-medium">
+                ✓ Password reset successfully! Sign in with your new password.
+              </p>
+            )}
 
             {/* ── Forgot Password link ── */}
             <p className="text-xs mt-2 text-right">
               <span
                 className="text-cyan-400 cursor-pointer hover:underline"
-                onClick={() => { setFpEmail(""); setFpEmailErr(""); setStep("forgot_email"); }}
+                onClick={() => { setFpEmail(""); setFpEmailErr(""); setPasswordResetSuccess(false); setStep("forgot_email"); }}
               >
                 Forgot password?
               </span>
@@ -423,12 +435,12 @@ export default function Signup() {
 
             <div className="flex gap-3 mt-4">
               <Button onClick={handleSignIn} disabled={siLoading}>{siLoading ? "Signing in…" : "Sign In"}</Button>
-              <Button variant="ghost" onClick={() => setStep("start")}>← Back</Button>
+              <Button variant="ghost" onClick={() => { setStep("start"); setPasswordResetSuccess(false); }}>← Back</Button>
             </div>
             <p className="text-xs text-slate-500 mt-4 text-center">
               Don't have an account?{" "}
               <span className="text-cyan-400 cursor-pointer hover:underline"
-                onClick={() => { setStep("create_form"); setCaEmailErr(""); setCaPassErr(""); }}>
+                onClick={() => { setStep("create_form"); setCaEmailErr(""); setCaPassErr(""); setPasswordResetSuccess(false); }}>
                 Create one here
               </span>
             </p>
