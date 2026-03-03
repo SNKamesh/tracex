@@ -21,7 +21,6 @@ export default function Friends() {
         subtitle="Connect, motivate, and study together."
       />
 
-      {/* Add Friend */}
       <SectionCard
         title="Add Friend by TraceX ID"
         description="Send a request to connect."
@@ -32,7 +31,6 @@ export default function Friends() {
         </div>
       </SectionCard>
 
-      {/* Requests */}
       <SectionCard
         title="Requests"
         description="Approve or reject incoming invites."
@@ -53,7 +51,6 @@ export default function Friends() {
         </div>
       </SectionCard>
 
-      {/* Friends List */}
       <SectionCard
         title="Friends List"
         description="Status, session joins, and motivation cards."
