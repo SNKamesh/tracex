@@ -83,6 +83,18 @@ export default function SettingsClient() {
     window.dispatchEvent(new CustomEvent("tracex-theme-change", { detail: val }));
   }
 
+  function handleSignOut() {
+    const confirmed = window.confirm("Are you sure you want to sign out?");
+    if (!confirmed) return;
+    import("firebase/auth").then(({ getAuth, signOut }) => {
+      const auth = getAuth();
+      signOut(auth).then(() => {
+        localStorage.clear();
+        window.location.href = "/";
+      });
+    });
+  }
+
   function handleSave() {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -158,6 +170,17 @@ export default function SettingsClient() {
         }}>
           {saved ? "✅ Settings Saved!" : "Save Settings"}
         </button>
+
+        <button onClick={handleSignOut} style={{
+          width: "100%", padding: "14px",
+          backgroundColor: "transparent",
+          color: "#EF4444", border: "1px solid #EF4444",
+          borderRadius: "12px", fontWeight: "bold",
+          fontSize: "16px", cursor: "pointer", marginTop: "12px",
+        }}>
+          Sign Out
+        </button>
+
       </div>
     </AppShell>
   );
