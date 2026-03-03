@@ -42,8 +42,6 @@ function getDb() {
   return getFirestore(getFirebaseApp());
 }
 
-// ── Session token stored per tab in sessionStorage (not localStorage)
-// sessionStorage is tab-isolated, so each tab has its own token
 const SESSION_KEY = "tracex_session_token";
 
 function generateSessionToken(): string {
@@ -84,7 +82,17 @@ function generateTracexId(): string {
   return id;
 }
 
-type Step = "start" | "signin" | "create_form" | "create_otp" | "profile" | "safety";
+type Step =
+  | "start"
+  | "signin"
+  | "create_form"
+  | "create_otp"
+  | "profile"
+  | "safety"
+  | "forgot_email"
+  | "forgot_otp"
+  | "forgot_newpass";
+
 const studyOptions = ["School", "University", "College", "Other"];
 
 function ErrorMsg({ msg }: { msg: string }) {
@@ -96,12 +104,14 @@ export default function Signup() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("start");
 
+  // ── Sign In state ──────────────────────────────────────────────────────────
   const [siEmail, setSiEmail]       = useState("");
   const [siPass, setSiPass]         = useState("");
   const [siEmailErr, setSiEmailErr] = useState("");
   const [siPassErr, setSiPassErr]   = useState("");
   const [siLoading, setSiLoading]   = useState(false);
 
+  // ── Create Account state ───────────────────────────────────────────────────
   const [caEmail, setCaEmail]       = useState("");
   const [caPass, setCaPass]         = useState("");
   const [caPass2, setCaPass2]       = useState("");
@@ -109,6 +119,7 @@ export default function Signup() {
   const [caPassErr, setCaPassErr]   = useState("");
   const [caLoading, setCaLoading]   = useState(false);
 
+  // ── OTP state (shared for create + forgot) ─────────────────────────────────
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [enteredOtp, setEnteredOtp]     = useState("");
   const [otpErr, setOtpErr]             = useState("");
@@ -116,16 +127,26 @@ export default function Signup() {
   const [otpTimer, setOtpTimer]         = useState(60);
   const [canResend, setCanResend]       = useState(false);
 
+  // ── Profile state ─────────────────────────────────────────────────────────
   const [name, setName]           = useState("");
   const [nameErr, setNameErr]     = useState("");
   const [studyType, setStudyType] = useState(studyOptions[0]);
+
+  // ── Forgot Password state ──────────────────────────────────────────────────
+  const [fpEmail, setFpEmail]       = useState("");
+  const [fpEmailErr, setFpEmailErr] = useState("");
+  const [fpLoading, setFpLoading]   = useState(false);
+  const [fpNewPass, setFpNewPass]   = useState("");
+  const [fpNewPass2, setFpNewPass2] = useState("");
+  const [fpPassErr, setFpPassErr]   = useState("");
+  const [fpSaving, setFpSaving]     = useState(false);
 
   const sessionUnsubRef = useRef<(() => void) | null>(null);
   const forcedOutRef    = useRef(false);
 
   // ── OTP countdown ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (step !== "create_otp") return;
+    if (step !== "create_otp" && step !== "forgot_otp") return;
     setOtpTimer(60); setCanResend(false);
     const interval = setInterval(() => {
       setOtpTimer((t) => {
@@ -136,27 +157,22 @@ export default function Signup() {
     return () => clearInterval(interval);
   }, [step]);
 
-  // ── Cleanup watcher on unmount ────────────────────────────────────────────
   useEffect(() => {
     return () => { sessionUnsubRef.current?.(); };
   }, []);
 
-  // ── If already logged in on this device, start watching immediately ───────
   useEffect(() => {
     const auth = getFirebaseAuth();
     if (!auth) return;
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user) {
         const storedToken = sessionStorage.getItem(SESSION_KEY);
-        if (storedToken) {
-          startSessionWatcher(user.uid, storedToken);
-        }
+        if (storedToken) startSessionWatcher(user.uid, storedToken);
       }
     });
     return () => unsub();
   }, []);
 
-  // ── Force logout helper ───────────────────────────────────────────────────
   async function forceLogout(reason: string) {
     if (forcedOutRef.current) return;
     forcedOutRef.current = true;
@@ -168,26 +184,23 @@ export default function Signup() {
     router.replace("/signup");
   }
 
-  // ── Write session token to Firestore ─────────────────────────────────────
   async function writeSession(uid: string): Promise<string> {
     const token = generateSessionToken();
     await setDoc(doc(getDb(), "sessions", uid), {
       token,
       loginAt:   Date.now(),
-      userAgent: navigator.userAgent,     // device info (optional, useful for debugging)
+      userAgent: navigator.userAgent,
     });
-    sessionStorage.setItem(SESSION_KEY, token); // tab-isolated storage
+    sessionStorage.setItem(SESSION_KEY, token);
     return token;
   }
 
-  // ── Session watcher — detects login from another tab OR device ────────────
   function startSessionWatcher(uid: string, myToken: string) {
-    sessionUnsubRef.current?.(); // clean up previous watcher
+    sessionUnsubRef.current?.();
     const ref   = doc(getDb(), "sessions", uid);
     const unsub = onSnapshot(ref, async (snap) => {
       if (!snap.exists()) return;
       const activeToken = snap.data()?.token;
-      // Token mismatch means someone else logged in (another tab or device)
       if (activeToken && activeToken !== myToken) {
         await forceLogout(
           "⚠️ Your TraceX account was signed in on another device or browser tab.\n\nYou have been logged out for security."
@@ -211,7 +224,6 @@ export default function Signup() {
       if (!auth) throw new Error("Firebase not ready");
       forcedOutRef.current = false;
       const cred  = await signInWithEmailAndPassword(auth, siEmail, siPass);
-      // Write new session — this instantly kicks out any other active session
       const token = await writeSession(cred.user.uid);
       startSessionWatcher(cred.user.uid, token);
       router.push("/home");
@@ -253,11 +265,11 @@ export default function Signup() {
     } finally { setCaLoading(false); }
   }
 
-  // ── VERIFY OTP ────────────────────────────────────────────────────────────
+  // ── VERIFY OTP (create account) ───────────────────────────────────────────
   async function handleVerifyOtp() {
     setOtpErr("");
     if (enteredOtp.length < 6) { setOtpErr("Enter the 6-digit OTP."); return; }
-    if (enteredOtp !== generatedOtp) { setOtpErr("Incorrect OTP. Please try again."); return; }
+    if (enteredOtp !== generatedOtp) { setOtpErr("Incorrect OTP entered."); return; }
 
     setOtpLoading(true);
     try {
@@ -270,15 +282,20 @@ export default function Signup() {
       setStep("profile");
     } catch (err: any) {
       const code = err?.code || "";
-      if (code === "auth/email-already-in-use") { setOtpErr("Account already exists. Please sign in."); }
-      else { setOtpErr("Something went wrong. Please try again."); }
+      if (code === "auth/email-already-in-use") {
+        setStep("signin");
+        setSiEmail(caEmail);
+        setSiEmailErr("Account already exists. Please sign in.");
+        return;
+      } else { setOtpErr("Something went wrong. Please try again."); }
     } finally { setOtpLoading(false); }
   }
 
   async function handleResendOtp() {
     const otp = generateOtp();
     setGeneratedOtp(otp); setEnteredOtp(""); setOtpErr(""); setCanResend(false); setOtpTimer(60);
-    await sendOtpEmail(caEmail, otp);
+    const email = step === "forgot_otp" ? fpEmail : caEmail;
+    await sendOtpEmail(email, otp);
   }
 
   // ── PROFILE SAVE ──────────────────────────────────────────────────────────
@@ -307,11 +324,67 @@ export default function Signup() {
     setStep("safety");
   }
 
+  // ── FORGOT PASSWORD — Step 1: check email & send OTP ──────────────────────
+  async function handleForgotSendOtp() {
+    setFpEmailErr("");
+    if (!fpEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fpEmail)) {
+      setFpEmailErr("Enter a valid email address."); return;
+    }
+    setFpLoading(true);
+    try {
+      const auth = getFirebaseAuth();
+      if (auth) {
+        const methods = await fetchSignInMethodsForEmail(auth, fpEmail);
+        if (methods.length === 0) {
+          setFpEmailErr("Account doesn't exist. Please create a TraceX account first."); return;
+        }
+      }
+      const otp = generateOtp();
+      setGeneratedOtp(otp);
+      const sent = await sendOtpEmail(fpEmail, otp);
+      if (!sent) { setFpEmailErr("Unable to send OTP. Please try again."); return; }
+      setEnteredOtp(""); setOtpErr("");
+      setStep("forgot_otp");
+    } finally { setFpLoading(false); }
+  }
+
+  // ── FORGOT PASSWORD — Step 2: verify OTP ──────────────────────────────────
+  async function handleForgotVerifyOtp() {
+    setOtpErr("");
+    if (enteredOtp.length < 6) { setOtpErr("Enter the 6-digit OTP."); return; }
+    if (enteredOtp !== generatedOtp) { setOtpErr("Incorrect OTP entered."); return; }
+    setFpNewPass(""); setFpNewPass2(""); setFpPassErr("");
+    setStep("forgot_newpass");
+  }
+
+  // ── FORGOT PASSWORD — Step 3: set new password via API ────────────────────
+  async function handleForgotSetPassword() {
+    setFpPassErr("");
+    if (fpNewPass.length < 6) { setFpPassErr("Password must be at least 6 characters."); return; }
+    if (fpNewPass !== fpNewPass2) { setFpPassErr("Passwords don't match."); return; }
+
+    setFpSaving(true);
+    try {
+      const res = await fetch("/api/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: fpEmail, newPassword: fpNewPass }),
+      });
+      if (!res.ok) throw new Error("Reset failed");
+      // Redirect to sign in with email pre-filled
+      setSiEmail(fpEmail); setSiPass(""); setSiEmailErr(""); setSiPassErr("");
+      setStep("signin");
+    } catch {
+      setFpPassErr("Failed to update password. Please try again.");
+    } finally { setFpSaving(false); }
+  }
+
   // ── RENDER ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white px-4">
       <div className="w-full max-w-lg">
 
+        {/* ── START ── */}
         {step === "start" && (
           <>
             <h1 className="text-center text-4xl font-bold mb-2">
@@ -330,6 +403,7 @@ export default function Signup() {
           </>
         )}
 
+        {/* ── SIGN IN ── */}
         {step === "signin" && (
           <SectionCard title="Sign In" description="Enter your TraceX email and password.">
             <label className="text-sm text-slate-300 mb-1 block">Email</label>
@@ -337,11 +411,23 @@ export default function Signup() {
               onChange={(e) => { setSiEmail(e.target.value); setSiEmailErr(""); }}
               className={siEmailErr ? "border-red-500" : ""} />
             <ErrorMsg msg={siEmailErr} />
+
             <label className="text-sm text-slate-300 mt-4 mb-1 block">Password</label>
             <Input type="password" placeholder="Password" value={siPass}
               onChange={(e) => { setSiPass(e.target.value); setSiPassErr(""); }}
               className={siPassErr ? "border-red-500" : ""} />
             <ErrorMsg msg={siPassErr} />
+
+            {/* ── Forgot Password link ── */}
+            <p className="text-xs mt-2 text-right">
+              <span
+                className="text-cyan-400 cursor-pointer hover:underline"
+                onClick={() => { setFpEmail(""); setFpEmailErr(""); setStep("forgot_email"); }}
+              >
+                Forgot password?
+              </span>
+            </p>
+
             <div className="flex gap-3 mt-4">
               <Button onClick={handleSignIn} disabled={siLoading}>{siLoading ? "Signing in…" : "Sign In"}</Button>
               <Button variant="ghost" onClick={() => setStep("start")}>← Back</Button>
@@ -356,6 +442,7 @@ export default function Signup() {
           </SectionCard>
         )}
 
+        {/* ── CREATE FORM ── */}
         {step === "create_form" && (
           <SectionCard title="Create Your TraceX Account" description="Enter your email and set a password. A 6-digit OTP will be sent to verify.">
             <label className="text-sm text-slate-300 mb-1 block">Email Address</label>
@@ -363,15 +450,18 @@ export default function Signup() {
               onChange={(e) => { setCaEmail(e.target.value); setCaEmailErr(""); }}
               className={caEmailErr ? "border-red-500" : ""} />
             <ErrorMsg msg={caEmailErr === "__EXISTS__" ? "Account already exists. Please sign in." : caEmailErr} />
+
             <label className="text-sm text-slate-300 mt-4 mb-1 block">Password</label>
             <Input type="password" placeholder="Min. 6 characters" value={caPass}
               onChange={(e) => { setCaPass(e.target.value); setCaPassErr(""); }}
               className={caPassErr ? "border-red-500" : ""} />
+
             <label className="text-sm text-slate-300 mt-3 mb-1 block">Confirm Password</label>
             <Input type="password" placeholder="Re-enter password" value={caPass2}
               onChange={(e) => { setCaPass2(e.target.value); setCaPassErr(""); }}
               className={caPassErr ? "border-red-500" : ""} />
             <ErrorMsg msg={caPassErr} />
+
             <div className="flex gap-3 mt-4">
               <Button onClick={handleSendOtp} disabled={caLoading}>{caLoading ? "Sending OTP…" : "Send OTP to Email"}</Button>
               <Button variant="ghost" onClick={() => setStep("start")}>← Back</Button>
@@ -386,6 +476,7 @@ export default function Signup() {
           </SectionCard>
         )}
 
+        {/* ── CREATE OTP ── */}
         {step === "create_otp" && (
           <SectionCard title="Enter OTP 📧" description={`A 6-digit OTP has been sent to ${caEmail}. Check your inbox.`}>
             <Input placeholder="Enter 6-digit OTP" value={enteredOtp} inputMode="numeric" maxLength={6}
@@ -404,6 +495,7 @@ export default function Signup() {
           </SectionCard>
         )}
 
+        {/* ── PROFILE ── */}
         {step === "profile" && (
           <SectionCard title="Profile Details" description="Tell us about yourself">
             <Input placeholder="Full Name" value={name}
@@ -419,12 +511,90 @@ export default function Signup() {
           </SectionCard>
         )}
 
+        {/* ── SAFETY ── */}
         {step === "safety" && (
           <SectionCard title="Safety First" description="Accept to continue">
             <p className="text-sm text-slate-300 mb-4">
               No harmful, abusive, or vulgar content. Violations lead to immediate suspension.
             </p>
             <Button onClick={() => router.push("/theme")}>I Accept → Choose Theme</Button>
+          </SectionCard>
+        )}
+
+        {/* ── FORGOT PASSWORD — Step 1: Enter Email ── */}
+        {step === "forgot_email" && (
+          <SectionCard title="Reset Password" description="Enter your TraceX account email. We'll send a 6-digit OTP to verify it's you.">
+            <label className="text-sm text-slate-300 mb-1 block">Email Address</label>
+            <Input
+              type="email"
+              placeholder="you@gmail.com"
+              value={fpEmail}
+              onChange={(e) => { setFpEmail(e.target.value); setFpEmailErr(""); }}
+              className={fpEmailErr ? "border-red-500" : ""}
+            />
+            <ErrorMsg msg={fpEmailErr} />
+            <div className="flex gap-3 mt-4">
+              <Button onClick={handleForgotSendOtp} disabled={fpLoading}>
+                {fpLoading ? "Sending OTP…" : "Send OTP"}
+              </Button>
+              <Button variant="ghost" onClick={() => setStep("signin")}>← Back</Button>
+            </div>
+          </SectionCard>
+        )}
+
+        {/* ── FORGOT PASSWORD — Step 2: Verify OTP ── */}
+        {step === "forgot_otp" && (
+          <SectionCard title="Verify OTP 🔐" description={`A 6-digit OTP has been sent to ${fpEmail}. Enter it below to reset your password.`}>
+            <Input
+              placeholder="Enter 6-digit OTP"
+              value={enteredOtp}
+              inputMode="numeric"
+              maxLength={6}
+              onChange={(e) => { setEnteredOtp(e.target.value.replace(/\D/g, "")); setOtpErr(""); }}
+              className={otpErr ? "border-red-500" : ""}
+            />
+            <ErrorMsg msg={otpErr} />
+            {!canResend
+              ? <p className="text-xs text-slate-400 mt-2">Resend OTP in {otpTimer}s</p>
+              : <button className="text-xs text-cyan-400 mt-2 hover:underline" onClick={handleResendOtp}>Resend OTP</button>}
+            <div className="flex gap-3 mt-4">
+              <Button onClick={handleForgotVerifyOtp} disabled={enteredOtp.length < 6 || otpLoading}>
+                {otpLoading ? "Verifying…" : "Verify OTP"}
+              </Button>
+              <Button variant="ghost" onClick={() => { setStep("forgot_email"); setEnteredOtp(""); setOtpErr(""); }}>← Back</Button>
+            </div>
+          </SectionCard>
+        )}
+
+        {/* ── FORGOT PASSWORD — Step 3: Set New Password ── */}
+        {step === "forgot_newpass" && (
+          <SectionCard title="Set New Password 🔑" description="Create a strong new password for your TraceX account.">
+            <label className="text-sm text-slate-300 mb-1 block">New Password</label>
+            <Input
+              type="password"
+              placeholder="Min. 6 characters"
+              value={fpNewPass}
+              onChange={(e) => { setFpNewPass(e.target.value); setFpPassErr(""); }}
+              className={fpPassErr ? "border-red-500" : ""}
+            />
+            <label className="text-sm text-slate-300 mt-3 mb-1 block">Re-enter New Password</label>
+            <Input
+              type="password"
+              placeholder="Confirm new password"
+              value={fpNewPass2}
+              onChange={(e) => { setFpNewPass2(e.target.value); setFpPassErr(""); }}
+              className={fpPassErr ? "border-red-500" : ""}
+            />
+            <ErrorMsg msg={fpPassErr} />
+            <div className="flex gap-3 mt-4">
+              <Button
+                onClick={handleForgotSetPassword}
+                disabled={fpSaving || !fpNewPass || !fpNewPass2}
+              >
+                {fpSaving ? "Saving…" : "Continue"}
+              </Button>
+              <Button variant="ghost" onClick={() => setStep("forgot_otp")}>← Back</Button>
+            </div>
           </SectionCard>
         )}
 
