@@ -36,7 +36,7 @@ function getFirebaseAuth() {
 
 // ─── Abuse filter ────────────────────────────────────────────────────────────
 const BANNED_WORDS = [
-  "fuck", "f**k", "fuk", "fuck",
+  "fuck", "f**k", "fuk",
   "shit", "sh1t", "s**t",
   "bitch", "b**ch", "b1tch",
   "ass", "a**", "a55",
@@ -151,12 +151,7 @@ export default function Signup() {
       setSiEmailErr("Enter a valid email address.");
       return;
     }
-    // Abuse check on email local part (before @)
-    const emailLocal = siEmail.split("@")[0];
-    if (containsAbusiveContent(emailLocal)) {
-      setSiEmailErr("Please enter a proper name. Keep it respectful");
-      return;
-    }
+    // ✅ NO abuse check on email — emails can contain any characters
     if (!siPass) {
       setSiPassErr("Enter your password.");
       return;
@@ -197,12 +192,7 @@ export default function Signup() {
       setCaEmailErr("Enter a valid email address.");
       return;
     }
-    // Abuse check on email local part
-    const emailLocal = caEmail.split("@")[0];
-    if (containsAbusiveContent(emailLocal)) {
-      setCaEmailErr("Please enter a proper name. Keep it respectful");
-      return;
-    }
+    // ✅ NO abuse check on email either
     if (caPass.length < 6) {
       setCaPassErr("Password must be at least 6 characters.");
       return;
@@ -279,12 +269,11 @@ export default function Signup() {
   async function saveProfile() {
     setNameErr("");
 
-    // Abuse check on name
+    // ✅ Abuse check ONLY on the name field
     if (containsAbusiveContent(name)) {
-      setNameErr("Please enter a proper name. Keep it respectful");
+      setNameErr("Please enter a proper name. Keep it respectful.");
       return;
     }
-    // Only letters, spaces, dots, hyphens allowed in name
     if (!/^[a-zA-Z\s.\-']+$/.test(name.trim())) {
       setNameErr("Name can only contain letters, spaces, and basic punctuation.");
       return;
@@ -302,7 +291,6 @@ export default function Signup() {
 
     const db = getFirestore();
 
-    // Generate unique TraceX ID
     let tracexId = generateTracexId();
     let isUnique = false;
     while (!isUnique) {
@@ -315,7 +303,6 @@ export default function Signup() {
       }
     }
 
-    // Save to Firestore
     await setDoc(doc(db, "users", user.uid), {
       name,
       studyType,
