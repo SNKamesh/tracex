@@ -19,7 +19,6 @@ export default function StudyPlanList() {
   const [inputError, setInputError] = useState("");
   const [loading, setLoading] = useState(true);
   
-  // 1. CREATE A REF FOR THE CLOCK
   const timeInputRef = useRef<HTMLInputElement>(null);
   const notifiedTasks = useRef<Set<string>>(new Set());
 
@@ -42,15 +41,22 @@ export default function StudyPlanList() {
     return () => unsubscribeAuth();
   }, []);
 
-  // ALARM ENGINE
+  // ─── UPDATED ALARM ENGINE (TraceX Branding) ───
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
       const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      
       items.forEach(task => {
-        if (task.reminderTime === currentTime && !notifiedTasks.current.has(task.id) && Notification.permission === "granted") {
-          new Notification("TraceChi Focus Guardian", { body: `Time to lock in: ${task.text}` });
-          notifiedTasks.current.add(task.id);
+        if (task.reminderTime === currentTime && !notifiedTasks.current.has(task.id)) {
+          if (Notification.permission === "granted") {
+            // FIXED: Changed TraceChi Focus Guardian to TraceX
+            new Notification("TraceX", { 
+              body: `Time to lock in: ${task.text}`,
+              icon: "/favicon.ico" // Optional: adds your logo to the notification
+            });
+            notifiedTasks.current.add(task.id);
+          }
         }
       });
     }, 30000);
@@ -109,7 +115,6 @@ export default function StudyPlanList() {
           />
           
           <div className="flex gap-2">
-            {/* 2. THE IMPROVED CLOCK BUTTON */}
             <div 
               onClick={() => timeInputRef.current?.showPicker()} 
               className="relative flex-1 md:w-36 h-[48px] bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center active:bg-slate-800 transition-all cursor-pointer group hover:border-slate-600"
@@ -155,7 +160,6 @@ export default function StudyPlanList() {
             <div key={item.id} className="rounded-xl bg-slate-900/40 border border-slate-800/60 px-4 py-3 text-sm flex justify-between items-center group transition-all hover:border-slate-700 hover:bg-slate-900/60">
               <div className="flex flex-col gap-1">
                 <span className="text-slate-200 font-medium">{item.text}</span>
-                {/* 3. DISPLAY TIME ICON & TIME HERE */}
                 {item.reminderTime && (
                   <div className="flex items-center gap-1 text-blue-400 text-[11px] font-semibold">
                     <span className="text-xs">🔔</span>
@@ -163,7 +167,6 @@ export default function StudyPlanList() {
                   </div>
                 )}
               </div>
-              {/* 4. CLEAR CROSS MARK */}
               <button 
                 onClick={() => handleDelete(item.id)} 
                 className="text-slate-500 hover:text-red-500 transition-all p-2 rounded-lg hover:bg-red-500/10"

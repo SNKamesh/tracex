@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
@@ -24,12 +24,12 @@ import {
 } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId:         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket:     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey:             process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain:         process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:          process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId:  process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:              process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
 function getFirebaseApp() {
@@ -104,7 +104,7 @@ export default function Signup() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("start");
 
-  // ── Sign In state ──────────────────────────────────────────────────────────
+  // -- Sign In state --
   const [siEmail, setSiEmail]                   = useState("");
   const [siPass, setSiPass]                     = useState("");
   const [siEmailErr, setSiEmailErr]             = useState("");
@@ -112,7 +112,7 @@ export default function Signup() {
   const [siLoading, setSiLoading]               = useState(false);
   const [passwordResetSuccess, setPasswordResetSuccess] = useState(false);
 
-  // ── Create Account state ───────────────────────────────────────────────────
+  // -- Create Account state --
   const [caEmail, setCaEmail]       = useState("");
   const [caPass, setCaPass]         = useState("");
   const [caPass2, setCaPass2]       = useState("");
@@ -120,7 +120,7 @@ export default function Signup() {
   const [caPassErr, setCaPassErr]   = useState("");
   const [caLoading, setCaLoading]   = useState(false);
 
-  // ── OTP state (shared for create + forgot) ─────────────────────────────────
+  // -- OTP state --
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [enteredOtp, setEnteredOtp]     = useState("");
   const [otpErr, setOtpErr]             = useState("");
@@ -128,12 +128,12 @@ export default function Signup() {
   const [otpTimer, setOtpTimer]         = useState(60);
   const [canResend, setCanResend]       = useState(false);
 
-  // ── Profile state ─────────────────────────────────────────────────────────
+  // -- Profile state --
   const [name, setName]           = useState("");
   const [nameErr, setNameErr]     = useState("");
   const [studyType, setStudyType] = useState(studyOptions[0]);
 
-  // ── Forgot Password state ──────────────────────────────────────────────────
+  // -- Forgot Password state --
   const [fpEmail, setFpEmail]       = useState("");
   const [fpEmailErr, setFpEmailErr] = useState("");
   const [fpLoading, setFpLoading]   = useState(false);
@@ -145,7 +145,7 @@ export default function Signup() {
   const sessionUnsubRef = useRef<(() => void) | null>(null);
   const forcedOutRef    = useRef(false);
 
-  // ── OTP countdown ─────────────────────────────────────────────────────────
+  // -- OTP countdown --
   useEffect(() => {
     if (step !== "create_otp" && step !== "forgot_otp") return;
     setOtpTimer(60); setCanResend(false);
@@ -211,7 +211,6 @@ export default function Signup() {
     sessionUnsubRef.current = unsub;
   }
 
-  // ── SIGN IN ───────────────────────────────────────────────────────────────
   async function handleSignIn() {
     setSiEmailErr(""); setSiPassErr(""); setPasswordResetSuccess(false);
     if (!siEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(siEmail)) {
@@ -242,7 +241,6 @@ export default function Signup() {
     } finally { setSiLoading(false); }
   }
 
-  // ── CREATE — send OTP ─────────────────────────────────────────────────────
   async function handleSendOtp() {
     setCaEmailErr(""); setCaPassErr("");
     if (!caEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(caEmail)) {
@@ -266,7 +264,6 @@ export default function Signup() {
     } finally { setCaLoading(false); }
   }
 
-  // ── VERIFY OTP (create account) ───────────────────────────────────────────
   async function handleVerifyOtp() {
     setOtpErr("");
     if (enteredOtp.length < 6) { setOtpErr("Enter the 6-digit OTP."); return; }
@@ -299,7 +296,6 @@ export default function Signup() {
     await sendOtpEmail(email, otp);
   }
 
-  // ── PROFILE SAVE ──────────────────────────────────────────────────────────
   async function saveProfile() {
     setNameErr("");
     if (containsAbusiveContent(name)) { setNameErr("Please use a respectful name."); return; }
@@ -324,7 +320,6 @@ export default function Signup() {
     setStep("safety");
   }
 
-  // ── FORGOT PASSWORD — Step 1: send OTP ────────────────────────────────────
   async function handleForgotSendOtp() {
     setFpEmailErr("");
     if (!fpEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fpEmail)) {
@@ -341,7 +336,6 @@ export default function Signup() {
     } finally { setFpLoading(false); }
   }
 
-  // ── FORGOT PASSWORD — Step 2: verify OTP ──────────────────────────────────
   async function handleForgotVerifyOtp() {
     setOtpErr("");
     if (enteredOtp.length < 6) { setOtpErr("Enter the 6-digit OTP."); return; }
@@ -350,7 +344,6 @@ export default function Signup() {
     setStep("forgot_newpass");
   }
 
-  // ── FORGOT PASSWORD — Step 3: set new password ────────────────────────────
   async function handleForgotSetPassword() {
     setFpPassErr("");
     if (fpNewPass.length < 6) { setFpPassErr("Password must be at least 6 characters."); return; }
@@ -364,7 +357,6 @@ export default function Signup() {
         body: JSON.stringify({ email: fpEmail, newPassword: fpNewPass }),
       });
       if (!res.ok) throw new Error("Reset failed");
-      // ── Redirect to sign in with success message ──
       setSiEmail(fpEmail);
       setSiPass("");
       setSiEmailErr("");
@@ -376,18 +368,33 @@ export default function Signup() {
     } finally { setFpSaving(false); }
   }
 
-  // ── RENDER ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white px-4">
       <div className="w-full max-w-lg">
 
-        {/* ── START ── */}
+        {/* -- START -- */}
         {step === "start" && (
           <>
-            <h1 className="text-center text-4xl font-bold mb-2">
+            {/* ANIME MASCOT START */}
+            <div style={{ position: "relative", width: "100px", height: "100px", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 32px auto" }}>
+              <div style={{ position: "absolute", top: "-5px", width: "60px", height: "45px", borderTop: "4px solid #00d8ff", borderLeft: "4px solid #00d8ff", borderRight: "4px solid #00d8ff", borderRadius: "30px 30px 0 0", boxShadow: "0 -4px 20px rgba(0, 216, 255, 0.4)" }} />
+              <span style={{ fontSize: "64px", fontWeight: 900, color: "#00d8ff", fontStyle: "italic", zIndex: 10, textShadow: "0 0 15px rgba(0, 216, 255, 0.5)" }}>X</span>
+              <div style={{ position: "absolute", right: "-15px", bottom: "25px", zIndex: 20, width: "32px", height: "24px", backgroundColor: "#FFFFFF", border: "1px solid #cbd5e1", borderRadius: "6px", transform: "rotate(-12deg)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 6px rgba(0,0,0,0.3)" }}>
+                <div style={{ position: "absolute", top: "5px", left: "8px", width: "1px", height: "10px", backgroundColor: "#e2e8f0" }} />
+                <div style={{ position: "absolute", top: "5px", left: "15px", width: "1px", height: "10px", backgroundColor: "#e2e8f0" }} />
+                <span style={{ position: "absolute", top: "-15px", right: "-8px", fontSize: "24px" }}>📖</span>
+              </div>
+              <div style={{ position: "absolute", bottom: "0", width: "100%", display: "flex", justifyContent: "space-between", padding: "0 12px" }}>
+                <div style={{ width: "26px", height: "14px", backgroundColor: "#00d8ff", borderRadius: "8px", borderBottom: "4px solid rgba(255,255,255,0.4)" }} />
+                <div style={{ width: "26px", height: "14px", backgroundColor: "#00d8ff", borderRadius: "8px", borderBottom: "4px solid rgba(255,255,255,0.4)" }} />
+              </div>
+            </div>
+            {/* ANIME MASCOT END */}
+
+            <h1 className="text-center text-4xl font-black italic mb-2 tracking-tighter">
               Welcome to <span style={{ color: "#00d8ff" }}>TraceX</span>
             </h1>
-            <p className="text-center text-slate-400 mb-10">Sign in / Create a new account</p>
+            <p className="text-center text-slate-400 mb-10 font-medium italic">Where chaos turns into clarity.</p>
             <div className="flex flex-col gap-3">
               <Button onClick={() => { setStep("signin"); setSiEmailErr(""); setSiPassErr(""); setSiEmail(""); setSiPass(""); setPasswordResetSuccess(false); }}>
                 Continue with Email
@@ -400,7 +407,7 @@ export default function Signup() {
           </>
         )}
 
-        {/* ── SIGN IN ── */}
+        {/* -- SIGN IN -- */}
         {step === "signin" && (
           <SectionCard title="Sign In" description="Enter your TraceX email and password.">
             <label className="text-sm text-slate-300 mb-1 block">Email</label>
@@ -415,14 +422,12 @@ export default function Signup() {
               className={siPassErr ? "border-red-500" : ""} />
             <ErrorMsg msg={siPassErr} />
 
-            {/* ── Password reset success message ── */}
             {passwordResetSuccess && (
               <p className="mt-1 text-xs text-green-400 font-medium">
                  Password reset successfully! Sign in with your new password.
               </p>
             )}
 
-            {/* ── Forgot Password link ── */}
             <p className="text-xs mt-2 text-right">
               <span
                 className="text-cyan-400 cursor-pointer hover:underline"
@@ -446,7 +451,7 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── CREATE FORM ── */}
+        {/* -- CREATE FORM -- */}
         {step === "create_form" && (
           <SectionCard title="Create Your TraceX Account" description="Enter your email and set a password. A 6-digit OTP will be sent to verify.">
             <label className="text-sm text-slate-300 mb-1 block">Email Address</label>
@@ -480,7 +485,7 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── CREATE OTP ── */}
+        {/* -- CREATE OTP -- */}
         {step === "create_otp" && (
           <SectionCard title="Enter OTP 📧" description={`A 6-digit OTP has been sent to ${caEmail}. Check your inbox.`}>
             <Input placeholder="Enter 6-digit OTP" value={enteredOtp} inputMode="numeric" maxLength={6}
@@ -499,7 +504,7 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── PROFILE ── */}
+        {/* -- PROFILE -- */}
         {step === "profile" && (
           <SectionCard title="Profile Details" description="Tell us about yourself">
             <Input placeholder="Full Name" value={name}
@@ -515,7 +520,7 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── SAFETY ── */}
+        {/* -- SAFETY -- */}
         {step === "safety" && (
           <SectionCard title="Safety First" description="Accept to continue">
             <p className="text-sm text-slate-300 mb-4">
@@ -525,7 +530,7 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── FORGOT PASSWORD — Step 1: Enter Email ── */}
+        {/* -- FORGOT PASSWORD -- */}
         {step === "forgot_email" && (
           <SectionCard title="Reset Password" description="Enter your TraceX account email. We'll send a 6-digit OTP to verify it's you.">
             <label className="text-sm text-slate-300 mb-1 block">Email Address</label>
@@ -546,7 +551,7 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── FORGOT PASSWORD — Step 2: Verify OTP ── */}
+        {/* -- FORGOT OTP -- */}
         {step === "forgot_otp" && (
           <SectionCard title="Verify OTP 🔐" description={`A 6-digit OTP has been sent to ${fpEmail}. Enter it below to reset your password.`}>
             <Input
@@ -570,7 +575,7 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* ── FORGOT PASSWORD — Step 3: Set New Password ── */}
+        {/* -- FORGOT NEWPASS -- */}
         {step === "forgot_newpass" && (
           <SectionCard title="Set New Password 🔑" description="Create a strong new password for your TraceX account.">
             <label className="text-sm text-slate-300 mb-1 block">New Password</label>
