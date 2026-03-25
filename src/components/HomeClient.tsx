@@ -48,7 +48,19 @@ function generateTracexId(): string {
 
 export default function HomeClient() {
   const [isPremium, setIsPremium] = useState(false);
-  const [onboarding, setOnboarding] = useState<OnboardingData>({});
+  const [onboarding, setOnboarding] = useState<OnboardingData>(() => {
+    // Try to load instantly from localStorage on first render
+    try {
+      if (typeof window !== "undefined") {
+        const keys = Object.keys(localStorage).filter(k => k.startsWith("tracex:onboarding:"));
+        if (keys.length > 0) {
+          const stored = localStorage.getItem(keys[0]);
+          if (stored) return JSON.parse(stored);
+        }
+      }
+    } catch { /* ignore */ }
+    return {};
+  });
   const [loaded, setLoaded] = useState(false);
   const [idCopied, setIdCopied] = useState(false);
 
