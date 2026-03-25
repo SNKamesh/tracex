@@ -1,8 +1,20 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
+import { useRouter } from "next/router";
+// FIXED: Correct relative paths for your folder structure
+import SectionCard from "../components/SectionCard";
+import Button from "../components/Button";
 
 export default function Home() {
+  const router = useRouter();
+
+  // Force dark mode background immediately to prevent white flash
+  useEffect(() => {
+    document.documentElement.style.backgroundColor = "#030712";
+    document.body.style.backgroundColor = "#030712";
+  }, []);
+
   return (
     <div
       style={{
@@ -11,52 +23,64 @@ export default function Home() {
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "black",
+        backgroundColor: "#030712",
         textAlign: "center",
         padding: "20px",
-        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+        // Classic, clean sans-serif font stack
+        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
-      <h1
-        style={{
-          fontSize: "4rem",
-          fontWeight: "bold",
-          color: "white",
-          marginBottom: "20px",
-        }}
-      >
-        Welcome to <span style={{ color: "#00d8ff" }}>TraceX</span>
-      </h1>
+      <div style={{ width: "100%", maxWidth: "450px" }}>
+        
+        {/* Title Section - No Mascot, Classic Font */}
+        <h1
+          style={{
+            fontSize: "2.5rem",
+            fontWeight: "800",
+            color: "white",
+            marginBottom: "8px",
+            letterSpacing: "-0.025em",
+          }}
+        >
+          Welcome to <span style={{ color: "#00d8ff" }}>TraceX</span>
+        </h1>
 
-      <p
-        style={{
-          color: "#94a3b8",
-          fontSize: "1.2rem",
-          maxWidth: "600px",
-          marginBottom: "40px",
-          lineHeight: "1.6",
-        }}
-      >
-        Your ultimate study companion. Focus deeper, learn faster, achieve more.
-      </p>
+        <p
+          style={{
+            color: "#94a3b8",
+            fontSize: "1rem",
+            marginBottom: "32px",
+            fontStyle: "italic",
+          }}
+        >
+          Where chaos turns into clarity
+        </p>
 
-      <a
-        href="/signup"
-        style={{
-          background: "#00d8ff",
-          padding: "14px 30px",
-          borderRadius: "10px",
-          color: "black",
-          fontWeight: "600",
-          fontSize: "1.2rem",
-          textDecoration: "none",
-          transition: "0.2s opacity ease",
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-      >
-        Get Started →
-      </a>
+        {/* Action Card */}
+        <SectionCard title="Get Started" description="Sign in or create a new account to continue.">
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px" }}>
+            <Button 
+              onClick={() => router.push("/signup")}
+              style={{ width: "100%", backgroundColor: "#2563eb" }}
+            >
+              Continue with Email
+            </Button>
+            
+            <p 
+              onClick={() => router.push("/signup")}
+              style={{ 
+                fontSize: "0.875rem", 
+                color: "#94a3b8", 
+                cursor: "pointer", 
+                marginTop: "12px",
+                textDecoration: "underline" 
+              }}
+            >
+              Create a full TraceX account
+            </p>
+          </div>
+        </SectionCard>
+      </div>
     </div>
   );
 }
