@@ -49,10 +49,10 @@ function generateSessionToken(): string {
 }
 
 const BANNED_WORDS = [
-  "fuck","f**k","fuk","shit","sh1t","s**t","bitch","b**ch","b1tch",
-  "ass","a**","a55","bastard","dick","d**k","cunt","c**t","pussy","p***y",
-  "nigga","nigger","n***a","whore","wh**e","slut","sl*t","idiot","stupid",
-  "moron","retard","kill","rape","r*pe","sex","porn","xxx","hate","nazi","terrorist",
+  "fuck","f**k","fuk","shit","slut","bitch","b**ch","b1tch",
+  "ass","a**","a55","bastard","dick","d**k","pussy",
+  "nigga","nigger","whore","slut","idiot","stupid",
+  "moron","retard","kill","rape","r*pe","sex","porn","xxx",
 ];
 
 function containsAbusiveContent(text: string): boolean {
@@ -419,7 +419,7 @@ export default function Signup() {
             {/* ── Password reset success message ── */}
             {passwordResetSuccess && (
               <p className="mt-1 text-xs text-green-400 font-medium">
-                ✓ Password reset successfully! Sign in with your new password.
+                 Password reset successfully! Sign in with your new password.
               </p>
             )}
 
