@@ -7,8 +7,7 @@ import Input from "./Input";
 import PageHeader from "./PageHeader";
 import SectionCard from "./SectionCard";
 
-// ─── IMPORT FROM YOUR CENTRAL FILE ──────────────────────────────────
-// This uses your lib/firebase.ts to prevent "App already exists" errors
+// ─── FIREBASE IMPORTS ──────────────────────────────────────────────
 import { auth, db } from "@/lib/firebase"; 
 import { 
   RecaptchaVerifier, 
@@ -18,8 +17,8 @@ import {
 import { doc, setDoc } from "firebase/firestore";
 
 const countryCodes = [
-  { code: "+1",   flag: "🇺🇸", name: "USA / Canada" },
   { code: "+91",  flag: "🇮🇳", name: "India" },
+  { code: "+1",   flag: "🇺🇸", name: "USA / Canada" },
   { code: "+44",  flag: "🇬🇧", name: "UK" },
   { code: "+971", flag: "🇦🇪", name: "UAE" },
   { code: "+966", flag: "🇸🇦", name: "Saudi Arabia" },
@@ -28,7 +27,7 @@ const countryCodes = [
 
 export default function SignupClient() {
   const [step, setStep] = useState(1);
-  const [dialCode, setDialCode] = useState("+1");
+  const [dialCode, setDialCode] = useState("+91");
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [sending, setSending] = useState(false);
@@ -41,22 +40,30 @@ export default function SignupClient() {
   const recaptchaRef = useRef<HTMLDivElement>(null);
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
 
+  // ─── 1. GLOBAL UI STYLING ──────────────────────────────────────────
+  // Ensures the "Hacker" Dark Mode is forced during the signup flow
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (verifierRef.current) return;
+    const originalBg = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = "#030712"; 
+    return () => { document.body.style.backgroundColor = originalBg; };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || verifierRef.current) return;
     verifierRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
       size: "invisible",
     });
   }, []);
 
+  // ─── 2. LOGIC HANDLERS ─────────────────────────────────────────────
   function handlePhoneChange(value: string) {
     const digitsOnly = value.replace(/\D/g, "");
     setPhone(digitsOnly);
-    setPhoneError(value !== digitsOnly && value.length > 0 ? "Only numbers allowed." : "");
+    setPhoneError(value !== digitsOnly && value.length > 0 ? "Numeric characters only." : "");
   }
 
   async function sendOtp() {
-    if (!phone) return setPhoneError("Enter phone number.");
+    if (!phone) return setPhoneError("Please enter your phone number.");
     setSending(true);
     try {
       const fullNumber = `${dialCode}${phone}`;
@@ -64,7 +71,7 @@ export default function SignupClient() {
       setConfirmation(result);
       setStep(2);
     } catch (err: any) {
-      setPhoneError("Failed to send OTP. Check your Firebase Keys.");
+      setPhoneError("Failed to dispatch OTP. Please verify your connection.");
     } finally {
       setSending(false);
     }
@@ -77,21 +84,19 @@ export default function SignupClient() {
       await confirmation.confirm(otp);
       setStep(3);
     } catch {
-      setOtpError("Incorrect OTP.");
+      setOtpError("Invalid verification code. Please try again.");
     } finally {
       setVerifying(false);
     }
   }
 
-  // ── SAVE USER DATA TO CLOUD ──
   async function finishSignup() {
     const user = auth.currentUser;
     if (!user) return;
     try {
-      // 1. Generate ID (Matches logic in friends.tsx)
-      const traceXId = "TRX" + Math.random().toString(36).substring(2, 10).toUpperCase();
+      // Generate a sophisticated TraceX ID
+      const traceXId = "TRX-" + Math.random().toString(36).substring(2, 8).toUpperCase();
       
-      // 2. Save to Firestore 'users' collection
       await setDoc(doc(db, "users", user.uid), {
         name: name,
         traceXId: traceXId,
@@ -103,57 +108,95 @@ export default function SignupClient() {
         sentReqs: [],
         receivedReqs: [],
       });
-      window.location.href = "/theme";
+      
+      window.location.href = "/home";
     } catch (error) {
-      console.error("Database Error:", error);
+      console.error("Critical Database Error:", error);
     }
   }
 
-  // ── STEP 1: Phone Number ──
+  // ─── 3. RENDER STEPS ──────────────────────────────────────────────
+  
+  // STEP 1: Identification
   if (step === 1) {
     return (
       <AppShell>
         <div id="recaptcha-container" ref={recaptchaRef} />
-        <PageHeader title="Create account" subtitle="We'll send a code to your mobile." />
-        <SectionCard title="Phone Number">
+        <PageHeader 
+          title="Begin your journey" 
+          subtitle="Where chaos turns into clarity." 
+        />
+        <SectionCard title="Mobile Authentication">
           <div className="flex gap-2">
-            <select value={dialCode} onChange={(e) => setDialCode(e.target.value)} className="bg-slate-900 border rounded px-2 text-white">
+            <select 
+              value={dialCode} 
+              onChange={(e) => setDialCode(e.target.value)} 
+              className="bg-slate-900 border border-slate-800 rounded-xl px-2 text-white outline-none focus:border-blue-500 transition-all text-sm"
+            >
               {countryCodes.map(c => <option key={c.code} value={c.code}>{c.flag} {c.code}</option>)}
             </select>
-            <Input value={phone} placeholder="Mobile number" inputMode="numeric" onChange={(e) => handlePhoneChange(e.target.value)} />
+            <Input 
+              value={phone} 
+              placeholder="Enter mobile number" 
+              inputMode="numeric" 
+              onChange={(e) => handlePhoneChange(e.target.value)} 
+            />
           </div>
-          {phoneError && <p className="text-red-500 text-xs mt-1">{phoneError}</p>}
-          <Button style={{ marginTop: "16px" }} onClick={sendOtp} disabled={sending}>{sending ? "Sending..." : "Send OTP"}</Button>
+          {phoneError && <p className="text-red-500 text-[10px] mt-2 ml-1">{phoneError}</p>}
+          <Button 
+            style={{ marginTop: "16px" }} 
+            onClick={sendOtp} 
+            disabled={sending}
+          >
+            {sending ? "Dispatching OTP..." : "Continue"}
+          </Button>
         </SectionCard>
       </AppShell>
     );
   }
 
-  // ── STEP 2: OTP ──
+  // STEP 2: Verification
   if (step === 2) {
     return (
       <AppShell>
-        <PageHeader title="Verify number" subtitle={`Sent to ${dialCode}${phone}`} />
-        <SectionCard title="Enter OTP">
-          <Input value={otp} placeholder="6-digit code" maxLength={6} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} />
-          {otpError && <p className="text-red-500 text-xs mt-1">{otpError}</p>}
+        <PageHeader title="Identity Verification" subtitle={`We've sent a secure code to ${dialCode}${phone}`} />
+        <SectionCard title="Verification Code">
+          <Input 
+            value={otp} 
+            placeholder="6-digit OTP" 
+            maxLength={6} 
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} 
+          />
+          {otpError && <p className="text-red-500 text-[10px] mt-2 ml-1">{otpError}</p>}
           <div className="flex gap-2 mt-4">
-            <Button onClick={verifyOtp} disabled={verifying}>{verifying ? "Verifying..." : "Verify"}</Button>
-            <Button variant="ghost" onClick={() => setStep(1)}>Change Number</Button>
+            <Button onClick={verifyOtp} disabled={verifying}>
+              {verifying ? "Verifying..." : "Verify Identity"}
+            </Button>
+            <Button variant="ghost" onClick={() => setStep(1)}>Back</Button>
           </div>
         </SectionCard>
       </AppShell>
     );
   }
 
-  // ── STEP 3: Name ──
+  // STEP 3: Personalization
   return (
     <AppShell>
-      <PageHeader title="One last step 🎉" subtitle="Tell us your name to finish." />
-      <SectionCard title="Full Name">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" />
+      <PageHeader title="Personalize your space" subtitle="One final step to finalize your setup." />
+      <SectionCard title="Legal Name">
+        <Input 
+          value={name} 
+          onChange={(e) => setName(e.target.value)} 
+          placeholder="Enter your full name" 
+        />
       </SectionCard>
-      <Button style={{ marginTop: "12px" }} disabled={!name.trim()} onClick={finishSignup}>Create Account</Button>
+      <Button 
+        style={{ marginTop: "12px" }} 
+        disabled={!name.trim()} 
+        onClick={finishSignup}
+      >
+        Initialize TraceX
+      </Button>
     </AppShell>
   );
 }
