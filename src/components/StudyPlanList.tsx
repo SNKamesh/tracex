@@ -13,8 +13,6 @@ import {
   doc 
 } from "firebase/firestore";
 
-// ─── 1. DEFINE WHAT A TASK LOOKS LIKE ───────────────────────────────
-// This fixes the "Property id does not exist on type never" error
 interface Task {
   id: string;
   text: string;
@@ -23,42 +21,61 @@ interface Task {
 }
 
 export default function StudyPlanList() {
-  const [items, setItems] = useState<Task[]>([]); // Added <Task[]> here
+  const [items, setItems] = useState<Task[]>([]);
   const [newTask, setNewTask] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // ─── 2. LISTEN TO YOUR DATABASE (Real-time) ────────────────────────
+  // ─── IMPROVED LISTENER (Auth + Database) ──────────────────────────
   useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    // 1. Listen for the user session (fixes mobile refresh issue)
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+      if (user) {
+        // 2. Once user is confirmed, listen to their specific tasks
+        const q = query(
+          collection(db, "tasks"), 
+          where("userId", "==", user.uid)
+        );
 
-    const q = query(
-      collection(db, "tasks"), 
-      where("userId", "==", user.uid)
-    );
+        const unsubscribeTasks = onSnapshot(q, (snapshot) => {
+          const taskData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Task[];
+          
+          // Sort by newest first (handling potential null timestamps)
+          const sorted = taskData.sort((a, b) => {
+            const timeA = a.createdAt?.seconds || 0;
+            const timeB = b.createdAt?.seconds || 0;
+            return timeB - timeA;
+          });
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const taskData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Task[];
-      
-      // Sort by newest first
-      setItems(taskData.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds));
-      setLoading(false);
+          setItems(sorted);
+          setLoading(false);
+        });
+
+        // Cleanup task listener if user logs out
+        return () => unsubscribeTasks();
+      } else {
+        // No user found, stop loading and clear list
+        setItems([]);
+        setLoading(false);
+      }
     });
 
-    return () => unsubscribe();
+    // Cleanup auth listener on unmount
+    return () => unsubscribeAuth();
   }, []);
 
-  // ─── 3. ADD A NEW TASK TO CLOUD ───────────────────────────────────
+  // ─── ADD A NEW TASK ───────────────────────────────────────────────
   async function handleAddTask() {
     if (!newTask.trim()) return;
+    
+    // Always get the LATEST user status before adding
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) {
+      alert("Please sign in to add tasks.");
+      return;
+    }
 
     try {
       await addDoc(collection(db, "tasks"), {
@@ -66,13 +83,22 @@ export default function StudyPlanList() {
         userId: user.uid,
         createdAt: serverTimestamp(),
       });
-      setNewTask(""); // Clear input after adding
+      setNewTask(""); 
     } catch (error) {
       console.error("Error adding task:", error);
     }
   }
 
-  if (loading) return <p className="text-slate-500 text-xs">Loading plans...</p>;
+  // ─── DELETE A TASK (Bonus feature to clean up tests) ──────────────
+  async function handleDelete(id: string) {
+    try {
+      await deleteDoc(doc(db, "tasks", id));
+    } catch (error) {
+      console.error("Error deleting task:", error);
+    }
+  }
+
+  if (loading) return <p className="text-slate-500 text-xs py-4">Syncing with cloud...</p>;
 
   return (
     <div className="flex flex-col gap-4">
@@ -102,10 +128,16 @@ export default function StudyPlanList() {
           items.map((item) => (
             <div
               key={item.id}
-              className="rounded-xl bg-slate-950 border border-slate-800 px-4 py-3 text-sm flex justify-between items-center group"
+              className="rounded-xl bg-slate-950 border border-slate-800 px-4 py-3 text-sm flex justify-between items-center group transition-all hover:border-slate-600"
             >
               <span className="text-slate-200">{item.text}</span>
-              {/* Optional: You can add a delete button here later */}
+              <button 
+                onClick={() => handleDelete(item.id)}
+                className="text-slate-500 hover:text-red-500 transition-colors px-2"
+                title="Delete task"
+              >
+                ✕
+              </button>
             </div>
           ))
         )}
