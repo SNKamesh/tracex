@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Button from "./Button";
 import ThemePreview from "./ThemePreview";
+
+// ─── IMPORT FROM YOUR CENTRAL FILE ──────────────────────────────────
+// This prevents the "Firebase App [DEFAULT] already exists" error.
+import { auth, db } from "@/lib/firebase"; 
+import { doc, updateDoc } from "firebase/firestore";
 
 const THEME_KEY = "tracex:theme";
 
@@ -22,6 +27,7 @@ function applyTheme(themeKey: string) {
 export default function ThemeClient() {
   const router = useRouter();
   const [selected, setSelected] = useState("amoled");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(THEME_KEY) || "amoled";
@@ -36,14 +42,33 @@ export default function ThemeClient() {
 
   function chooseTheme(themeKey: string) {
     setSelected(themeKey);
+    // We still save to localStorage for an instant visual update
     localStorage.setItem(THEME_KEY, themeKey);
     applyTheme(themeKey);
   }
 
-  function applyThemeAndContinue() {
-    localStorage.setItem(THEME_KEY, selected);
-    applyTheme(selected);
-    router.push("/home");
+  async function applyThemeAndContinue() {
+    setLoading(true);
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        // SAVE TO CLOUD: This ensures the Chrome Extension knows your preference.
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, {
+          theme: selected
+        });
+      }
+      
+      localStorage.setItem(THEME_KEY, selected);
+      applyTheme(selected);
+      router.push("/home");
+    } catch (error) {
+      console.error("Error saving theme to cloud:", error);
+      // Even if the cloud save fails, we let the user into the home page.
+      router.push("/home");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -78,7 +103,9 @@ export default function ThemeClient() {
         </div>
 
         <div style={{ display: "flex", justifyContent: "center", marginTop: "32px" }}>
-          <Button onClick={applyThemeAndContinue}>Continue to Home</Button>
+          <Button onClick={applyThemeAndContinue} disabled={loading}>
+            {loading ? "Saving Theme..." : "Continue to Home"}
+          </Button>
         </div>
       </div>
     </div>

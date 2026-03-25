@@ -302,8 +302,7 @@ export default function Signup() {
   // ── PROFILE SAVE ──────────────────────────────────────────────────────────
   async function saveProfile() {
     setNameErr("");
-    if (containsAbusiveContent(name)) { setNameErr("Please enter a proper name. Keep it respectful."); return; }
-    if (!/^[a-zA-Z\s.\-']+$/.test(name.trim())) { setNameErr("Name can only contain letters, spaces, and basic punctuation."); return; }
+    if (containsAbusiveContent(name)) { setNameErr("Please use a respectful name."); return; }
 
     const { getAuth } = await import("firebase/auth");
     const { getFirestore, doc, setDoc, collection, query, where, getDocs } = await import("firebase/firestore");
