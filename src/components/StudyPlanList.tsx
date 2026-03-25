@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import { db, auth } from "@/lib/firebase"; 
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc } from "firebase/firestore";
 
-// ─── 1. DEFINE TASK INTERFACE ──────────────────────────────────────
 interface Task {
   id: string;
   text: string;
@@ -20,77 +19,49 @@ export default function StudyPlanList() {
   const [inputError, setInputError] = useState("");
   const [loading, setLoading] = useState(true);
   
-  // Prevents duplicate notifications in the same minute
+  // 1. CREATE A REF FOR THE CLOCK
+  const timeInputRef = useRef<HTMLInputElement>(null);
   const notifiedTasks = useRef<Set<string>>(new Set());
 
-  // ─── 2. DATABASE LISTENER (AUTH + FIRESTORE) ──────────────────────
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((user) => {
       if (user) {
-        const q = query(
-          collection(db, "tasks"), 
-          where("userId", "==", user.uid)
-        );
-
+        const q = query(collection(db, "tasks"), where("userId", "==", user.uid));
         const unsubscribeTasks = onSnapshot(q, (snapshot) => {
-          const taskData = snapshot.docs.map(doc => ({ 
-            id: doc.id, 
-            ...doc.data() 
-          })) as Task[];
-          
-          // Sort by newest first
-          const sorted = taskData.sort((a, b) => {
-            const timeA = a.createdAt?.seconds || 0;
-            const timeB = b.createdAt?.seconds || 0;
-            return timeB - timeA;
-          });
-
+          const taskData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Task[];
+          const sorted = taskData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
           setItems(sorted);
           setLoading(false);
         });
-
         return () => unsubscribeTasks();
       } else {
         setItems([]);
         setLoading(false);
       }
     });
-
     return () => unsubscribeAuth();
   }, []);
 
-  // ─── 3. THE ALARM ENGINE (NOTIFICATION WATCHER) ───────────────────
+  // ALARM ENGINE
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
-      const currentHours = now.getHours().toString().padStart(2, '0');
-      const currentMinutes = now.getMinutes().toString().padStart(2, '0');
-      const currentTimeString = `${currentHours}:${currentMinutes}`;
-
+      const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
       items.forEach(task => {
-        if (
-          task.reminderTime === currentTimeString && 
-          !notifiedTasks.current.has(task.id) &&
-          Notification.permission === "granted"
-        ) {
-          new Notification("TraceX Focus Guardian", {
-            body: `Time to lock in: ${task.text}`,
-          });
+        if (task.reminderTime === currentTime && !notifiedTasks.current.has(task.id) && Notification.permission === "granted") {
+          new Notification("TraceChi Focus Guardian", { body: `Time to lock in: ${task.text}` });
           notifiedTasks.current.add(task.id);
         }
       });
-    }, 30000); // Checks every 30 seconds
-
+    }, 30000);
     return () => clearInterval(interval);
   }, [items]);
 
-  // ─── 4. ADD TASK LOGIC ───────────────────────────────────────────
   async function handleAddTask() {
     if (!newTask.trim()) {
       setInputError("Whoops! Your mind went blank for a second. Type a task first! 👻");
       return;
     }
-    
     const user = auth.currentUser;
     if (!user) return;
 
@@ -138,18 +109,20 @@ export default function StudyPlanList() {
           />
           
           <div className="flex gap-2">
-            {/* THE "BIG TAPPABLE" CLOCK BUTTON */}
-            <div className="relative flex-1 md:w-32 h-[48px] bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center active:bg-slate-800 transition-all cursor-pointer">
-              {/* This is the real input, invisible but covering the whole box */}
+            {/* 2. THE IMPROVED CLOCK BUTTON */}
+            <div 
+              onClick={() => timeInputRef.current?.showPicker()} 
+              className="relative flex-1 md:w-36 h-[48px] bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center active:bg-slate-800 transition-all cursor-pointer group hover:border-slate-600"
+            >
               <input 
+                ref={timeInputRef}
                 type="time" 
                 value={reminderTime}
                 onChange={(e) => setReminderTime(e.target.value)}
                 className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-20"
                 style={{ colorScheme: 'dark' }}
               />
-              {/* This is what the user actually sees */}
-              <div className="flex items-center gap-2 pointer-events-none text-slate-400">
+              <div className="flex items-center gap-2 pointer-events-none text-slate-400 group-hover:text-blue-400 transition-colors">
                 <span className="text-lg">🕒</span>
                 <span className="text-xs font-medium">
                   {reminderTime || "Set Time"}
@@ -166,9 +139,8 @@ export default function StudyPlanList() {
           </div>
         </div>
         
-        {/* THE HUMOROUS WARNING */}
         {inputError && (
-          <p className="text-red-400 text-xs mt-1 ml-2 animate-pulse">
+          <p className="text-red-400 text-[10px] mt-1 ml-2 animate-pulse font-medium">
             {inputError}
           </p>
         )}
@@ -180,21 +152,24 @@ export default function StudyPlanList() {
           <p className="text-slate-500 text-sm italic py-2">No tasks yet. Add one above!</p>
         ) : (
           items.map((item) => (
-            <div key={item.id} className="rounded-xl bg-slate-900/50 border border-slate-800 px-4 py-3 text-sm flex justify-between items-center group transition-all hover:border-slate-700">
-              <div className="flex flex-col">
-                <span className="text-slate-200">{item.text}</span>
+            <div key={item.id} className="rounded-xl bg-slate-900/40 border border-slate-800/60 px-4 py-3 text-sm flex justify-between items-center group transition-all hover:border-slate-700 hover:bg-slate-900/60">
+              <div className="flex flex-col gap-1">
+                <span className="text-slate-200 font-medium">{item.text}</span>
+                {/* 3. DISPLAY TIME ICON & TIME HERE */}
                 {item.reminderTime && (
-                  <span className="text-blue-400 text-xs mt-1 flex items-center gap-1">
-                    🔔 Remind at {item.reminderTime}
-                  </span>
+                  <div className="flex items-center gap-1 text-blue-400 text-[11px] font-semibold">
+                    <span className="text-xs">🔔</span>
+                    <span>Remind at {item.reminderTime}</span>
+                  </div>
                 )}
               </div>
+              {/* 4. CLEAR CROSS MARK */}
               <button 
                 onClick={() => handleDelete(item.id)} 
-                className="text-slate-600 hover:text-red-500 transition-colors px-2"
-                title="Delete mission"
+                className="text-slate-500 hover:text-red-500 transition-all p-2 rounded-lg hover:bg-red-500/10"
+                title="Remove task"
               >
-                ✕
+                <span className="text-lg leading-none">✕</span>
               </button>
             </div>
           ))

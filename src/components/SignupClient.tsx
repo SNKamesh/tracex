@@ -7,7 +7,7 @@ import Input from "./Input";
 import PageHeader from "./PageHeader";
 import SectionCard from "./SectionCard";
 
-// ─── FIREBASE IMPORTS ──────────────────────────────────────────────
+// ─── FIREBASE & FIRESTORE IMPORTS ──────────────────────────────────
 import { auth, db } from "@/lib/firebase"; 
 import { 
   RecaptchaVerifier, 
@@ -40,12 +40,16 @@ export default function SignupClient() {
   const recaptchaRef = useRef<HTMLDivElement>(null);
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
 
-  // ─── 1. GLOBAL UI STYLING ──────────────────────────────────────────
-  // Ensures the "Hacker" Dark Mode is forced during the signup flow
+  // ─── 1. FORCE DARK THEME (Strictly Forced for Welcome Page) ──────
   useEffect(() => {
-    const originalBg = document.body.style.backgroundColor;
-    document.body.style.backgroundColor = "#030712"; 
-    return () => { document.body.style.backgroundColor = originalBg; };
+    // This locks the root background to black immediately
+    document.documentElement.style.backgroundColor = "#030712";
+    document.body.style.backgroundColor = "#030712";
+    
+    return () => {
+      document.documentElement.style.backgroundColor = "";
+      document.body.style.backgroundColor = "";
+    };
   }, []);
 
   useEffect(() => {
@@ -55,7 +59,7 @@ export default function SignupClient() {
     });
   }, []);
 
-  // ─── 2. LOGIC HANDLERS ─────────────────────────────────────────────
+  // ─── 2. LOGIC HANDLERS ───────────────────────────────────────────
   function handlePhoneChange(value: string) {
     const digitsOnly = value.replace(/\D/g, "");
     setPhone(digitsOnly);
@@ -63,7 +67,7 @@ export default function SignupClient() {
   }
 
   async function sendOtp() {
-    if (!phone) return setPhoneError("Please enter your phone number.");
+    if (!phone) return setPhoneError("Please enter your mobile number.");
     setSending(true);
     try {
       const fullNumber = `${dialCode}${phone}`;
@@ -94,7 +98,6 @@ export default function SignupClient() {
     const user = auth.currentUser;
     if (!user) return;
     try {
-      // Generate a sophisticated TraceX ID
       const traceXId = "TRX-" + Math.random().toString(36).substring(2, 8).toUpperCase();
       
       await setDoc(doc(db, "users", user.uid), {
@@ -115,18 +118,63 @@ export default function SignupClient() {
     }
   }
 
-  // ─── 3. RENDER STEPS ──────────────────────────────────────────────
-  
-  // STEP 1: Identification
+  // ─── 3. STEPS RENDERING ──────────────────────────────────────────
+
+  // STEP 1: Phone Entry (Includes Anime Mascot)
   if (step === 1) {
     return (
       <AppShell>
         <div id="recaptcha-container" ref={recaptchaRef} />
-        <PageHeader 
-          title="Begin your journey" 
-          subtitle="Where chaos turns into clarity." 
-        />
-        <SectionCard title="Mobile Authentication">
+        
+        {/* ─── ANIME MASCOT: WELCOME PAGE ONLY ─── */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "40px" }}>
+          <div style={{ position: "relative", width: "80px", height: "80px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            
+            {/* 1. Headset (Blue Arch) */}
+            <div style={{ 
+              position: "absolute", top: "-5px", width: "50px", height: "35px", 
+              borderTop: "4px solid #3B82F6", borderLeft: "4px solid #3B82F6", 
+              borderRight: "4px solid #3B82F6", borderRadius: "25px 25px 0 0",
+              boxShadow: "0 -4px 15px rgba(59, 130, 246, 0.4)"
+            }} />
+
+            {/* 2. Anime X (The Body) */}
+            <span style={{ 
+              fontSize: "52px", fontWeight: 900, color: "#3B82F6", 
+              fontStyle: "italic", zIndex: 10, textShadow: "0 0 15px rgba(59, 130, 246, 0.5)" 
+            }}>X</span>
+
+            {/* 3. White Glove Hand Holding Book */}
+            <div style={{ 
+              position: "absolute", right: "-12px", bottom: "20px", zIndex: 20, 
+              width: "28px", height: "20px", backgroundColor: "#FFFFFF", 
+              border: "1px solid #cbd5e1", borderRadius: "5px", transform: "rotate(-12deg)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 4px 6px rgba(0,0,0,0.3)"
+            }}>
+              {/* Glove Stitches */}
+              <div style={{ position: "absolute", top: "4px", left: "7px", width: "1px", height: "8px", backgroundColor: "#e2e8f0" }} />
+              <div style={{ position: "absolute", top: "4px", left: "13px", width: "1px", height: "8px", backgroundColor: "#e2e8f0" }} />
+              <div style={{ position: "absolute", top: "4px", left: "19px", width: "1px", height: "8px", backgroundColor: "#e2e8f0" }} />
+              
+              {/* The Study Book */}
+              <span style={{ position: "absolute", top: "-12px", right: "-6px", fontSize: "20px" }}>📖</span>
+            </div>
+
+            {/* 4. Chunky Sneakers (Legs) */}
+            <div style={{ position: "absolute", bottom: "0", width: "100%", display: "flex", justifyContent: "space-between", padding: "0 10px" }}>
+              <div style={{ width: "22px", height: "12px", backgroundColor: "#3B82F6", borderRadius: "6px", borderBottom: "3px solid rgba(255,255,255,0.4)" }} />
+              <div style={{ width: "22px", height: "12px", backgroundColor: "#3B82F6", borderRadius: "6px", borderBottom: "3px solid rgba(255,255,255,0.4)" }} />
+            </div>
+          </div>
+          
+          <PageHeader 
+            title="Begin your journey" 
+            subtitle="Where chaos turns into clarity." 
+          />
+        </div>
+
+        <SectionCard title="Identity Setup">
           <div className="flex gap-2">
             <select 
               value={dialCode} 
@@ -155,11 +203,11 @@ export default function SignupClient() {
     );
   }
 
-  // STEP 2: Verification
+  // STEP 2: OTP Verification
   if (step === 2) {
     return (
       <AppShell>
-        <PageHeader title="Identity Verification" subtitle={`We've sent a secure code to ${dialCode}${phone}`} />
+        <PageHeader title="Secure Access" subtitle={`A verification code was dispatched to ${dialCode}${phone}`} />
         <SectionCard title="Verification Code">
           <Input 
             value={otp} 
@@ -170,7 +218,7 @@ export default function SignupClient() {
           {otpError && <p className="text-red-500 text-[10px] mt-2 ml-1">{otpError}</p>}
           <div className="flex gap-2 mt-4">
             <Button onClick={verifyOtp} disabled={verifying}>
-              {verifying ? "Verifying..." : "Verify Identity"}
+              {verifying ? "Verifying Identity..." : "Verify Identity"}
             </Button>
             <Button variant="ghost" onClick={() => setStep(1)}>Back</Button>
           </div>
@@ -179,10 +227,10 @@ export default function SignupClient() {
     );
   }
 
-  // STEP 3: Personalization
+  // STEP 3: Final Personalization
   return (
     <AppShell>
-      <PageHeader title="Personalize your space" subtitle="One final step to finalize your setup." />
+      <PageHeader title="Personalize your workspace" subtitle="Finalize your identity to initialize the protocol." />
       <SectionCard title="Legal Name">
         <Input 
           value={name} 
