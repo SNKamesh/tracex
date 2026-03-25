@@ -6,7 +6,7 @@ import { useRouter } from "next/router";
 export default function Home() {
   const router = useRouter();
 
-  // 1. FORCE DARK BACKGROUND IMMEDIATELY
+  // FORCE DARK BACKGROUND IMMEDIATELY
   useEffect(() => {
     document.documentElement.style.backgroundColor = "#030712";
     document.body.style.backgroundColor = "#030712";
@@ -24,60 +24,61 @@ export default function Home() {
         textAlign: "center",
         padding: "20px",
         color: "white",
+        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
       }}
     >
-      {/* ─── 2. THE ANIME MASCOT (X with Headset, Gloves, Books, Shoes) ─── */}
-      <div style={{ position: "relative", width: "100px", height: "100px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "32px" }}>
-        
-        {/* Headset (Blue Arch) */}
-        <div style={{ 
-          position: "absolute", top: "-5px", width: "60px", height: "45px", 
-          borderTop: "4px solid #00d8ff", borderLeft: "4px solid #00d8ff", 
-          borderRight: "4px solid #00d8ff", borderRadius: "30px 30px 0 0",
-          boxShadow: "0 -4px 20px rgba(0, 216, 255, 0.4)"
-        }} />
-
-        {/* Anime X (Body) */}
-        <span style={{ 
-          fontSize: "64px", fontWeight: 900, color: "#00d8ff", 
-          fontStyle: "italic", zIndex: 10, textShadow: "0 0 15px rgba(0, 216, 255, 0.5)" 
-        }}>X</span>
-
-        {/* White Glove Hand Holding Book */}
-        <div style={{ 
-          position: "absolute", right: "-15px", bottom: "25px", zIndex: 20, 
-          width: "32px", height: "24px", backgroundColor: "#FFFFFF", 
-          border: "1px solid #cbd5e1", borderRadius: "6px", transform: "rotate(-12deg)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 4px 6px rgba(0,0,0,0.3)"
-        }}>
-          {/* Glove Stitches */}
-          <div style={{ position: "absolute", top: "5px", left: "8px", width: "1px", height: "10px", backgroundColor: "#e2e8f0" }} />
-          <div style={{ position: "absolute", top: "5px", left: "15px", width: "1px", height: "10px", backgroundColor: "#e2e8f0" }} />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "12px" }}>
+        <h1
+          style={{
+            fontSize: "4rem",
+            fontWeight: 900,
+            color: "white",
+            margin: 0,
+            fontStyle: "italic",
+            letterSpacing: "-2px",
+            lineHeight: "1",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          Welcome to Trace
           
-          {/* The Study Book */}
-          <span style={{ position: "absolute", top: "-15px", right: "-8px", fontSize: "24px" }}>📖</span>
-        </div>
-
-        {/* Chunky Sneakers (Feet) */}
-        <div style={{ position: "absolute", bottom: "0", width: "100%", display: "flex", justifyContent: "space-between", padding: "0 12px" }}>
-          <div style={{ width: "26px", height: "14px", backgroundColor: "#00d8ff", borderRadius: "8px", borderBottom: "4px solid rgba(255,255,255,0.4)" }} />
-          <div style={{ width: "26px", height: "14px", backgroundColor: "#00d8ff", borderRadius: "8px", borderBottom: "4px solid rgba(255,255,255,0.4)" }} />
-        </div>
+          {/* ─── INTEGRATED CARTOON X MASCOT ─── */}
+          <span style={{ position: "relative", display: "inline-flex", alignItems: "baseline", marginLeft: "2px" }}>
+            
+            {/* 1. Body (The Anime X) */}
+            <span style={{ fontSize: "4rem", fontWeight: 900, color: "#00d8ff", fontStyle: "italic", textShadow: "0 0 15px rgba(0, 216, 255, 0.5)" }}>
+              X
+            </span>
+            
+            {/* 2. Headset (Blue Arch) */}
+            <div style={{ position: "absolute", top: "-5px", left: "calc(50% - 20px)", width: "40px", height: "30px", borderTop: "3px solid #00d8ff", borderLeft: "3px solid #00d8ff", borderRight: "3px solid #00d8ff", borderRadius: "20px 20px 0 0", boxShadow: "0 -4px 15px rgba(0, 216, 255, 0.3)" }} />
+            
+            {/* 3. Book, Hands, and Shoes (Sitting) */}
+            <div style={{ position: "absolute", bottom: "-18px", left: "calc(50% - 28px)", width: "56px", height: "34px" }}>
+              
+              {/* Hands & Book Area */}
+              <div style={{ position: "absolute", top: 0, width: "100%", height: "20px", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                {/* Book (Actual Object, Not Emoji) */}
+                <div style={{ width: "32px", height: "18px", backgroundColor: "#FFFFFF", border: "1px solid #cbd5e1", borderRadius: "3px", boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }}>
+                  <div style={{ position: "absolute", top: "4px", left: "10px", width: "1px", height: "10px", backgroundColor: "#e2e8f0" }} />
+                  <div style={{ position: "absolute", top: "4px", left: "21px", width: "1px", height: "10px", backgroundColor: "#e2e8f0" }} />
+                </div>
+                {/* White Glove Hands */}
+                <div style={{ position: "absolute", left: "0px", top: "4px", width: "8px", height: "12px", backgroundColor: "white", borderRadius: "2px", border: "1px solid #cbd5e1" }} />
+                <div style={{ position: "absolute", right: "0px", top: "4px", width: "8px", height: "12px", backgroundColor: "white", borderRadius: "2px", border: "1px solid #cbd5e1" }} />
+              </div>
+              
+              {/* Shoes/Feet */}
+              <div style={{ position: "absolute", bottom: 0, width: "100%", display: "flex", justifyContent: "space-between", padding: "0 4px" }}>
+                <div style={{ width: "18px", height: "10px", backgroundColor: "#00d8ff", borderRadius: "4px", borderBottom: "3px solid rgba(255,255,255,0.3)" }} />
+                <div style={{ width: "18px", height: "10px", backgroundColor: "#00d8ff", borderRadius: "4px", borderBottom: "3px solid rgba(255,255,255,0.3)" }} />
+              </div>
+            </div>
+            
+          </span>
+        </h1>
       </div>
-
-      <h1
-        style={{
-          fontSize: "4rem",
-          fontWeight: 900,
-          color: "white",
-          marginBottom: "12px",
-          fontStyle: "italic",
-          letterSpacing: "-2px",
-        }}
-      >
-        Welcome to <span style={{ color: "#00d8ff" }}>TraceX</span>
-      </h1>
 
       <p
         style={{
