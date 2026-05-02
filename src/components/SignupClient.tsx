@@ -1,250 +1,340 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import AppShell from "./AppShell";
-import Button from "./Button";
+import React, { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/router";
 import Input from "./Input";
-import PageHeader from "./PageHeader";
+import Button from "./Button";
 import SectionCard from "./SectionCard";
+import Select from "./Select";
 
-// ─── FIREBASE & FIRESTORE IMPORTS ──────────────────────────────────
-import { auth, db } from "@/lib/firebase"; 
-import { 
-  RecaptchaVerifier, 
-  signInWithPhoneNumber, 
-  ConfirmationResult 
+import { initializeApp, getApps, getApp } from "firebase/app";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  fetchSignInMethodsForEmail,
+  signOut,
+  onAuthStateChanged,
 } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  onSnapshot,
+  collection,
+  query,
+  where,
+  getDocs
+} from "firebase/firestore";
 
-const countryCodes = [
-  { code: "+91",  flag: "🇮🇳", name: "India" },
-  { code: "+1",   flag: "🇺🇸", name: "USA / Canada" },
-  { code: "+44",  flag: "🇬🇧", name: "UK" },
-  { code: "+971", flag: "🇦🇪", name: "UAE" },
-  { code: "+966", flag: "🇸🇦", name: "Saudi Arabia" },
-  { code: "+65",  flag: "🇸🇬", name: "Singapore" },
-];
+const firebaseConfig = {
+  apiKey:             process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain:         process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:          process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId:  process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:              process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+function getFirebaseApp() {
+  return getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+}
+function getFirebaseAuth() {
+  try { return getAuth(getFirebaseApp()); } catch { return null; }
+}
+function getDb() {
+  return getFirestore(getFirebaseApp());
+}
+
+const SESSION_KEY = "tracex_session_token";
+
+function generateSessionToken(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
+
+const BANNED_WORDS = ["fuck","shit","bitch","nigga","nigger","porn"]; // Minimal list for logic
+
+function containsAbusiveContent(text: string): boolean {
+  const lower = text.toLowerCase().replace(/\s+/g, "");
+  return BANNED_WORDS.some((word) => lower.includes(word));
+}
+
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+async function sendOtpEmail(toEmail: string, otp: string): Promise<boolean> {
+  try {
+    const res = await fetch("/api/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: toEmail, otp }),
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
+function generateTracexId(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let id = "TRX-";
+  for (let i = 0; i < 6; i++) id += chars.charAt(Math.floor(Math.random() * chars.length));
+  return id;
+}
+
+type Step = "start" | "signin" | "create_form" | "create_otp" | "profile" | "safety" | "forgot_email" | "forgot_otp" | "forgot_newpass";
+
+const studyOptions = ["School", "University", "College", "Other"];
+
+function ErrorMsg({ msg }: { msg: string }) {
+  if (!msg) return null;
+  return <p className="mt-1 text-xs text-red-500 font-medium">{msg}</p>;
+}
 
 export default function SignupClient() {
-  const [step, setStep] = useState(1);
-  const [dialCode, setDialCode] = useState("+91");
-  const [phone, setPhone] = useState("");
-  const [phoneError, setPhoneError] = useState("");
-  const [sending, setSending] = useState(false);
-  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
-  const [otp, setOtp] = useState("");
-  const [otpError, setOtpError] = useState("");
-  const [verifying, setVerifying] = useState(false);
+  const router = useRouter();
+  const [step, setStep] = useState<Step>("start");
+
+  // States
+  const [siEmail, setSiEmail] = useState("");
+  const [siPass, setSiPass] = useState("");
+  const [siEmailErr, setSiEmailErr] = useState("");
+  const [siPassErr, setSiPassErr] = useState("");
+  const [siLoading, setSiLoading] = useState(false);
+  const [passwordResetSuccess, setPasswordResetSuccess] = useState(false);
+
+  const [caEmail, setCaEmail] = useState("");
+  const [caPass, setCaPass] = useState("");
+  const [caPass2, setCaPass2] = useState("");
+  const [caEmailErr, setCaEmailErr] = useState("");
+  const [caPassErr, setCaPassErr] = useState("");
+  const [caLoading, setCaLoading] = useState(false);
+
+  const [generatedOtp, setGeneratedOtp] = useState("");
+  const [enteredOtp, setEnteredOtp] = useState("");
+  const [otpErr, setOtpErr] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpTimer, setOtpTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+
   const [name, setName] = useState("");
+  const [nameErr, setNameErr] = useState("");
+  const [studyType, setStudyType] = useState(studyOptions[0]);
 
-  const recaptchaRef = useRef<HTMLDivElement>(null);
-  const verifierRef = useRef<RecaptchaVerifier | null>(null);
+  const [fpEmail, setFpEmail] = useState("");
+  const [fpEmailErr, setFpEmailErr] = useState("");
+  const [fpLoading, setFpLoading] = useState(false);
+  const [fpNewPass, setFpNewPass] = useState("");
+  const [fpNewPass2, setFpNewPass2] = useState("");
+  const [fpPassErr, setFpPassErr] = useState("");
+  const [fpSaving, setFpSaving] = useState(false);
 
-  // ─── 1. FORCE DARK THEME (Strictly Forced for Welcome Page) ──────
+  const sessionUnsubRef = useRef<(() => void) | null>(null);
+  const forcedOutRef = useRef(false);
+
+  // OTP Countdown
   useEffect(() => {
-    // This locks the root background to black immediately
-    document.documentElement.style.backgroundColor = "#030712";
-    document.body.style.backgroundColor = "#030712";
-    
-    return () => {
-      document.documentElement.style.backgroundColor = "";
-      document.body.style.backgroundColor = "";
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || verifierRef.current) return;
-    verifierRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
-      size: "invisible",
-    });
-  }, []);
-
-  // ─── 2. LOGIC HANDLERS ───────────────────────────────────────────
-  function handlePhoneChange(value: string) {
-    const digitsOnly = value.replace(/\D/g, "");
-    setPhone(digitsOnly);
-    setPhoneError(value !== digitsOnly && value.length > 0 ? "Numeric characters only." : "");
-  }
-
-  async function sendOtp() {
-    if (!phone) return setPhoneError("Please enter your mobile number.");
-    setSending(true);
-    try {
-      const fullNumber = `${dialCode}${phone}`;
-      const result = await signInWithPhoneNumber(auth, fullNumber, verifierRef.current!);
-      setConfirmation(result);
-      setStep(2);
-    } catch (err: any) {
-      setPhoneError("Failed to dispatch OTP. Please verify your connection.");
-    } finally {
-      setSending(false);
-    }
-  }
-
-  async function verifyOtp() {
-    if (!otp || !confirmation) return;
-    setVerifying(true);
-    try {
-      await confirmation.confirm(otp);
-      setStep(3);
-    } catch {
-      setOtpError("Invalid verification code. Please try again.");
-    } finally {
-      setVerifying(false);
-    }
-  }
-
-  async function finishSignup() {
-    const user = auth.currentUser;
-    if (!user) return;
-    try {
-      const traceXId = "TRX-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-      
-      await setDoc(doc(db, "users", user.uid), {
-        name: name,
-        traceXId: traceXId,
-        phone: user.phoneNumber,
-        theme: "amoled",
-        createdAt: new Date(),
-        status: "Online",
-        friends: [],
-        sentReqs: [],
-        receivedReqs: [],
+    if (step !== "create_otp" && step !== "forgot_otp") return;
+    setOtpTimer(60); setCanResend(false);
+    const interval = setInterval(() => {
+      setOtpTimer((t) => {
+        if (t <= 1) { clearInterval(interval); setCanResend(true); return 0; }
+        return t - 1;
       });
-      
-      window.location.href = "/home";
-    } catch (error) {
-      console.error("Critical Database Error:", error);
-    }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [step]);
+
+  // Session Management
+  useEffect(() => {
+    const auth = getFirebaseAuth();
+    if (!auth) return;
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const storedToken = sessionStorage.getItem(SESSION_KEY);
+        if (storedToken) startSessionWatcher(user.uid, storedToken);
+      }
+    });
+    return () => { unsub(); sessionUnsubRef.current?.(); };
+  }, []);
+
+  async function forceLogout(reason: string) {
+    if (forcedOutRef.current) return;
+    forcedOutRef.current = true;
+    sessionUnsubRef.current?.();
+    const auth = getFirebaseAuth();
+    if (auth) await signOut(auth);
+    sessionStorage.removeItem(SESSION_KEY);
+    alert(reason);
+    router.replace("/signup");
   }
 
-  // ─── 3. STEPS RENDERING ──────────────────────────────────────────
-
-  // STEP 1: Phone Entry (Includes Anime Mascot)
-  if (step === 1) {
-    return (
-      <AppShell>
-        <div id="recaptcha-container" ref={recaptchaRef} />
-        
-        {/* ─── ANIME MASCOT: WELCOME PAGE ONLY ─── */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "40px" }}>
-          <div style={{ position: "relative", width: "80px", height: "80px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            
-            {/* 1. Headset (Blue Arch) */}
-            <div style={{ 
-              position: "absolute", top: "-5px", width: "50px", height: "35px", 
-              borderTop: "4px solid #3B82F6", borderLeft: "4px solid #3B82F6", 
-              borderRight: "4px solid #3B82F6", borderRadius: "25px 25px 0 0",
-              boxShadow: "0 -4px 15px rgba(59, 130, 246, 0.4)"
-            }} />
-
-            {/* 2. Anime X (The Body) */}
-            <span style={{ 
-              fontSize: "52px", fontWeight: 900, color: "#3B82F6", 
-              fontStyle: "italic", zIndex: 10, textShadow: "0 0 15px rgba(59, 130, 246, 0.5)" 
-            }}>X</span>
-
-            {/* 3. White Glove Hand Holding Book */}
-            <div style={{ 
-              position: "absolute", right: "-12px", bottom: "20px", zIndex: 20, 
-              width: "28px", height: "20px", backgroundColor: "#FFFFFF", 
-              border: "1px solid #cbd5e1", borderRadius: "5px", transform: "rotate(-12deg)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.3)"
-            }}>
-              {/* Glove Stitches */}
-              <div style={{ position: "absolute", top: "4px", left: "7px", width: "1px", height: "8px", backgroundColor: "#e2e8f0" }} />
-              <div style={{ position: "absolute", top: "4px", left: "13px", width: "1px", height: "8px", backgroundColor: "#e2e8f0" }} />
-              <div style={{ position: "absolute", top: "4px", left: "19px", width: "1px", height: "8px", backgroundColor: "#e2e8f0" }} />
-              
-              {/* The Study Book */}
-              <span style={{ position: "absolute", top: "-12px", right: "-6px", fontSize: "20px" }}>📖</span>
-            </div>
-
-            {/* 4. Chunky Sneakers (Legs) */}
-            <div style={{ position: "absolute", bottom: "0", width: "100%", display: "flex", justifyContent: "space-between", padding: "0 10px" }}>
-              <div style={{ width: "22px", height: "12px", backgroundColor: "#3B82F6", borderRadius: "6px", borderBottom: "3px solid rgba(255,255,255,0.4)" }} />
-              <div style={{ width: "22px", height: "12px", backgroundColor: "#3B82F6", borderRadius: "6px", borderBottom: "3px solid rgba(255,255,255,0.4)" }} />
-            </div>
-          </div>
-          
-          <PageHeader 
-            title="Begin your journey" 
-            subtitle="Where chaos turns into clarity." 
-          />
-        </div>
-
-        <SectionCard title="Identity Setup">
-          <div className="flex gap-2">
-            <select 
-              value={dialCode} 
-              onChange={(e) => setDialCode(e.target.value)} 
-              className="bg-slate-900 border border-slate-800 rounded-xl px-2 text-white outline-none focus:border-blue-500 transition-all text-sm"
-            >
-              {countryCodes.map(c => <option key={c.code} value={c.code}>{c.flag} {c.code}</option>)}
-            </select>
-            <Input 
-              value={phone} 
-              placeholder="Enter mobile number" 
-              inputMode="numeric" 
-              onChange={(e) => handlePhoneChange(e.target.value)} 
-            />
-          </div>
-          {phoneError && <p className="text-red-500 text-[10px] mt-2 ml-1">{phoneError}</p>}
-          <Button 
-            style={{ marginTop: "16px" }} 
-            onClick={sendOtp} 
-            disabled={sending}
-          >
-            {sending ? "Dispatching OTP..." : "Continue"}
-          </Button>
-        </SectionCard>
-      </AppShell>
-    );
+  function startSessionWatcher(uid: string, myToken: string) {
+    sessionUnsubRef.current?.();
+    const ref = doc(getDb(), "sessions", uid);
+    const unsub = onSnapshot(ref, async (snap) => {
+      if (!snap.exists()) return;
+      const activeToken = snap.data()?.token;
+      if (activeToken && activeToken !== myToken) {
+        await forceLogout("⚠️ Your TraceX account was signed in on another device. Logged out for security.");
+      }
+    });
+    sessionUnsubRef.current = unsub;
   }
 
-  // STEP 2: OTP Verification
-  if (step === 2) {
-    return (
-      <AppShell>
-        <PageHeader title="Secure Access" subtitle={`A verification code was dispatched to ${dialCode}${phone}`} />
-        <SectionCard title="Verification Code">
-          <Input 
-            value={otp} 
-            placeholder="6-digit OTP" 
-            maxLength={6} 
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} 
-          />
-          {otpError && <p className="text-red-500 text-[10px] mt-2 ml-1">{otpError}</p>}
-          <div className="flex gap-2 mt-4">
-            <Button onClick={verifyOtp} disabled={verifying}>
-              {verifying ? "Verifying Identity..." : "Verify Identity"}
-            </Button>
-            <Button variant="ghost" onClick={() => setStep(1)}>Back</Button>
-          </div>
-        </SectionCard>
-      </AppShell>
-    );
+  async function writeSession(uid: string): Promise<string> {
+    const token = generateSessionToken();
+    await setDoc(doc(getDb(), "sessions", uid), { token, loginAt: Date.now(), userAgent: navigator.userAgent });
+    sessionStorage.setItem(SESSION_KEY, token);
+    return token;
   }
 
-  // STEP 3: Final Personalization
+  // Auth Handlers
+  async function handleSignIn() {
+    setSiEmailErr(""); setSiPassErr("");
+    if (!siEmail.includes("@")) { setSiEmailErr("Enter a valid email."); return; }
+    setSiLoading(true);
+    try {
+      const auth = getFirebaseAuth();
+      if (!auth) return;
+      const cred = await signInWithEmailAndPassword(auth, siEmail, siPass);
+      const token = await writeSession(cred.user.uid);
+      startSessionWatcher(cred.user.uid, token);
+      router.push("/home");
+    } catch (err: any) {
+      setSiPassErr("Invalid credentials.");
+    } finally { setSiLoading(false); }
+  }
+
+  async function handleSendOtp() {
+    setCaEmailErr(""); setCaPassErr("");
+    if (!caEmail.includes("@")) { setCaEmailErr("Enter a valid email."); return; }
+    if (caPass !== caPass2) { setCaPassErr("Passwords mismatch."); return; }
+    setCaLoading(true);
+    try {
+      const auth = getFirebaseAuth();
+      if (!auth) return;
+      const methods = await fetchSignInMethodsForEmail(auth, caEmail);
+      if (methods.length > 0) { setCaEmailErr("Account exists. Sign in."); return; }
+      const otp = generateOtp();
+      setGeneratedOtp(otp);
+      const sent = await sendOtpEmail(caEmail, otp);
+      if (sent) setStep("create_otp");
+    } finally { setCaLoading(false); }
+  }
+
+  async function handleVerifyOtp() {
+    if (enteredOtp !== generatedOtp) { setOtpErr("Wrong OTP."); return; }
+    setOtpLoading(true);
+    try {
+      const auth = getFirebaseAuth();
+      if (!auth) return;
+      const cred = await createUserWithEmailAndPassword(auth, caEmail, caPass);
+      const token = await writeSession(cred.user.uid);
+      startSessionWatcher(cred.user.uid, token);
+      setStep("profile");
+    } finally { setOtpLoading(false); }
+  }
+
+  async function saveProfile() {
+    const auth = getFirebaseAuth();
+    const user = auth?.currentUser;
+    if (!user) return;
+    const db = getDb();
+    const tracexId = generateTracexId();
+    await setDoc(doc(db, "users", user.uid), { name, studyType, email: user.email, tracexId, createdAt: Date.now() });
+    setStep("safety");
+  }
+
   return (
-    <AppShell>
-      <PageHeader title="Personalize your workspace" subtitle="Finalize your identity to initialize the protocol." />
-      <SectionCard title="Legal Name">
-        <Input 
-          value={name} 
-          onChange={(e) => setName(e.target.value)} 
-          placeholder="Enter your full name" 
-        />
-      </SectionCard>
-      <Button 
-        style={{ marginTop: "12px" }} 
-        disabled={!name.trim()} 
-        onClick={finishSignup}
-      >
-        Initialize TraceX
-      </Button>
-    </AppShell>
+    <div className="min-h-screen flex items-center justify-center bg-black text-white px-4 font-sans">
+      <div className="w-full max-w-lg">
+
+        {/* -- STEP: START (Matching Image 3) -- */}
+        {step === "start" && (
+          <div className="flex flex-col items-center">
+            <h1 className="text-center text-5xl font-extrabold mb-2 tracking-tight">
+              Welcome to <span style={{ color: "#00d8ff" }}>TraceX</span>
+            </h1>
+            <p className="text-center text-slate-400 mb-12 text-xl font-medium">
+              Sign in / Create a new account
+            </p>
+            
+            <div className="flex flex-col gap-4 w-full max-w-sm">
+              <Button 
+                onClick={() => { setStep("signin"); setSiEmailErr(""); setSiPassErr(""); }}
+                className="py-4 text-lg font-bold"
+              >
+                Continue with Email
+              </Button>
+              
+              <p 
+                className="text-center mt-6 cursor-pointer text-slate-400 hover:text-white transition text-sm underline"
+                onClick={() => { setStep("create_form"); setCaEmailErr(""); setCaPassErr(""); }}
+              >
+                Create a full TraceX account
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* -- STEP: SIGN IN -- */}
+        {step === "signin" && (
+          <SectionCard title="Sign In" description="Enter your TraceX email and password.">
+            <Input type="email" placeholder="Email" value={siEmail} onChange={(e) => setSiEmail(e.target.value)} />
+            <ErrorMsg msg={siEmailErr} />
+            <Input type="password" placeholder="Password" className="mt-4" value={siPass} onChange={(e) => setSiPass(e.target.value)} />
+            <ErrorMsg msg={siPassErr} />
+            <div className="flex gap-3 mt-6">
+              <Button onClick={handleSignIn} disabled={siLoading}>{siLoading ? "Signing in..." : "Sign In"}</Button>
+              <Button variant="ghost" onClick={() => setStep("start")}>Back</Button>
+            </div>
+          </SectionCard>
+        )}
+
+        {/* -- STEP: CREATE FORM -- */}
+        {step === "create_form" && (
+          <SectionCard title="Create Account" description="Verify your email with a 6-digit code.">
+            <Input type="email" placeholder="Email" value={caEmail} onChange={(e) => setCaEmail(e.target.value)} />
+            <ErrorMsg msg={caEmailErr} />
+            <Input type="password" placeholder="Password" className="mt-4" value={caPass} onChange={(e) => setCaPass(e.target.value)} />
+            <Input type="password" placeholder="Confirm" className="mt-2" value={caPass2} onChange={(e) => setCaPass2(e.target.value)} />
+            <ErrorMsg msg={caPassErr} />
+            <div className="flex gap-3 mt-6">
+              <Button onClick={handleSendOtp} disabled={caLoading}>Send OTP</Button>
+              <Button variant="ghost" onClick={() => setStep("start")}>Back</Button>
+            </div>
+          </SectionCard>
+        )}
+
+        {/* -- STEP: OTP -- */}
+        {step === "create_otp" && (
+          <SectionCard title="Enter OTP" description={`Sent to ${caEmail}`}>
+            <Input placeholder="6-digit code" maxLength={6} value={enteredOtp} onChange={(e) => setEnteredOtp(e.target.value)} />
+            <ErrorMsg msg={otpErr} />
+            <Button onClick={handleVerifyOtp} className="mt-6" disabled={otpLoading}>Verify</Button>
+          </SectionCard>
+        )}
+
+        {/* -- STEP: PROFILE -- */}
+        {step === "profile" && (
+          <SectionCard title="Profile" description="Finalize your setup">
+            <Input placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
+            <Select className="mt-4 w-full" value={studyType} onChange={(e) => setStudyType(e.target.value)}>
+              {studyOptions.map(o => <option key={o} value={o}>{o}</option>)}
+            </Select>
+            <Button className="mt-6" onClick={saveProfile}>Complete</Button>
+          </SectionCard>
+        )}
+
+        {/* -- STEP: SAFETY -- */}
+        {step === "safety" && (
+          <SectionCard title="Safety" description="Protocol initialization">
+            <p className="text-slate-300">No harmful content allowed. Respect the workspace.</p>
+            <Button className="mt-6" onClick={() => router.push("/home")}>I Accept</Button>
+          </SectionCard>
+        )}
+
+      </div>
+    </div>
   );
 }
