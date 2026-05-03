@@ -1,13 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { initializeApp, getApps } from "firebase/app";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import {
-  getAuth,
-  onAuthStateChanged,
-} from "firebase/auth";
-import {
-  getFirestore,
   doc,
   getDoc,
   setDoc,
@@ -26,29 +22,6 @@ import Input from "@/components/Input";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 
-// ── Firebase config ────────────────────────────────────────────
-const firebaseConfig = {
-  apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId:         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket:     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app  = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db   = getFirestore(app);
-
-// ── Generate a unique TraceX ID ────────────────────────────────
-function genTraceXId() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let id = "TRX";
-  for (let i = 0; i < 8; i++) id += chars[Math.floor(Math.random() * chars.length)];
-  return id;
-}
-
-// ── Types ──────────────────────────────────────────────────────
 interface Friend {
   uid:      string;
   name:     string;
@@ -70,13 +43,13 @@ export default function Friends() {
   const [searchId,  setSearchId]  = useState("");
   const [searchErr, setSearchErr] = useState("");
   const [searchOk,  setSearchOk]  = useState("");
+  const [copied,    setCopied]    = useState(false);
 
   const [requests, setRequests] = useState<Request[]>([]);
   const [friends,  setFriends]  = useState<Friend[]>([]);
+  const [loading,  setLoading]  = useState(true);
 
-  const [loading, setLoading] = useState(true);
-
-  // ── Auth & user doc setup ────────────────────────────────────
+  // ── Auth & user doc setup ──────────────────────────────────
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) { setLoading(false); return; }
@@ -86,25 +59,20 @@ export default function Friends() {
       const snap = await getDoc(ref);
 
       if (!snap.exists()) {
-        // First time — create user doc
-        const tracexId = genTraceXId();
-        const name     = user.displayName || user.email?.split("@")[0] || "TraceX User";
+        const name = user.displayName || user.email?.split("@")[0] || "TraceX User";
         await setDoc(ref, {
-          tracexId,
           name,
-          email:      user.email,
-          status:     "Online",
-          friends:    [],
-          sentReqs:   [],
+          email:        user.email,
+          status:       "Online",
+          friends:      [],
+          sentReqs:     [],
           receivedReqs: [],
         });
-        setMyTraceId(tracexId);
         setMyName(name);
       } else {
         const data = snap.data();
-        setMyTraceId(data.tracexId);
-        setMyName(data.name);
-        // Mark online
+        setMyTraceId(data.tracexId || "");
+        setMyName(data.name || "");
         await updateDoc(ref, { status: "Online" });
       }
 
@@ -121,16 +89,16 @@ export default function Friends() {
     return () => { unsub(); window.removeEventListener("beforeunload", handleUnload); };
   }, []);
 
-  // ── Live listener: incoming requests ─────────────────────────
+  // ── Live listener: friends + requests ─────────────────────
   useEffect(() => {
     if (!myUid) return;
-    const ref = doc(db, "users", myUid);
+    const ref  = doc(db, "users", myUid);
     const unsub = onSnapshot(ref, async (snap) => {
       if (!snap.exists()) return;
       const receivedUids: string[] = snap.data().receivedReqs || [];
       const friendUids:   string[] = snap.data().friends      || [];
 
-      // Fetch request sender profiles
+      // Fetch request senders
       const reqData: Request[] = [];
       for (const uid of receivedUids) {
         const s = await getDoc(doc(db, "users", uid));
@@ -141,13 +109,13 @@ export default function Friends() {
       }
       setRequests(reqData);
 
-      // Fetch friend profiles
+      // Fetch friends
       const friendData: Friend[] = [];
       for (const uid of friendUids) {
         const s = await getDoc(doc(db, "users", uid));
         if (s.exists()) {
           const d = s.data();
-          friendData.push({ uid, name: d.name, traceXId: d.tracexId, status: d.status });
+          friendData.push({ uid, name: d.name, traceXId: d.tracexId, status: d.status || "Offline" });
         }
       }
       setFriends(friendData);
@@ -155,14 +123,20 @@ export default function Friends() {
     return () => unsub();
   }, [myUid]);
 
-  // ── Send friend request ───────────────────────────────────────
+  // ── Copy TraceX ID ─────────────────────────────────────────
+  function handleCopy() {
+    navigator.clipboard.writeText(myTraceId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  // ── Send friend request ────────────────────────────────────
   async function sendRequest() {
     setSearchErr(""); setSearchOk("");
     const id = searchId.trim().toUpperCase();
     if (!id) { setSearchErr("Please enter a TraceX ID."); return; }
-    if (id === myTraceId) { setSearchErr("You can't add yourself!"); return; }
+    if (id === myTraceId.toUpperCase()) { setSearchErr("You can't add yourself!"); return; }
 
-    // Find user by traceXId
     const q    = query(collection(db, "users"), where("tracexId", "==", id));
     const snap = await getDocs(q);
     if (snap.empty) { setSearchErr("TraceX ID not found."); return; }
@@ -171,16 +145,13 @@ export default function Friends() {
     const targetUid  = targetDoc.id;
     const targetData = targetDoc.data();
 
-    // Check already friends
     if ((targetData.friends || []).includes(myUid)) {
       setSearchErr("Already friends!"); return;
     }
-    // Check already sent
     if ((targetData.receivedReqs || []).includes(myUid)) {
       setSearchErr("Request already sent."); return;
     }
 
-    // Add to their receivedReqs and my sentReqs
     await updateDoc(doc(db, "users", targetUid), { receivedReqs: arrayUnion(myUid) });
     await updateDoc(doc(db, "users", myUid!),    { sentReqs:     arrayUnion(targetUid) });
 
@@ -188,32 +159,38 @@ export default function Friends() {
     setSearchId("");
   }
 
-  // ── Accept request ────────────────────────────────────────────
+  // ── Accept request ─────────────────────────────────────────
   async function acceptRequest(senderUid: string) {
     if (!myUid) return;
-    // Add each other to friends list
-    await updateDoc(doc(db, "users", myUid),      { friends: arrayUnion(senderUid), receivedReqs: arrayRemove(senderUid) });
-    await updateDoc(doc(db, "users", senderUid),  { friends: arrayUnion(myUid),     sentReqs:     arrayRemove(myUid) });
+    await updateDoc(doc(db, "users", myUid),     { friends: arrayUnion(senderUid),  receivedReqs: arrayRemove(senderUid) });
+    await updateDoc(doc(db, "users", senderUid), { friends: arrayUnion(myUid),      sentReqs:     arrayRemove(myUid) });
   }
 
-  // ── Reject request ────────────────────────────────────────────
+  // ── Reject request ─────────────────────────────────────────
   async function rejectRequest(senderUid: string) {
     if (!myUid) return;
     await updateDoc(doc(db, "users", myUid),     { receivedReqs: arrayRemove(senderUid) });
     await updateDoc(doc(db, "users", senderUid), { sentReqs:     arrayRemove(myUid) });
   }
 
-  // ── Remove friend ─────────────────────────────────────────────
+  // ── Remove friend ──────────────────────────────────────────
   async function removeFriend(friendUid: string) {
     if (!myUid) return;
-    await updateDoc(doc(db, "users", myUid),      { friends: arrayRemove(friendUid) });
-    await updateDoc(doc(db, "users", friendUid),  { friends: arrayRemove(myUid) });
+    await updateDoc(doc(db, "users", myUid),    { friends: arrayRemove(friendUid) });
+    await updateDoc(doc(db, "users", friendUid), { friends: arrayRemove(myUid) });
   }
 
+  // ── Skeleton loader ────────────────────────────────────────
   if (loading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>
+        <PageHeader title="Friends" subtitle="Connect, motivate, and study together." />
+        <div className="space-y-4 animate-pulse">
+          <div className="h-24 rounded-xl bg-slate-800/50" />
+          <div className="h-32 rounded-xl bg-slate-800/50" />
+          <div className="h-24 rounded-xl bg-slate-800/50" />
+          <div className="h-40 rounded-xl bg-slate-800/50" />
+        </div>
       </AppShell>
     );
   }
@@ -237,16 +214,20 @@ export default function Friends() {
 
       {/* My TraceX ID */}
       <SectionCard title="Your TraceX ID" description="Share this with friends so they can add you.">
-        <div className="flex items-center gap-3">
-          <span className="rounded-lg bg-slate-800 px-4 py-2 font-mono text-lg font-bold tracking-widest text-white">
-            {myTraceId}
-          </span>
-          <Button
-            variant="secondary"
-            onClick={() => { navigator.clipboard.writeText(myTraceId); }}
-          >
-            Copy
-          </Button>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <span className="rounded-lg bg-slate-800 px-4 py-2 font-mono text-lg font-bold tracking-widest text-white">
+              {myTraceId}
+            </span>
+            <Button variant="secondary" onClick={handleCopy}>
+              {copied ? "Copied! ✓" : "Copy"}
+            </Button>
+          </div>
+          {copied && (
+            <p className="text-xs text-green-400 ml-1">
+              TraceX ID copied to clipboard!
+            </p>
+          )}
         </div>
       </SectionCard>
 
@@ -254,9 +235,13 @@ export default function Friends() {
       <SectionCard title="Add Friend by TraceX ID" description="Send a request to connect.">
         <div className="flex flex-wrap gap-3">
           <Input
-            placeholder="Enter TraceX ID (e.g. TRXAB12CD)"
+            placeholder="Enter TraceX ID (e.g. TRX-6GWXWB)"
             value={searchId}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearchId(e.target.value); setSearchErr(""); setSearchOk(""); }}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              setSearchId(e.target.value);
+              setSearchErr("");
+              setSearchOk("");
+            }}
           />
           <Button onClick={sendRequest}>Send Request</Button>
         </div>
@@ -305,26 +290,19 @@ export default function Friends() {
                   <p className="text-xs text-slate-400">{friend.traceXId}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      friend.status === "Online"
-                        ? "bg-green-900 text-green-300"
-                        : "bg-slate-800 text-slate-400"
-                    }`}
-                  >
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                    friend.status === "Online"
+                      ? "bg-green-900 text-green-300"
+                      : "bg-slate-800 text-slate-400"
+                  }`}>
                     {friend.status}
                   </span>
-                  <Button variant="secondary">Join Session</Button>
                   <Button variant="ghost" onClick={() => removeFriend(friend.uid)}>Remove</Button>
                 </div>
               </div>
             ))}
           </div>
         )}
-        <div className="flex flex-wrap gap-3 mt-3">
-          <Button variant="secondary">Send Motivation Card</Button>
-          <Button variant="secondary">Share Study Plan</Button>
-        </div>
       </SectionCard>
     </AppShell>
   );
