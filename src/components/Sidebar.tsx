@@ -6,7 +6,7 @@ const navItems = [
   { label: "Home", href: "/home", icon: "🏠" },
   { label: "Dashboard", href: "/dashboard", icon: "📊" },
   { label: "Study Sessions", href: "/study", icon: "📚" },
-  { label: "Study Plans", href: "/plans", icon: "📝" },
+  { label: "Study Plans", href: "/study-plans", icon: "📝" },
   { label: "Friends", href: "/friends", icon: "👥" },
   { label: "File Converter", href: "/converter", icon: "🔄" },
   { label: "NoteX Bot", href: "/notex", icon: "🤖" },
