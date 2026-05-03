@@ -89,39 +89,63 @@ export default function Friends() {
     return () => { unsub(); window.removeEventListener("beforeunload", handleUnload); };
   }, []);
 
-  // ── Live listener: friends + requests ─────────────────────
+  // ── Live listener: friends + requests (parallel fetching) ──
   useEffect(() => {
     if (!myUid) return;
-    const ref  = doc(db, "users", myUid);
+    const ref = doc(db, "users", myUid);
     const unsub = onSnapshot(ref, async (snap) => {
       if (!snap.exists()) return;
       const receivedUids: string[] = snap.data().receivedReqs || [];
       const friendUids:   string[] = snap.data().friends      || [];
 
-      // Fetch request senders
-      const reqData: Request[] = [];
-      for (const uid of receivedUids) {
-        const s = await getDoc(doc(db, "users", uid));
-        if (s.exists()) {
-          const d = s.data();
-          reqData.push({ uid, name: d.name, traceXId: d.tracexId });
-        }
-      }
+      // Fetch ALL requests in parallel
+      const reqProfiles = await Promise.all(
+        receivedUids.map((uid) => getDoc(doc(db, "users", uid)))
+      );
+      const reqData: Request[] = reqProfiles
+        .filter((s) => s.exists())
+        .map((s) => ({
+          uid:      s.id,
+          name:     s.data()!.name,
+          traceXId: s.data()!.tracexId,
+        }));
       setRequests(reqData);
 
-      // Fetch friends
-      const friendData: Friend[] = [];
-      for (const uid of friendUids) {
-        const s = await getDoc(doc(db, "users", uid));
-        if (s.exists()) {
-          const d = s.data();
-          friendData.push({ uid, name: d.name, traceXId: d.tracexId, status: d.status || "Offline" });
-        }
-      }
+      // Fetch ALL friends in parallel
+      const friendProfiles = await Promise.all(
+        friendUids.map((uid) => getDoc(doc(db, "users", uid)))
+      );
+      const friendData: Friend[] = friendProfiles
+        .filter((s) => s.exists())
+        .map((s) => ({
+          uid:      s.id,
+          name:     s.data()!.name,
+          traceXId: s.data()!.tracexId,
+          status:   s.data()!.status || "Offline",
+        }));
       setFriends(friendData);
     });
     return () => unsub();
   }, [myUid]);
+
+  // ── Live friend status sync (instant online/offline) ───────
+  useEffect(() => {
+    if (friends.length === 0) return;
+
+    const unsubs = friends.map((friend) =>
+      onSnapshot(doc(db, "users", friend.uid), (snap) => {
+        if (!snap.exists()) return;
+        const newStatus = snap.data().status || "Offline";
+        setFriends((prev) =>
+          prev.map((f) =>
+            f.uid === friend.uid ? { ...f, status: newStatus } : f
+          )
+        );
+      })
+    );
+
+    return () => unsubs.forEach((unsub) => unsub());
+  }, [friends.length]);
 
   // ── Copy TraceX ID ─────────────────────────────────────────
   function handleCopy() {
@@ -176,7 +200,7 @@ export default function Friends() {
   // ── Remove friend ──────────────────────────────────────────
   async function removeFriend(friendUid: string) {
     if (!myUid) return;
-    await updateDoc(doc(db, "users", myUid),    { friends: arrayRemove(friendUid) });
+    await updateDoc(doc(db, "users", myUid),     { friends: arrayRemove(friendUid) });
     await updateDoc(doc(db, "users", friendUid), { friends: arrayRemove(myUid) });
   }
 
@@ -290,14 +314,16 @@ export default function Friends() {
                   <p className="text-xs text-slate-400">{friend.traceXId}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                  <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
                     friend.status === "Online"
-                      ? "bg-green-900 text-green-300"
-                      : "bg-slate-800 text-slate-400"
+                      ? "bg-green-900/40 text-green-300"
+                      : "bg-red-900/20 text-red-400"
                   }`}>
-                    {friend.status}
+                    {friend.status === "Online" ? "🟢" : "🔴"} {friend.status}
                   </span>
-                  <Button variant="ghost" onClick={() => removeFriend(friend.uid)}>Remove</Button>
+                  <Button variant="ghost" onClick={() => removeFriend(friend.uid)}>
+                    Remove
+                  </Button>
                 </div>
               </div>
             ))}
