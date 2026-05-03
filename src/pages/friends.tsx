@@ -1,215 +1,216 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { initializeApp, getApps } from "firebase/app";
+import { useEffect, useState }from "react";
+import { User } from "firebase/auth";
+import { db, auth } from "@/lib/firebase"; // Assuming centralized Firebase
 import {
-  getAuth,
-  onAuthStateChanged,
-} from "firebase/auth";
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  arrayUnion,
-  arrayRemove,
-  onSnapshot,
   collection,
   query,
   where,
+  onSnapshot,
+  doc,
+  updateDoc,
+  writeBatch,
   getDocs,
+  setDoc,
+  getDoc,
+  arrayUnion,
+  arrayRemove,
+  deleteDoc,
 } from "firebase/firestore";
+
 import AppShell from "@/components/AppShell";
 import Button from "@/components/Button";
 import Input from "@/components/Input";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 
-// ── Firebase config ────────────────────────────────────────────
-const firebaseConfig = {
-  apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId:         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket:     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app  = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db   = getFirestore(app);
-
-// ── Generate a unique TraceX ID ────────────────────────────────
-function genTraceXId() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let id = "TRX";
-  for (let i = 0; i < 8; i++) id += chars[Math.floor(Math.random() * chars.length)];
-  return id;
-}
-
-// ── Types ──────────────────────────────────────────────────────
-interface Friend {
-  uid:      string;
-  name:     string;
+// More descriptive and reusable types
+interface UserProfile {
+  uid: string;
+  name: string;
   traceXId: string;
-  status:   "Online" | "Offline";
+  status?: "Online" | "Offline";
 }
 
-interface Request {
-  uid:      string;
-  name:     string;
-  traceXId: string;
+interface Friend extends UserProfile {}
+interface FriendRequest extends UserProfile {}
+
+/**
+ * Efficiently fetches user profiles in batches of up to 30.
+ * @param uids - Array of user UIDs to fetch.
+ * @returns A map of UID to UserProfile.
+ */
+async function fetchProfiles(uids: string[]): Promise<Map<string, UserProfile>> {
+  const profiles = new Map<string, UserProfile>();
+  if (uids.length === 0) return profiles;
+
+  // Firestore 'in' queries are limited to 30 items per query.
+  for (let i = 0; i < uids.length; i += 30) {
+    const chunk = uids.slice(i, i + 30);
+    const q = query(collection(db, "users"), where("uid", "in", chunk));
+    const snapshot = await getDocs(q);
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      profiles.set(doc.id, {
+        uid: doc.id,
+        name: data.name,
+        traceXId: data.traceXId,
+        status: data.status,
+      });
+    });
+  }
+  return profiles;
 }
 
-export default function Friends() {
-  const [myUid,     setMyUid]     = useState<string | null>(null);
-  const [myTraceId, setMyTraceId] = useState("");
-  const [myName,    setMyName]    = useState("");
+export default function FriendsPage() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [myProfile, setMyProfile] = useState<UserProfile | null>(null);
 
-  const [searchId,  setSearchId]  = useState("");
-  const [searchErr, setSearchErr] = useState("");
-  const [searchOk,  setSearchOk]  = useState("");
-
-  const [requests, setRequests] = useState<Request[]>([]);
-  const [friends,  setFriends]  = useState<Friend[]>([]);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [requests, setRequests] = useState<FriendRequest[]>([]);
+  const [sentRequests, setSentRequests] = useState<string[]>([]); // Store UIDs of users I've sent requests to
 
   const [loading, setLoading] = useState(true);
 
-  // ── Auth & user doc setup ────────────────────────────────────
+  // Search state
+  const [searchId, setSearchId] = useState("");
+  const [searchErr, setSearchErr] = useState("");
+  const [searchOk, setSearchOk] = useState("");
+
+  // Main listener for auth state and user profile
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) { setLoading(false); return; }
-      setMyUid(user.uid);
-
-      const ref  = doc(db, "users", user.uid);
-      const snap = await getDoc(ref);
-
-      if (!snap.exists()) {
-        // First time — create user doc
-        const tracexId = genTraceXId();
-        const name     = user.displayName || user.email?.split("@")[0] || "TraceX User";
-        await setDoc(ref, {
-          tracexId,
-          name,
-          email:      user.email,
-          status:     "Online",
-          friends:    [],
-          sentReqs:   [],
-          receivedReqs: [],
-        });
-        setMyTraceId(tracexId);
-        setMyName(name);
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        setCurrentUser(user);
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          setMyProfile({ uid: user.uid, ...data } as UserProfile);
+        }
       } else {
-        const data = snap.data();
-        setMyTraceId(data.tracexId);
-        setMyName(data.name);
-        // Mark online
-        await updateDoc(ref, { status: "Online" });
+        setCurrentUser(null);
+        setMyProfile(null);
       }
-
       setLoading(false);
     });
-
-    // Mark offline on tab close
-    const handleUnload = async () => {
-      if (auth.currentUser) {
-        await updateDoc(doc(db, "users", auth.currentUser.uid), { status: "Offline" });
-      }
-    };
-    window.addEventListener("beforeunload", handleUnload);
-    return () => { unsub(); window.removeEventListener("beforeunload", handleUnload); };
+    return () => unsubscribe();
   }, []);
 
-  // ── Live listener: incoming requests ─────────────────────────
+  // Listener for friends, incoming requests, and sent requests
   useEffect(() => {
-    if (!myUid) return;
-    const ref = doc(db, "users", myUid);
-    const unsub = onSnapshot(ref, async (snap) => {
+    if (!myProfile) return;
+
+    const userRef = doc(db, "users", myProfile.uid);
+    const unsubscribe = onSnapshot(userRef, async (snap) => {
       if (!snap.exists()) return;
-      const receivedUids: string[] = snap.data().receivedReqs || [];
-      const friendUids:   string[] = snap.data().friends      || [];
 
-      // Fetch request sender profiles
-      const reqData: Request[] = [];
-      for (const uid of receivedUids) {
-        const s = await getDoc(doc(db, "users", uid));
-        if (s.exists()) {
-          const d = s.data();
-          reqData.push({ uid, name: d.name, traceXId: d.tracexId });
-        }
-      }
-      setRequests(reqData);
+      const data = snap.data();
+      const friendUIDs = data.friends || [];
+      const receivedReqUIDs = data.receivedReqs || [];
+      
+      setSentRequests(data.sentReqs || []);
 
-      // Fetch friend profiles
-      const friendData: Friend[] = [];
-      for (const uid of friendUids) {
-        const s = await getDoc(doc(db, "users", uid));
-        if (s.exists()) {
-          const d = s.data();
-          friendData.push({ uid, name: d.name, traceXId: d.tracexId, status: d.status });
-        }
-      }
-      setFriends(friendData);
+      const [friendProfiles, requestProfiles] = await Promise.all([
+        fetchProfiles(friendUIDs),
+        fetchProfiles(receivedReqUIDs),
+      ]);
+
+      setFriends(Array.from(friendProfiles.values()));
+      setRequests(Array.from(requestProfiles.values()));
     });
-    return () => unsub();
-  }, [myUid]);
 
-  // ── Send friend request ───────────────────────────────────────
+    return () => unsubscribe();
+  }, [myProfile]);
+  
   async function sendRequest() {
-    setSearchErr(""); setSearchOk("");
+    setSearchErr("");
+    setSearchOk("");
+    if (!myProfile) return;
+
     const id = searchId.trim().toUpperCase();
-    if (!id) { setSearchErr("Please enter a TraceX ID."); return; }
-    if (id === myTraceId) { setSearchErr("You can't add yourself!"); return; }
+    if (!id) {
+      setSearchErr("Please enter a TraceX ID.");
+      return;
+    }
+    if (id === myProfile.traceXId) {
+      setSearchErr("You can't add yourself!");
+      return;
+    }
 
-    // Find user by traceXId
-    const q    = query(collection(db, "users"), where("tracexId", "==", id));
+    const q = query(collection(db, "users"), where("tracexId", "==", id));
     const snap = await getDocs(q);
-    if (snap.empty) { setSearchErr("TraceX ID not found."); return; }
-
-    const targetDoc  = snap.docs[0];
-    const targetUid  = targetDoc.id;
-    const targetData = targetDoc.data();
-
-    // Check already friends
-    if ((targetData.friends || []).includes(myUid)) {
-      setSearchErr("Already friends!"); return;
-    }
-    // Check already sent
-    if ((targetData.receivedReqs || []).includes(myUid)) {
-      setSearchErr("Request already sent."); return;
+    if (snap.empty) {
+      setSearchErr("TraceX ID not found.");
+      return;
     }
 
-    // Add to their receivedReqs and my sentReqs
-    await updateDoc(doc(db, "users", targetUid), { receivedReqs: arrayUnion(myUid) });
-    await updateDoc(doc(db, "users", myUid!),    { sentReqs:     arrayUnion(targetUid) });
+    const targetUserDoc = snap.docs[0];
+    const targetUid = targetUserDoc.id;
+    const targetData = targetUserDoc.data();
+
+    if ((myProfile as any).friends?.includes(targetUid)) {
+      setSearchErr("You are already friends!");
+      return;
+    }
+    if (sentRequests.includes(targetUid)) {
+      setSearchErr("Request already sent.");
+      return;
+    }
+     if (requests.some(req => req.uid === targetUid)) {
+      setSearchErr("This user has already sent you a request. Check your requests list.");
+      return;
+    }
+
+    const batch = writeBatch(db);
+    batch.update(doc(db, "users", targetUid), { receivedReqs: arrayUnion(myProfile.uid) });
+    batch.update(doc(db, "users", myProfile.uid), { sentReqs: arrayUnion(targetUid) });
+    await batch.commit();
 
     setSearchOk(`Friend request sent to ${targetData.name}! 🎉`);
     setSearchId("");
   }
-
-  // ── Accept request ────────────────────────────────────────────
+  
   async function acceptRequest(senderUid: string) {
-    if (!myUid) return;
-    // Add each other to friends list
-    await updateDoc(doc(db, "users", myUid),      { friends: arrayUnion(senderUid), receivedReqs: arrayRemove(senderUid) });
-    await updateDoc(doc(db, "users", senderUid),  { friends: arrayUnion(myUid),     sentReqs:     arrayRemove(myUid) });
+    if (!myProfile) return;
+    const batch = writeBatch(db);
+
+    // My user doc: add to friends, remove from receivedReqs
+    batch.update(doc(db, "users", myProfile.uid), {
+      friends: arrayUnion(senderUid),
+      receivedReqs: arrayRemove(senderUid),
+    });
+
+    // Sender's user doc: add to friends, remove from sentReqs
+    batch.update(doc(db, "users", senderUid), {
+      friends: arrayUnion(myProfile.uid),
+      sentReqs: arrayRemove(myProfile.uid),
+    });
+    
+    await batch.commit();
   }
 
-  // ── Reject request ────────────────────────────────────────────
   async function rejectRequest(senderUid: string) {
-    if (!myUid) return;
-    await updateDoc(doc(db, "users", myUid),     { receivedReqs: arrayRemove(senderUid) });
-    await updateDoc(doc(db, "users", senderUid), { sentReqs:     arrayRemove(myUid) });
+    if (!myProfile) return;
+    const batch = writeBatch(db);
+    // My user doc: remove from receivedReqs
+    batch.update(doc(db, "users", myProfile.uid), { receivedReqs: arrayRemove(senderUid) });
+    // Sender's user doc: remove from sentReqs
+    batch.update(doc(db, "users", senderUid), { sentReqs: arrayRemove(myProfile.uid) });
+    await batch.commit();
   }
 
-  // ── Remove friend ─────────────────────────────────────────────
   async function removeFriend(friendUid: string) {
-    if (!myUid) return;
-    await updateDoc(doc(db, "users", myUid),      { friends: arrayRemove(friendUid) });
-    await updateDoc(doc(db, "users", friendUid),  { friends: arrayRemove(myUid) });
+    if (!myProfile) return;
+    const batch = writeBatch(db);
+    // My user doc: remove from friends
+    batch.update(doc(db, "users", myProfile.uid), { friends: arrayRemove(friendUid) });
+    // Friend's user doc: remove from friends
+    batch.update(doc(db, "users", friendUid), { friends: arrayRemove(myProfile.uid) });
+    await batch.commit();
   }
-
+  
   if (loading) {
     return (
       <AppShell>
@@ -218,7 +219,7 @@ export default function Friends() {
     );
   }
 
-  if (!myUid) {
+  if (!currentUser || !myProfile) {
     return (
       <AppShell>
         <div className="flex items-center justify-center h-64 text-slate-400">
@@ -235,22 +236,20 @@ export default function Friends() {
         subtitle="Connect, motivate, and study together."
       />
 
-      {/* My TraceX ID */}
       <SectionCard title="Your TraceX ID" description="Share this with friends so they can add you.">
         <div className="flex items-center gap-3">
           <span className="rounded-lg bg-slate-800 px-4 py-2 font-mono text-lg font-bold tracking-widest text-white">
-            {myTraceId}
+            {myProfile.traceXId}
           </span>
           <Button
             variant="secondary"
-            onClick={() => { navigator.clipboard.writeText(myTraceId); }}
+            onClick={() => { navigator.clipboard.writeText(myProfile.traceXId); }}
           >
             Copy
           </Button>
         </div>
       </SectionCard>
 
-      {/* Add Friend */}
       <SectionCard title="Add Friend by TraceX ID" description="Send a request to connect.">
         <div className="flex flex-wrap gap-3">
           <Input
@@ -263,8 +262,7 @@ export default function Friends() {
         {searchErr && <p className="mt-2 text-xs text-red-400">{searchErr}</p>}
         {searchOk  && <p className="mt-2 text-xs text-green-400">{searchOk}</p>}
       </SectionCard>
-
-      {/* Incoming Requests */}
+      
       <SectionCard title="Requests" description="Approve or reject incoming invites.">
         {requests.length === 0 ? (
           <p className="text-sm text-slate-500">No pending requests.</p>
@@ -288,8 +286,7 @@ export default function Friends() {
           </div>
         )}
       </SectionCard>
-
-      {/* Friends List */}
+      
       <SectionCard title="Friends List" description="Status, session joins, and motivation cards.">
         {friends.length === 0 ? (
           <p className="text-sm text-slate-500">No friends yet. Add someone using their TraceX ID!</p>
@@ -326,6 +323,7 @@ export default function Friends() {
           <Button variant="secondary">Share Study Plan</Button>
         </div>
       </SectionCard>
+
     </AppShell>
   );
 }

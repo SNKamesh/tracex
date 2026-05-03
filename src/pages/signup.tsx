@@ -104,7 +104,6 @@ export default function Signup() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("start");
 
-  // -- Sign In state --
   const [siEmail, setSiEmail]                   = useState("");
   const [siPass, setSiPass]                     = useState("");
   const [siEmailErr, setSiEmailErr]             = useState("");
@@ -112,7 +111,6 @@ export default function Signup() {
   const [siLoading, setSiLoading]               = useState(false);
   const [passwordResetSuccess, setPasswordResetSuccess] = useState(false);
 
-  // -- Create Account state --
   const [caEmail, setCaEmail]       = useState("");
   const [caPass, setCaPass]         = useState("");
   const [caPass2, setCaPass2]       = useState("");
@@ -120,7 +118,6 @@ export default function Signup() {
   const [caPassErr, setCaPassErr]   = useState("");
   const [caLoading, setCaLoading]   = useState(false);
 
-  // -- OTP state --
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [enteredOtp, setEnteredOtp]     = useState("");
   const [otpErr, setOtpErr]             = useState("");
@@ -128,12 +125,10 @@ export default function Signup() {
   const [otpTimer, setOtpTimer]         = useState(60);
   const [canResend, setCanResend]       = useState(false);
 
-  // -- Profile state --
   const [name, setName]           = useState("");
   const [nameErr, setNameErr]     = useState("");
   const [studyType, setStudyType] = useState(studyOptions[0]);
 
-  // -- Forgot Password state --
   const [fpEmail, setFpEmail]       = useState("");
   const [fpEmailErr, setFpEmailErr] = useState("");
   const [fpLoading, setFpLoading]   = useState(false);
@@ -145,7 +140,6 @@ export default function Signup() {
   const sessionUnsubRef = useRef<(() => void) | null>(null);
   const forcedOutRef    = useRef(false);
 
-  // -- OTP countdown --
   useEffect(() => {
     if (step !== "create_otp" && step !== "forgot_otp") return;
     setOtpTimer(60); setCanResend(false);
@@ -374,37 +368,48 @@ export default function Signup() {
 
         {/* -- START -- */}
         {step === "start" && (
-          <>
-            {/* ANIME MASCOT START */}
-            <div style={{ position: "relative", width: "100px", height: "100px", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 32px auto" }}>
-              <div style={{ position: "absolute", top: "-5px", width: "60px", height: "45px", borderTop: "4px solid #00d8ff", borderLeft: "4px solid #00d8ff", borderRight: "4px solid #00d8ff", borderRadius: "30px 30px 0 0", boxShadow: "0 -4px 20px rgba(0, 216, 255, 0.4)" }} />
-              <span style={{ fontSize: "64px", fontWeight: 900, color: "#00d8ff", fontStyle: "italic", zIndex: 10, textShadow: "0 0 15px rgba(0, 216, 255, 0.5)" }}>X</span>
-              <div style={{ position: "absolute", right: "-15px", bottom: "25px", zIndex: 20, width: "32px", height: "24px", backgroundColor: "#FFFFFF", border: "1px solid #cbd5e1", borderRadius: "6px", transform: "rotate(-12deg)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 6px rgba(0,0,0,0.3)" }}>
-                <div style={{ position: "absolute", top: "5px", left: "8px", width: "1px", height: "10px", backgroundColor: "#e2e8f0" }} />
-                <div style={{ position: "absolute", top: "5px", left: "15px", width: "1px", height: "10px", backgroundColor: "#e2e8f0" }} />
-                <span style={{ position: "absolute", top: "-15px", right: "-8px", fontSize: "24px" }}>📖</span>
-              </div>
-              <div style={{ position: "absolute", bottom: "0", width: "100%", display: "flex", justifyContent: "space-between", padding: "0 12px" }}>
-                <div style={{ width: "26px", height: "14px", backgroundColor: "#00d8ff", borderRadius: "8px", borderBottom: "4px solid rgba(255,255,255,0.4)" }} />
-                <div style={{ width: "26px", height: "14px", backgroundColor: "#00d8ff", borderRadius: "8px", borderBottom: "4px solid rgba(255,255,255,0.4)" }} />
-              </div>
-            </div>
-            {/* ANIME MASCOT END */}
-
-            <h1 className="text-center text-4xl font-black italic mb-2 tracking-tighter">
+          <div style={{
+            backgroundColor: "#1e2433",
+            borderRadius: "16px",
+            padding: "40px 32px",
+            width: "100%",
+            maxWidth: "440px",
+            margin: "0 auto",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+          }}>
+            <h1 className="text-center text-3xl font-black mb-2">
               Welcome to <span style={{ color: "#00d8ff" }}>TraceX</span>
             </h1>
-            <p className="text-center text-slate-400 mb-10 font-medium italic">Where chaos turns into clarity.</p>
-            <div className="flex flex-col gap-3">
-              <Button onClick={() => { setStep("signin"); setSiEmailErr(""); setSiPassErr(""); setSiEmail(""); setSiPass(""); setPasswordResetSuccess(false); }}>
-                Continue with Email
-              </Button>
-              <p className="text-center mt-4 cursor-pointer text-slate-400 hover:text-white transition text-sm"
-                onClick={() => { setStep("create_form"); setCaEmailErr(""); setCaPassErr(""); setCaEmail(""); setCaPass(""); setCaPass2(""); }}>
-                Create a full TraceX account
-              </p>
-            </div>
-          </>
+            <p className="text-center text-slate-400 italic mb-8 text-sm">
+              Where chaos turns into clarity
+            </p>
+            <p className="text-center font-semibold text-white mb-1">Get Started</p>
+            <p className="text-center text-slate-400 text-sm mb-6">
+              Sign in or create a new account to continue.
+            </p>
+            <Button onClick={() => {
+              setStep("signin");
+              setSiEmailErr("");
+              setSiPassErr("");
+              setSiEmail("");
+              setSiPass("");
+              setPasswordResetSuccess(false);
+            }}>
+              Continue with Email
+            </Button>
+            <p
+              className="text-center mt-5 cursor-pointer text-slate-500 hover:text-slate-300 transition text-sm underline"
+              onClick={() => {
+                setStep("create_form");
+                setCaEmailErr("");
+                setCaPassErr("");
+                setCaEmail("");
+                setCaPass("");
+                setCaPass2("");
+              }}>
+              Create a full TraceX account
+            </p>
+          </div>
         )}
 
         {/* -- SIGN IN -- */}
@@ -424,7 +429,7 @@ export default function Signup() {
 
             {passwordResetSuccess && (
               <p className="mt-1 text-xs text-green-400 font-medium">
-                 Password reset successfully! Sign in with your new password.
+                ✅ Password reset successfully! Sign in with your new password.
               </p>
             )}
 
@@ -530,7 +535,7 @@ export default function Signup() {
           </SectionCard>
         )}
 
-        {/* -- FORGOT PASSWORD -- */}
+        {/* -- FORGOT EMAIL -- */}
         {step === "forgot_email" && (
           <SectionCard title="Reset Password" description="Enter your TraceX account email. We'll send a 6-digit OTP to verify it's you.">
             <label className="text-sm text-slate-300 mb-1 block">Email Address</label>

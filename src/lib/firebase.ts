@@ -3,7 +3,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAinCVrryK24iInAUQCLDbLkorsXiaXXD0",
+  apiKey: "AIzaSyB9_Zex3aXWXAUQK3pjFs8m_i9NPK2gNKg",
   authDomain: "tracex-10c51.firebaseapp.com",
   projectId: "tracex-10c51",
   storageBucket: "tracex-10c51.firebasestorage.app",
