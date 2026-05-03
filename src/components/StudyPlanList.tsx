@@ -11,12 +11,14 @@ import {
   deleteDoc,
   doc,
   orderBy,
+  updateDoc,
 } from "firebase/firestore";
 
 interface Task {
   id: string;
   text: string;
   reminderTime?: string;
+  completed?: boolean;
   createdAt?: any;
 }
 
@@ -30,6 +32,13 @@ export default function StudyPlanList() {
 
   const timeInputRef = useRef<HTMLInputElement>(null);
   const notifiedTasks = useRef<Set<string>>(new Set());
+
+  // ── Request notification permission ───────────────────────
+  useEffect(() => {
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
 
   // ── Auth listener ──────────────────────────────────────────
   useEffect(() => {
@@ -107,6 +116,7 @@ export default function StudyPlanList() {
       await addDoc(collection(db, "users", uid, "studyPlans"), {
         text: newTask.trim(),
         reminderTime: reminderTime || null,
+        completed: false,
         createdAt: serverTimestamp(),
       });
       setNewTask("");
@@ -114,6 +124,18 @@ export default function StudyPlanList() {
       setInputError("");
     } catch (error) {
       console.error("Error adding task:", error);
+    }
+  }
+
+  // ── Toggle complete ────────────────────────────────────────
+  async function toggleComplete(id: string, current: boolean) {
+    if (!uid) return;
+    try {
+      await updateDoc(doc(db, "users", uid, "studyPlans", id), {
+        completed: !current,
+      });
+    } catch (error) {
+      console.error("Error updating task:", error);
     }
   }
 
@@ -207,17 +229,40 @@ export default function StudyPlanList() {
           items.map((item) => (
             <div
               key={item.id}
-              className="rounded-xl bg-slate-900/40 border border-slate-800/60 px-4 py-3 text-sm flex justify-between items-center group transition-all hover:border-slate-700 hover:bg-slate-900/60"
+              className={`rounded-xl border px-4 py-3 text-sm flex justify-between items-center group transition-all hover:border-slate-700 ${
+                item.completed
+                  ? "bg-slate-900/20 border-slate-800/30"
+                  : "bg-slate-900/40 border-slate-800/60 hover:bg-slate-900/60"
+              }`}
             >
-              <div className="flex flex-col gap-1">
-                <span className="text-slate-200 font-medium">{item.text}</span>
-                {item.reminderTime && (
-                  <div className="flex items-center gap-1 text-blue-400 text-[11px] font-semibold">
-                    <span className="text-xs">🔔</span>
-                    <span>Remind at {item.reminderTime}</span>
-                  </div>
-                )}
+              <div className="flex items-start gap-3">
+                {/* Checkbox */}
+                <input
+                  type="checkbox"
+                  checked={item.completed || false}
+                  onChange={() => toggleComplete(item.id, item.completed || false)}
+                  className="w-4 h-4 accent-blue-500 cursor-pointer mt-0.5"
+                />
+                <div className="flex flex-col gap-1">
+                  <span
+                    className={`font-medium ${
+                      item.completed
+                        ? "line-through text-slate-500"
+                        : "text-slate-200"
+                    }`}
+                  >
+                    {item.text}
+                  </span>
+                  {item.reminderTime && (
+                    <div className="flex items-center gap-1 text-blue-400 text-[11px] font-semibold">
+                      <span className="text-xs">🔔</span>
+                      <span>Remind at {item.reminderTime}</span>
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Delete button */}
               <button
                 onClick={() => handleDelete(item.id)}
                 className="text-slate-500 hover:text-red-500 transition-all p-2 rounded-lg hover:bg-red-500/10"
@@ -229,6 +274,13 @@ export default function StudyPlanList() {
           ))
         )}
       </div>
+
+      {/* Completed count */}
+      {items.length > 0 && (
+        <p className="text-slate-500 text-xs text-right">
+          {items.filter((i) => i.completed).length} / {items.length} completed
+        </p>
+      )}
     </div>
   );
 }
