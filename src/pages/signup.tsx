@@ -387,28 +387,30 @@ export default function Signup() {
             <p className="text-center text-slate-400 text-sm mb-6">
               Sign in or create a new account to continue.
             </p>
-            <Button onClick={() => {
-              setStep("signin");
-              setSiEmailErr("");
-              setSiPassErr("");
-              setSiEmail("");
-              setSiPass("");
-              setPasswordResetSuccess(false);
-            }}>
-              Continue with Email
-            </Button>
-            <p
-              className="text-center mt-5 cursor-pointer text-slate-500 hover:text-slate-300 transition text-sm underline"
-              onClick={() => {
-                setStep("create_form");
-                setCaEmailErr("");
-                setCaPassErr("");
-                setCaEmail("");
-                setCaPass("");
-                setCaPass2("");
+            <div className="flex flex-col items-center gap-4 w-full max-w-sm mx-auto">
+              <Button onClick={() => {
+                setStep("signin");
+                setSiEmailErr("");
+                setSiPassErr("");
+                setSiEmail("");
+                setSiPass("");
+                setPasswordResetSuccess(false);
               }}>
-              Create a full TraceX account
-            </p>
+                Continue with Email
+              </Button>
+              <p
+                className="text-center mt-2 cursor-pointer text-slate-500 hover:text-slate-300 transition text-sm underline"
+                onClick={() => {
+                  setStep("create_form");
+                  setCaEmailErr("");
+                  setCaPassErr("");
+                  setCaEmail("");
+                  setCaPass("");
+                  setCaPass2("");
+                }}>
+                Create a full TraceX account
+              </p>
+            </div>
           </div>
         )}
 

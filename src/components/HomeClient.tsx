@@ -63,6 +63,7 @@ export default function HomeClient() {
   });
   const [loaded, setLoaded] = useState(false);
   const [idCopied, setIdCopied] = useState(false);
+  const [copyError, setCopyError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -176,10 +177,17 @@ export default function HomeClient() {
     : "TraceX dashboard is active.";
 
   function handleCopyId() {
-    if (!onboarding.tracexId) return;
+    if (!onboarding.tracexId) {
+        setCopyError("ID not available yet.");
+        setTimeout(() => setCopyError(""), 2000);
+        return;
+    };
     navigator.clipboard.writeText(onboarding.tracexId).then(() => {
       setIdCopied(true);
       setTimeout(() => setIdCopied(false), 2000);
+    }).catch(() => {
+      setCopyError("Failed to copy.");
+      setTimeout(() => setCopyError(""), 2000);
     });
   }
 
@@ -192,7 +200,7 @@ export default function HomeClient() {
       />
 
       {/* TraceX ID Badge */}
-      <div className="flex items-center gap-2 -mt-2 mb-4">
+      <div className="flex items-center gap-2 -mt-2 mb-1">
         <span className="text-xs text-slate-500">TraceX ID:</span>
         {loaded ? (
           onboarding.tracexId ? (
@@ -212,7 +220,7 @@ export default function HomeClient() {
                 onClick={handleCopyId}
                 className="text-xs text-slate-500 hover:text-cyan-400 transition-colors"
               >
-                {idCopied ? "✓ Copied" : "Copy"}
+                Copy
               </button>
             </>
           ) : (
@@ -221,6 +229,12 @@ export default function HomeClient() {
         ) : (
           <span className="text-xs text-slate-700 italic">Loading…</span>
         )}
+      </div>
+
+      {/* Copy feedback message */}
+      <div className="h-4 mb-3">
+        {idCopied && <p className="text-xs text-green-400">Copied to clipboard!</p>}
+        {copyError && <p className="text-xs text-red-500">{copyError}</p>}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
