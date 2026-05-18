@@ -39,17 +39,12 @@ function greetingByHour(hour: number) {
 
 function generateTracexId(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let id = "TRX-";
-  for (let i = 0; i < 6; i++) {
-    id += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return id;
+  return "TRX-" + Array.from({length:6}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
 }
 
 export default function HomeClient() {
   const [isPremium, setIsPremium] = useState(false);
   const [onboarding, setOnboarding] = useState<OnboardingData>(() => {
-    // Try to load instantly from localStorage on first render
     try {
       if (typeof window !== "undefined") {
         const keys = Object.keys(localStorage).filter(k => k.startsWith("tracex:onboarding:"));
@@ -58,7 +53,7 @@ export default function HomeClient() {
           if (stored) return JSON.parse(stored);
         }
       }
-    } catch { /* ignore */ }
+    } catch {}
     return {};
   });
   const [loaded, setLoaded] = useState(false);
@@ -69,26 +64,15 @@ export default function HomeClient() {
     let cancelled = false;
 
     async function init() {
-      const { getAuth, onAuthStateChanged } = await import("firebase/auth");
-      const auth = getAuth();
+      // Use centralized firebase instance
+      const { auth, db } = await import("@/lib/firebase");
+      const { onAuthStateChanged } = await import("firebase/auth");
+      const { doc, getDoc, updateDoc, setDoc, collection, query, where, getDocs } = await import("firebase/firestore");
 
       onAuthStateChanged(auth, async (user) => {
         if (!user || cancelled) return;
 
         try {
-          const {
-            getFirestore,
-            doc,
-            getDoc,
-            updateDoc,
-            setDoc,
-            collection,
-            query,
-            where,
-            getDocs,
-          } = await import("firebase/firestore");
-
-          const db = getFirestore();
           const userRef = doc(db, "users", user.uid);
           const snap = await getDoc(userRef);
 
@@ -105,26 +89,16 @@ export default function HomeClient() {
             }
           }
 
-          // Auto-generate TraceX ID if missing — works for NEW and EXISTING users
+          // Auto-generate TraceX ID if missing
           if (!data.tracexId) {
             let tracexId = generateTracexId();
-
-            // Collision check
             let isUnique = false;
             while (!isUnique) {
-              const q = query(
-                collection(db, "users"),
-                where("tracexId", "==", tracexId)
-              );
-              const existing = await getDocs(q);
-              if (existing.empty) {
-                isUnique = true;
-              } else {
-                tracexId = generateTracexId();
-              }
+              const existing = await getDocs(query(collection(db, "users"), where("tracexId", "==", tracexId)));
+              if (existing.empty) isUnique = true;
+              else tracexId = generateTracexId();
             }
 
-            // Save to Firestore silently
             if (snap.exists()) {
               await updateDoc(userRef, { tracexId });
             } else {
@@ -140,19 +114,12 @@ export default function HomeClient() {
             data.tracexId = tracexId;
 
             try {
-              localStorage.setItem(
-                `tracex:onboarding:${user.uid}`,
-                JSON.stringify({ ...data, tracexId })
-              );
-            } catch { /* ignore */ }
+              localStorage.setItem(`tracex:onboarding:${user.uid}`, JSON.stringify({...data, tracexId}));
+            } catch {}
           }
 
           if (!cancelled) {
-            setOnboarding({
-              name: data.name,
-              studyType: data.studyType,
-              tracexId: data.tracexId,
-            });
+            setOnboarding({ name: data.name, studyType: data.studyType, tracexId: data.tracexId });
             setLoaded(true);
           }
         } catch (err) {
@@ -167,21 +134,17 @@ export default function HomeClient() {
   }, []);
 
   const greeting = useMemo(() => greetingByHour(new Date().getHours()), []);
-
-  const title = loaded
-    ? `${greeting}, ${onboarding.name || "Scholar"}`
-    : greeting;
-
+  const title = loaded ? `${greeting}, ${onboarding.name || "Scholar"}` : greeting;
   const subtitle = onboarding.studyType
     ? `${onboarding.studyType} learner • TraceX dashboard is active.`
     : "TraceX dashboard is active.";
 
   function handleCopyId() {
     if (!onboarding.tracexId) {
-        setCopyError("ID not available yet.");
-        setTimeout(() => setCopyError(""), 2000);
-        return;
-    };
+      setCopyError("ID not available yet.");
+      setTimeout(() => setCopyError(""), 2000);
+      return;
+    }
     navigator.clipboard.writeText(onboarding.tracexId).then(() => {
       setIdCopied(true);
       setTimeout(() => setIdCopied(false), 2000);
@@ -205,42 +168,27 @@ export default function HomeClient() {
         {loaded ? (
           onboarding.tracexId ? (
             <>
-              <span
-                className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md"
-                style={{
-                  background: "rgba(0,216,255,0.08)",
-                  color: "#00d8ff",
-                  border: "1px solid rgba(0,216,255,0.2)",
-                  letterSpacing: "0.06em",
-                }}
-              >
+              <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md"
+                style={{ background:"rgba(0,216,255,0.08)", color:"#00d8ff", border:"1px solid rgba(0,216,255,0.2)", letterSpacing:"0.06em" }}>
                 {onboarding.tracexId}
               </span>
-              <button
-                onClick={handleCopyId}
-                className="text-xs text-slate-500 hover:text-cyan-400 transition-colors"
-              >
-                Copy
-              </button>
+              <button onClick={handleCopyId} className="text-xs text-slate-500 hover:text-cyan-400 transition-colors">Copy</button>
             </>
           ) : (
-            <span className="text-xs text-slate-600 italic">Generating…</span>
+            <span className="text-xs text-slate-600 italic">Not found</span>
           )
         ) : (
           <span className="text-xs text-slate-700 italic">Loading…</span>
         )}
       </div>
 
-      {/* Copy feedback message */}
       <div className="h-4 mb-3">
         {idCopied && <p className="text-xs text-green-400">Copied to clipboard!</p>}
         {copyError && <p className="text-xs text-red-500">{copyError}</p>}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        {stats.map((s) => (
-          <StatCard key={s.label} label={s.label} value={s.value} />
-        ))}
+        {stats.map(s => <StatCard key={s.label} label={s.label} value={s.value} />)}
       </div>
 
       <AdsBanner visible={!isPremium} />
@@ -260,11 +208,8 @@ export default function HomeClient() {
 
       <SectionCard title="Recently Opened" description="Resume your recent work fast.">
         <div className="grid gap-3 md:grid-cols-2">
-          {recentItems.map((item) => (
-            <div
-              key={item}
-              className="flex justify-between rounded-xl border border-slate-800 bg-slate-950 px-4 py-3"
-            >
+          {recentItems.map(item => (
+            <div key={item} className="flex justify-between rounded-xl border border-slate-800 bg-slate-950 px-4 py-3">
               <span className="text-sm text-slate-200">{item}</span>
               <span className="chip">Open</span>
             </div>
