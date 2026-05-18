@@ -20,6 +20,7 @@ import {
   getFirestore,
   doc,
   setDoc,
+  updateDoc,
   onSnapshot,
   collection,
   query,
@@ -50,6 +51,8 @@ function genTracexId() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   return "TRX-" + Array.from({length:6}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
 }
+
+// Word boundary check — won't flag "Harsha" for containing "ass"
 function hasAbuse(text: string): boolean {
   const lower = text.toLowerCase().trim();
   return BANNED_WORDS.some(w => {
@@ -58,6 +61,7 @@ function hasAbuse(text: string): boolean {
     return regex.test(lower);
   });
 }
+
 async function sendOtp(email: string, otp: string) {
   try {
     const r = await fetch("/api/send-otp", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({email, otp}) });
@@ -184,8 +188,21 @@ export default function Signup() {
       const auth = getAuth_(); if(!auth) throw new Error("Firebase not ready");
       forcedOutRef.current = false;
       const cred = await createUserWithEmailAndPassword(auth, caEmail, caPass);
-      // Session write is non-critical — don't block onboarding if it fails
+
+      // ✅ Create Firestore document immediately — even if user closes browser after this
+      try {
+        await setDoc(doc(getDb_(), "users", cred.user.uid), {
+          name: "",
+          studyType: "",
+          email: caEmail,
+          tracexId: "",
+          createdAt: Date.now(),
+        });
+      } catch {}
+
+      // Session write is non-critical
       try { const t = await writeSession(cred.user.uid); startSessionWatcher(cred.user.uid, t); } catch {}
+
       setStep("profile");
     } catch(err: any) {
       if(err?.code === "auth/email-already-in-use") { setStep("signin"); setSiEmail(caEmail); setSiEmailErr("Account already exists. Please sign in."); }
@@ -204,12 +221,16 @@ export default function Signup() {
     if(hasAbuse(name)) { setNameErr("Please use a respectful name."); return; }
     const auth = getAuth_(); const user = auth?.currentUser; if(!user) return;
     const db = getDb_();
+
+    // Generate unique TraceX ID
     let tracexId = genTracexId(); let unique = false;
     while(!unique) {
       const snap = await getDocs(query(collection(db,"users"), where("tracexId","==",tracexId)));
       if(snap.empty) unique = true; else tracexId = genTracexId();
     }
-    await setDoc(doc(db,"users",user.uid), { name, studyType, email: user.email, tracexId, createdAt: Date.now() });
+
+    // ✅ updateDoc — document already exists from handleVerifyOtp
+    await updateDoc(doc(db,"users",user.uid), { name, studyType, tracexId, updatedAt: Date.now() });
     localStorage.setItem(`tracex:onboarding:${user.uid}`, JSON.stringify({name, studyType, tracexId}));
     setStep("safety");
   }
