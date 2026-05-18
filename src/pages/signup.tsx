@@ -50,9 +50,13 @@ function genTracexId() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   return "TRX-" + Array.from({length:6}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
 }
-function hasAbuse(text: string) {
-  const lower = text.toLowerCase().replace(/\s+/g,"");
-  return BANNED_WORDS.some(w => lower.includes(w.replace(/\*/g,"")));
+function hasAbuse(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  return BANNED_WORDS.some(w => {
+    const clean = w.replace(/\*/g, ".");
+    const regex = new RegExp(`\\b${clean}\\b`, "i");
+    return regex.test(lower);
+  });
 }
 async function sendOtp(email: string, otp: string) {
   try {
