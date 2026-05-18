@@ -230,7 +230,8 @@ export default function Signup() {
       } else if (code === "auth/too-many-requests") {
         setSiPassErr("Too many attempts. Try again later.");
       } else {
-        setSiPassErr("Something went wrong. Please try again.");
+        console.log("REAL ERROR:", err?.code, err?.message);
+        setSiPassErr(`Error: ${err?.code || err?.message}`);
       }
     } finally { setSiLoading(false); }
   }
