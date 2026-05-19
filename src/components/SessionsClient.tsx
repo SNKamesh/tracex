@@ -2,108 +2,97 @@
 
 import { useState } from "react";
 import AppShell from "./AppShell";
-import Button from "./Button";
+import PageHeader from "./PageHeader";
+import SectionCard from "./SectionCard";
 import Input from "./Input";
 import Select from "./Select";
 import Toggle from "./Toggle";
-import PageHeader from "./PageHeader";
-import SectionCard from "./SectionCard";
+import Button from "./Button";
 import MicroStrictTracker from "./MicroStrictTracker";
+import ImmersiveVirtualRoom from "./ImmersiveVirtualRoom";
 
 export default function SessionsClient() {
   const [micAllowed, setMicAllowed] = useState(false);
   const [beastMode, setBeastMode] = useState(false);
 
+  // Unified Centralized Tracking State Fields
+  const [totalAccumulatedFocusSeconds, setTotalAccumulatedFocusSeconds] = useState(0);
+
+  // Callback interface injection to catch focus timestamps passing upward out of the virtual room layer
+  const handleRoomTimeBubbly = (seconds: number) => {
+    setTotalAccumulatedFocusSeconds((prev) => prev + seconds);
+  };
+
+  const formatTotalTime = (totalSeconds: number) => {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, "0");
+    const s = (totalSeconds % 60).toString().padStart(2, "0");
+    return `${h}h ${m}m ${s}s`;
+  };
+
   return (
     <AppShell>
       <PageHeader
-        title="Study Sessions"
-        subtitle="Create, join, and manage focus rooms."
+        title="TraceX Multi-Track Study Core"
+        subtitle="Combine hardcore automated AI tracking with immersive multimedia environments."
       />
 
-      {/* THE MICROSTRICT AI TRACKER (Supreme Tier Feature) */}
-      <div className="mb-6">
+      {/* CENTRAL CONSOLIDATED CORE PROGRESS METRIC */}
+      <div className="mb-6 bg-gradient-to-r from-slate-950 via-blue-950/20 to-slate-950 border border-blue-900/40 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+        <div className="space-y-1">
+          <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Total Unified Session Focus Pool</h3>
+          <p className="text-xs text-slate-400">Merged automatic metrics and virtual room blocks ready to sync to dashboard.</p>
+        </div>
+        <div className="bg-slate-900/80 px-6 py-3 rounded-xl border border-slate-800/80 font-mono text-2xl font-black text-blue-400 tracking-wide shadow-inner">
+          🚀 {formatTotalTime(totalAccumulatedFocusSeconds)}
+        </div>
+      </div>
+
+      {/* PART 1: THE CORE REAL-TIME AUTOMATED ANALYTICS HUB (TOP STACK) */}
+      <div className="mb-8">
         <SectionCard
-          title="MicroStrict Protocol (Supreme)"
-          description="Local AI face-detection. No video is ever sent to the cloud. Stay in the frame to accumulate Focus Time."
+          title="1. Automated Real-Time Analytics Engine (MicroStrict AI)"
+          description="Hardware validation matrix. Monitors seating alignment, motion profiles, and device interaction."
         >
-          <MicroStrictTracker />
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-1">
+              <MicroStrictTracker />
+            </div>
+            
+            {/* BACKWARD COMPATIBLE CREATION CONTROLLER PANELS */}
+            <div className="lg:col-span-2 bg-slate-900/20 border border-slate-900 rounded-xl p-5 space-y-4">
+              <div className="border-b border-slate-800 pb-2">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Co-Studying Room Control Pipeline</h4>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input placeholder="Session Name" />
+                <Select>
+                  <option>Max Participants: 200 (Supreme)</option>
+                  <option>Max Participants: 40 (Pro)</option>
+                  <option>Max Participants: 20 Free</option>
+                </Select>
+                <Input placeholder="Room Password (Optional)" />
+                <Select>
+                  <option>Ambient Master Channel: Balanced Lofi</option>
+                  <option>Ambient Master Channel: Brainwaves</option>
+                </Select>
+              </div>
+              <div className="flex flex-wrap gap-4 pt-2">
+                <Toggle checked={micAllowed} onChange={setMicAllowed} label="Allow Microphone Verification (18+ only)" />
+                <Toggle checked={beastMode} onChange={setBeastMode} label="Enforce Absolute Beast Mode Blockers" />
+              </div>
+            </div>
+          </div>
         </SectionCard>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* CREATE SESSION */}
+      {/* PART 2: THE IMMERSIVE VIRTUAL ROOM ROOMS (BOTTOM STACK) */}
+      <div className="mb-6">
         <SectionCard
-          title="Create Session"
-          description="Set up a shared study room."
+          title="2. Immersive Virtual Study Lounge Room"
+          description="Premium fullscreen workspace environment. Fine-tune your atmosphere with mixed audio elements and custom design patterns."
         >
-          <div className="grid gap-3 md:grid-cols-2">
-            <Input placeholder="Session Name" />
-            <Select>
-              <option>Max Participants: 20 (Free)</option>
-              <option>Max Participants: 40 (Pro)</option>
-              <option>Max Participants: 200 (Supreme)</option>
-            </Select>
-
-            <Input placeholder="Optional Password" />
-            <Select>
-              <option>Wallpaper Pack: HD (Free)</option>
-              <option>Wallpaper Pack: 4K (Premium)</option>
-            </Select>
-
-            <Toggle
-              checked={micAllowed}
-              onChange={setMicAllowed}
-              label="Allow Mic (18+ only)"
-            />
-            <Select>
-              <option>Ambient Audio: Lofi</option>
-              <option>Ambient Audio: White Noise</option>
-              <option>Ambient Audio: Brainwaves</option>
-            </Select>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-2">
-            <Toggle
-              checked={beastMode}
-              onChange={setBeastMode}
-              label="Enable Beast Mode"
-            />
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm text-slate-300">
-              No exit, no disabling blocker, no uninstall, no tab/app switching.
-            </div>
-
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm text-slate-300">
-              MicroStrict: seat/motion detection, penalties, multi-device lock.
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3 mt-4">
-            <Button variant="secondary">Beast Report</Button>
-            <span className="chip">AI Distraction Logs</span>
-          </div>
-        </SectionCard>
-
-        {/* JOIN SESSION */}
-        <SectionCard
-          title="Join Session"
-          description="Enter a code or browse public rooms."
-        >
-          <div className="grid gap-3 md:grid-cols-3">
-            <Input placeholder="Session Code" />
-            <Button>Join</Button>
-            <Button variant="secondary">Browse Public Rooms</Button>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2 mt-3">
-            <div className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300">
-              Public Room: Focus Lounge • 12 participants • HD Wallpaper
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300 flex items-center justify-between">
-              Organic Chem Grind • 4 participants
-              <span className="text-xs font-bold text-red-500">Beast Active</span>
-            </div>
-          </div>
+          <ImmersiveVirtualRoom onAddFocusTime={handleRoomTimeBubbly} />
         </SectionCard>
       </div>
     </AppShell>
