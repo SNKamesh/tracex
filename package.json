@@ -11,11 +11,15 @@
   "dependencies": {
     "firebase": "^12.10.0",
     "firebase-admin": "^13.7.0",
+    "mammoth": "^1.12.0",
     "next": "^16.2.4",
     "nodemailer": "^8.0.1",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.7.284",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "react-icons": "^5.5.0"
+    "react-icons": "^5.5.0",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@types/node": "20.11.17",
