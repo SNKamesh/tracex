@@ -3,16 +3,16 @@
 import React, { useEffect, useState } from "react";
 
 const navItems = [
-  { label: "Home", href: "/home", icon: "🏠" },
-  { label: "Dashboard", href: "/dashboard", icon: "📊" },
-  { label: "Study Sessions", href: "/study", icon: "📚" },
-  { label: "Study Plans", href: "/study-plans", icon: "📝" },
-  { label: "Friends", href: "/friends", icon: "👥" },
-  { label: "File Converter", href: "/converter", icon: "🔄" },
-  { label: "NoteX Bot", href: "/notex", icon: "🤖" },
-  { label: "Activity", href: "/activity", icon: "⚡" },
-  { label: "Settings", href: "/settings", icon: "⚙️" },
-  { label: "Trash", href: "/trash", icon: "🗑️" },
+  { name: "Home", href: "/home", icon: "🏠" },
+  { name: "Dashboard", href: "/dashboard", icon: "📊" },
+  { name: "Study Sessions", href: "/sessions", icon: "⏱️" }, // Fixed from /study to /sessions
+  { name: "Study Plans", href: "/study-plans", icon: "📅" },
+  { name: "Friends", href: "/friends", icon: "👥" },
+  { name: "File Converter", href: "/converter", icon: "📁" },
+  { name: "NoteX Bot", href: "/notex", icon: "🤖" },
+  { name: "Blocker", href: "/blocker", icon: "🚫" },
+  { name: "Theme", href: "/theme", icon: "🎨" },
+  { name: "Settings", href: "/settings", icon: "⚙️" },
 ];
 
 export default function Sidebar() {
@@ -87,7 +87,7 @@ export default function Sidebar() {
               }}
             >
               <span style={{ fontSize: "16px" }}>{item.icon}</span>
-              {item.label}
+              {item.name}
             </a>
           );
         })}
