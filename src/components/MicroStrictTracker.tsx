@@ -6,19 +6,20 @@ export default function MicroStrictTracker() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const prevFrameRef = useRef<Uint8ClampedArray | null>(null);
   
   // App States
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
   const [studentPresent, setStudentPresent] = useState(true); 
-  const [cameraBlocked, setCameraBlocked] = useState(false); // Shutter/Switch block state
+  const [cameraBlocked, setCameraBlocked] = useState(false);
   const [cameraError, setCameraError] = useState("");
   
   // Real-time Stats
   const [focusSeconds, setFocusSeconds] = useState(0);
   const [distractionSeconds, setDistractionSeconds] = useState(0);
 
-  // 1. Core Native Camera Initialization
+  // 1. Initialize Camera Feed
   const startCamera = async () => {
     setCameraError("");
     try {
@@ -46,7 +47,7 @@ export default function MicroStrictTracker() {
     };
   }, []);
 
-  // 2. Hardware Scanner: Detect Camera Covered/Shutter Switched
+  // 2. Automated AI Vision Scanner (Catches Shutter Blocks AND Seat Exits)
   useEffect(() => {
     let scannerInterval: NodeJS.Timeout;
 
@@ -54,48 +55,75 @@ export default function MicroStrictTracker() {
       scannerInterval = setInterval(() => {
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        if (!video || !canvas) return;
+        
+        if (!video || !canvas || video.readyState < 2) return;
 
-        const ctx = canvas.getContext("2d");
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
         if (!ctx) return;
 
-        // Draw current frame onto our hidden canvas
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         try {
-          // Grab the pixel matrix array
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           const pixels = imageData.data;
           let blackPixelCount = 0;
+          let totalDiff = 0;
           const totalPixels = pixels.length / 4;
 
-          // Scan through RGB channels
+          // Process and compare pixel configurations
           for (let i = 0; i < pixels.length; i += 4) {
             const r = pixels[i];
             const g = pixels[i + 1];
             const b = pixels[i + 2];
 
-            // If a pixel is very dark (close to pure black)
+            // Shutter Block Scanner (Checks for pitch black lens covers)
             if (r < 25 && g < 25 && b < 25) {
               blackPixelCount++;
             }
+
+            // Automated Presence Tracker (Analyzes shifts against reference framework)
+            if (prevFrameRef.current) {
+              const oldR = prevFrameRef.current[i];
+              const oldG = prevFrameRef.current[i + 1];
+              const oldB = prevFrameRef.current[i + 2];
+              
+              // Standard ambient lighting variances
+              totalDiff += Math.abs(r - oldR) + Math.abs(g - oldG) + Math.abs(b - oldB);
+            }
           }
 
-          // Calculate dark frame percentage
+          // A. Shutter Check
           const blackPercentage = (blackPixelCount / totalPixels) * 100;
-
-          // If more than 95% of the lens view turns pitch black, trigger the hardware block
           if (blackPercentage > 95) {
             setCameraBlocked(true);
+            return;
           } else {
             setCameraBlocked(false);
           }
+
+          // B. Automated Seat Exit Check
+          const averagePixelVariance = totalDiff / totalPixels;
+          
+          if (prevFrameRef.current) {
+            // When a student moves completely out of the frame, variance drops below critical stability thresholds
+            if (averagePixelVariance < 12) {
+              setStudentPresent(false);
+            } else {
+              setStudentPresent(true);
+            }
+          }
+
+          // Store reference framework for next evaluation tick
+          prevFrameRef.current = new Uint8ClampedArray(pixels);
+
         } catch (e) {
           console.error("Pixel analysis error:", e);
         }
       }, 1000);
     } else {
       setCameraBlocked(false);
+      setStudentPresent(true);
+      prevFrameRef.current = null;
     }
 
     return () => clearInterval(scannerInterval);
@@ -103,7 +131,6 @@ export default function MicroStrictTracker() {
 
   // 3. System Timers Clock Loop Logic
   useEffect(() => {
-    // If tracking isn't started OR if the camera is physically covered, FREEZE both timers!
     if (!isTracking || cameraBlocked) return;
 
     const timer = setInterval(() => {
@@ -117,13 +144,13 @@ export default function MicroStrictTracker() {
     return () => clearInterval(timer);
   }, [isTracking, studentPresent, cameraBlocked]);
 
-  // Reset Engine
   const handleStopSession = () => {
     setIsTracking(false);
     setFocusSeconds(0);
     setDistractionSeconds(0);
     setStudentPresent(true);
     setCameraBlocked(false);
+    prevFrameRef.current = null;
   };
 
   const formatTime = (totalSeconds: number) => {
@@ -135,8 +162,8 @@ export default function MicroStrictTracker() {
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-950 p-6 flex flex-col items-center">
       
-      {/* Hidden processing element used to map and scan camera pixels */}
-      <canvas ref={canvasRef} width={40} height={30} className="hidden" />
+      {/* Hidden high-performance layout scanner */}
+      <canvas ref={canvasRef} width={40} height={30} style={{ display: "none" }} />
 
       {/* Visual Status Indicator Panel */}
       <div className="flex items-center gap-3 mb-4">
@@ -169,7 +196,7 @@ export default function MicroStrictTracker() {
             muted 
             playsInline 
             className={`w-full h-full object-cover transition-opacity duration-300 ${
-              (isTracking && !studentPresent) || cameraBlocked ? "opacity-20 grayscale blur-xs" : "opacity-100"
+              (isTracking && !studentPresent) || cameraBlocked ? "opacity-20 grayscale blur-[2px]" : "opacity-100"
             }`}
           />
         )}
@@ -184,18 +211,6 @@ export default function MicroStrictTracker() {
             Waking up Camera Interface...
           </div>
         )}
-      </div>
-
-      {/* Interactive Seat Emulator Controls */}
-      <div className="mb-4 flex items-center gap-4 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl">
-        <span className="text-xs text-slate-400">Simulate Leaving Seat:</span>
-        <input 
-          type="checkbox" 
-          checked={!studentPresent} 
-          disabled={!isTracking || cameraBlocked} 
-          onChange={(e) => setStudentPresent(!e.target.checked)}
-          className="w-4 h-4 accent-red-500 cursor-pointer disabled:opacity-40"
-        />
       </div>
 
       {/* Analytics Counter Dashboard */}
