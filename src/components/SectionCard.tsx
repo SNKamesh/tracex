@@ -1,10 +1,162 @@
 "use client";
-export default function SectionCard({ title, description, children }: any) {
+
+import React from "react";
+
+
+type SectionCardProps = {
+
+  title?: string;
+
+  description?: string;
+
+  children: React.ReactNode;
+
+  className?: string;
+
+};
+
+
+
+export default function SectionCard({
+
+  title,
+
+  description,
+
+  children,
+
+  className = "",
+
+}: SectionCardProps) {
+
+
+
   return (
-    <div className="w-full rounded-xl p-6 bg-slate-800 border border-slate-700 mt-4">
-      {title && <h2 className="text-xl font-semibold mb-1">{title}</h2>}
-      {description && <p className="text-sm text-slate-400 mb-4">{description}</p>}
+
+    <section
+
+
+      style={{
+
+        background:
+          "var(--surface)",
+
+
+        color:
+          "var(--text)",
+
+
+        borderColor:
+          "var(--border)",
+
+
+        boxShadow:
+          "var(--shadow)",
+
+      }}
+
+
+      className={`
+
+        relative
+
+        w-full
+
+        rounded-[var(--radius-lg)]
+
+        border
+
+        p-6
+
+        mt-4
+
+
+        backdrop-blur-xl
+
+
+        transition-all
+
+        duration-300
+
+
+        hover:-translate-y-1
+
+
+        ${className}
+
+      `}
+
+    >
+
+
+
+      {title && (
+
+        <h2
+
+          className="
+
+            text-xl
+
+            font-bold
+
+            tracking-tight
+
+            mb-1
+
+          "
+
+        >
+
+          {title}
+
+        </h2>
+
+      )}
+
+
+
+
+      {description && (
+
+        <p
+
+          style={{
+
+            color:
+
+              "var(--muted)",
+
+          }}
+
+
+          className="
+
+            text-sm
+
+            mb-5
+
+            leading-relaxed
+
+          "
+
+        >
+
+          {description}
+
+        </p>
+
+      )}
+
+
+
+
       {children}
-    </div>
+
+
+
+    </section>
+
   );
+
 }

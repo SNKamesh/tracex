@@ -1,212 +1,308 @@
 :root {
-
-
-    /* =================
-       SYSTEM
-    ================= */
-    
-    --font-primary:
-    Inter,
-    system-ui,
-    sans-serif;
-    
-    
-    --radius-xs:6px;
-    --radius-sm:10px;
-    --radius-md:16px;
-    --radius-lg:24px;
-    --radius-xl:32px;
-    
-    
-    --space-1:.25rem;
-    --space-2:.5rem;
-    --space-3:.75rem;
-    --space-4:1rem;
-    --space-6:1.5rem;
-    --space-8:2rem;
-    
-    
-    
-    --ease:
-    cubic-bezier(
-    .16,
-    1,
-    .3,
-    1
-    );
-    
-    
-    
-    }
-    
-    
-    /* LIGHT */
-    
-    [data-theme="light"]{
-    
-    
-    --background:
-    #f8fafc;
-    
-    --surface:
-    rgba(
-    255,
-    255,
-    255,
-    .82
-    );
-    
-    
-    --surface-solid:
-    #ffffff;
-    
-    
-    --text:
-    #020617;
-    
-    
-    --muted:
-    #64748b;
-    
-    
-    --border:
-    rgba(
-    15,
-    23,
-    42,
-    .1
-    );
-    
-    
-    --primary:
-    #6366f1;
-    
-    
-    --danger:
-    #ef4444;
-    
-    
-    --shadow:
-    0 24px 80px
-    rgba(
-    15,
-    23,
-    42,
-    .12
-    );
-    
-    
-    }
-    
-    
-    /* DARK */
-    
-    
-    [data-theme="dark"]{
-    
-    
-    --background:
-    #08090d;
-    
-    
-    --surface:
-    rgba(
-    20,
-    22,
-    30,
-    .82
-    );
-    
-    
-    --surface-solid:
-    #11131a;
-    
-    
-    --text:
-    #f8fafc;
-    
-    
-    --muted:
-    #94a3b8;
-    
-    
-    --border:
-    rgba(
-    255,
-    255,
-    255,
-    .1
-    );
-    
-    
-    --primary:
-    #818cf8;
-    
-    
-    --danger:
-    #f87171;
-    
-    
-    --shadow:
-    0 24px 80px
-    rgba(
-    0,
-    0,
-    0,
-    .5
-    );
-    
-    
-    }
-    
-    
-    
-    /* AMOLED */
-    
-    [data-theme="amoled"]{
-    
-    
-    --background:#000;
-    
-    
-    --surface:
-    rgba(
-    5,
-    5,
-    5,
-    .95
-    );
-    
-    
-    --surface-solid:
-    #000;
-    
-    
-    --text:#fff;
-    
-    
-    --muted:#a1a1aa;
-    
-    
-    --border:
-    rgba(
-    255,
-    255,
-    255,
-    .14
-    );
-    
-    
-    --primary:
-    #8b5cf6;
-    
-    
-    --danger:
-    #fb7185;
-    
-    
-    --shadow:none;
-    
-    
-    }
-    
+   /*
+   =================================
+   TRACE X DESIGN SYSTEM 2026
+   =================================
+   */
+ 
+ 
+   /* TYPOGRAPHY */
+ 
+   --font-primary:
+     Inter,
+     ui-sans-serif,
+     system-ui,
+     -apple-system,
+     BlinkMacSystemFont,
+     "Segoe UI",
+     sans-serif;
+ 
+ 
+   --text-xs: 0.75rem;
+   --text-sm: 0.875rem;
+   --text-md: 1rem;
+   --text-lg: 1.125rem;
+   --text-xl: 1.5rem;
+   --text-2xl: 2rem;
+ 
+ 
+   /* RADIUS */
+ 
+   --radius-xs: 6px;
+   --radius-sm: 10px;
+   --radius-md: 16px;
+   --radius-lg: 24px;
+   --radius-xl: 32px;
+   --radius-full: 999px;
+ 
+ 
+   /* SPACING SCALE */
+ 
+   --space-1: .25rem;
+   --space-2: .5rem;
+   --space-3: .75rem;
+   --space-4: 1rem;
+   --space-5: 1.25rem;
+   --space-6: 1.5rem;
+   --space-8: 2rem;
+   --space-10: 2.5rem;
+   --space-12: 3rem;
+ 
+ 
+   /* MOTION */
+ 
+   --ease:
+     cubic-bezier(.16, 1, .3, 1);
+ 
+   --duration-fast: 150ms;
+   --duration-normal: 250ms;
+   --duration-slow: 450ms;
+ 
+ 
+   /* LAYERS */
+ 
+   --z-dropdown: 20;
+   --z-sidebar: 40;
+   --z-modal: 80;
+ 
+ 
+   /* COMMON */
+ 
+   --success: #22c55e;
+   --warning: #f59e0b;
+ 
+ }
+ 
+ 
+ 
+ /*
+ ===============================
+ ☀ LIGHT THEME
+ ===============================
+ */
+ 
+ [data-theme="light"],
+ .tracex-theme-light {
+ 
+ 
+   --background:
+     #f8fafc;
+ 
+ 
+   --background-soft:
+     #eef2ff;
+ 
+ 
+   --surface:
+     rgba(255,255,255,.82);
+ 
+ 
+   --surface-hover:
+     rgba(255,255,255,.95);
+ 
+ 
+   --surface-solid:
+     #ffffff;
+ 
+ 
+   --text:
+     #020617;
+ 
+ 
+   --text-soft:
+     #334155;
+ 
+ 
+   --muted:
+     #64748b;
+ 
+ 
+   --border:
+     rgba(15,23,42,.1);
+ 
+ 
+   --primary:
+     #6366f1;
+ 
+ 
+   --primary-hover:
+     #4f46e5;
+ 
+ 
+   --danger:
+     #ef4444;
+ 
+ 
+   --gradient-primary:
+     linear-gradient(
+       135deg,
+       #6366f1,
+       #8b5cf6
+     );
+ 
+ 
+   --shadow-sm:
+     0 8px 30px rgba(15,23,42,.08);
+ 
+ 
+   --shadow:
+     0 24px 80px rgba(15,23,42,.12);
+ 
+ 
+ }
+ 
+ 
+ 
+ /*
+ ===============================
+ 🌙 DARK THEME
+ ===============================
+ */
+ 
+ [data-theme="dark"],
+ .tracex-theme-dark {
+ 
+ 
+   --background:
+     #08090d;
+ 
+ 
+   --background-soft:
+     #10131d;
+ 
+ 
+   --surface:
+     rgba(20,22,30,.82);
+ 
+ 
+   --surface-hover:
+     rgba(32,35,48,.95);
+ 
+ 
+   --surface-solid:
+     #11131a;
+ 
+ 
+   --text:
+     #f8fafc;
+ 
+ 
+   --text-soft:
+     #cbd5e1;
+ 
+ 
+   --muted:
+     #94a3b8;
+ 
+ 
+   --border:
+     rgba(255,255,255,.1);
+ 
+ 
+   --primary:
+     #818cf8;
+ 
+ 
+   --primary-hover:
+     #a5b4fc;
+ 
+ 
+   --danger:
+     #f87171;
+ 
+ 
+   --gradient-primary:
+     linear-gradient(
+       135deg,
+       #818cf8,
+       #c084fc
+     );
+ 
+ 
+   --shadow-sm:
+     0 8px 30px rgba(0,0,0,.35);
+ 
+ 
+   --shadow:
+     0 24px 80px rgba(0,0,0,.5);
+ 
+ 
+ }
+ 
+ 
+ 
+ /*
+ ===============================
+ ⚫ AMOLED THEME
+ ===============================
+ */
+ 
+ [data-theme="amoled"],
+ .tracex-theme-amoled {
+ 
+ 
+   --background:
+     #000000;
+ 
+ 
+   --background-soft:
+     #050505;
+ 
+ 
+   --surface:
+     rgba(8,8,8,.96);
+ 
+ 
+   --surface-hover:
+     #111111;
+ 
+ 
+   --surface-solid:
+     #000000;
+ 
+ 
+   --text:
+     #ffffff;
+ 
+ 
+   --text-soft:
+     #e5e7eb;
+ 
+ 
+   --muted:
+     #a1a1aa;
+ 
+ 
+   --border:
+     rgba(255,255,255,.14);
+ 
+ 
+   --primary:
+     #8b5cf6;
+ 
+ 
+   --primary-hover:
+     #a78bfa;
+ 
+ 
+   --danger:
+     #fb7185;
+ 
+ 
+   --gradient-primary:
+     linear-gradient(
+       135deg,
+       #8b5cf6,
+       #06b6d4
+     );
+ 
+ 
+   --shadow-sm:
+     none;
+ 
+ 
+   --shadow:
+     none;
+ 
+ 
+ }

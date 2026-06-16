@@ -12,7 +12,6 @@ import {
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  fetchSignInMethodsForEmail,
   signOut,
   onAuthStateChanged,
 } from "firebase/auth";
@@ -165,18 +164,119 @@ export default function Signup() {
   }
 
   async function handleSendOtp() {
-    setCaEmailErr(""); setCaPassErr("");
-    if(!caEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(caEmail)) { setCaEmailErr("Enter a valid email."); return; }
-    if(caPass.length < 6) { setCaPassErr("Password must be at least 6 characters."); return; }
-    if(caPass !== caPass2) { setCaPassErr("Passwords don't match."); return; }
+    setCaEmailErr("");
+    setCaPassErr("");
+  
+    const cleanEmail = caEmail.toLowerCase().trim();
+  
+    if (
+      !cleanEmail ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)
+    ) {
+      setCaEmailErr("Enter a valid email.");
+      return;
+    }
+  
+    if (caPass.length < 6) {
+      setCaPassErr(
+        "Password must be at least 6 characters."
+      );
+      return;
+    }
+  
+    if (caPass !== caPass2) {
+      setCaPassErr(
+        "Passwords don't match."
+      );
+      return;
+    }
+  
+  
     setCaLoading(true);
+  
+  
     try {
-      const auth = getAuth_();
-      if(auth) { const m = await fetchSignInMethodsForEmail(auth, caEmail); if(m.length>0){setCaEmailErr("Account already exists. Please sign in.");return;} }
-      const otp = genOtp(); setGeneratedOtp(otp);
-      if(!await sendOtp(caEmail, otp)) { setCaEmailErr("Unable to send OTP. Please try again."); return; }
+  
+      const db = getDb_();
+  
+  
+      // Check existing TraceX users first
+      const existingUser = await getDocs(
+        query(
+          collection(db, "users"),
+          where(
+            "email",
+            "==",
+            cleanEmail
+          )
+        )
+      );
+  
+  
+      if (!existingUser.empty) {
+  
+        setCaEmailErr(
+          "Account already exists. Please sign in."
+        );
+  
+        return;
+  
+      }
+  
+  
+  
+      // only new accounts get OTP
+  
+      const otp = genOtp();
+  
+  
+      const sent = await sendOtp(
+        cleanEmail,
+        otp
+      );
+  
+  
+      if (!sent) {
+  
+        setCaEmailErr(
+          "Unable to send OTP. Please try again."
+        );
+  
+        return;
+      }
+  
+  
+  
+      setCaEmail(cleanEmail);
+  
+      setGeneratedOtp(otp);
+  
+      setEnteredOtp("");
+  
+      setOtpErr("");
+  
       setStep("create_otp");
-    } finally { setCaLoading(false); }
+  
+  
+    } catch (err) {
+  
+  
+      console.error(
+        "Signup OTP error:",
+        err
+      );
+  
+  
+      setCaEmailErr(
+        "Something went wrong. Please try again."
+      );
+  
+  
+    } finally {
+  
+      setCaLoading(false);
+  
+    }
   }
 
   async function handleVerifyOtp() {
@@ -194,7 +294,7 @@ export default function Signup() {
         await setDoc(doc(getDb_(), "users", cred.user.uid), {
           name: "",
           studyType: "",
-          email: caEmail,
+          email: caEmail.toLowerCase().trim(),
           tracexId: "",
           createdAt: Date.now(),
         });
