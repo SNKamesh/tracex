@@ -36,7 +36,7 @@ interface Request {
 }
 
 export default function Friends() {
-  const [myUid,     setMyUid]     = useState<string | null>(null);
+  const [myUid,     setMyUid]    = useState<string | null>(null);
   const [myTraceId, setMyTraceId] = useState("");
   const [myName,    setMyName]    = useState("");
 
@@ -285,8 +285,9 @@ export default function Friends() {
                 className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-200"
               >
                 <div>
-                  <p className="font-semibold">{req.name}</p>
-                  <p className="text-xs text-slate-400">{req.traceXId}</p>
+                  {/* UPDATED: TraceX ID is bold and blue, Name is small text below */}
+                  <p className="font-semibold font-mono text-blue-400">{req.traceXId}</p>
+                  <p className="text-xs text-slate-400">{req.name}</p>
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={() => acceptRequest(req.uid)}>Accept</Button>
@@ -310,8 +311,9 @@ export default function Friends() {
                 className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-200"
               >
                 <div>
-                  <p className="font-semibold">{friend.name}</p>
-                  <p className="text-xs text-slate-400">{friend.traceXId}</p>
+                  {/* UPDATED: TraceX ID is bold and blue, Name is small text below */}
+                  <p className="font-semibold font-mono text-blue-400">{friend.traceXId}</p>
+                  <p className="text-xs text-slate-400">{friend.name}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
