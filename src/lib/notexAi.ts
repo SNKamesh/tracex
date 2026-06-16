@@ -1,7 +1,7 @@
 // tracex/src/lib/notexAi.ts
 
 // This reads your live Render link from your Vercel Environment Variables
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://tracex-be.onrender.com';
 
 export type NoteXMode = "summarize" | "explain" | "improve" | "ask" | "brainstorm";
 
