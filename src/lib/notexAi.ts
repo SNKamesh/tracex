@@ -1,5 +1,6 @@
 // tracex/src/lib/notexAi.ts
 
+// This reads your live Render link from your Vercel Environment Variables
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
 export type NoteXMode = "summarize" | "explain" | "improve" | "ask" | "brainstorm";
@@ -19,16 +20,17 @@ export interface NoteXResponse {
 
 /**
  * Handles communication with the backend for NoteX Bot processing.
- * Accepts a single unified parameter object to perfectly match UI usage.
+ * Accepts a single unified parameter object to perfectly match your UI usage.
  */
 export async function askNoteXAI({ message, context, mode }: AskNoteXAIParams): Promise<NoteXResponse> {
   try {
-    // Map the string to match your backend endpoints' expected casing
+    // 1. Map the string to match your backend endpoints' expected capitalization
     const capitalizedFormat = mode.charAt(0).toUpperCase() + mode.slice(1);
 
-    // If 'ask' mode includes a custom prompt message, use it; otherwise fall back to context text
+    // 2. If 'ask' mode includes a custom prompt message, combine it; otherwise use the raw context text
     const textToProcess = mode === 'ask' && message ? `${message}\n\nContext:\n${context}` : context;
 
+    // 3. Fire the request directly out to your Render Web Service endpoint
     const response = await fetch(`${BACKEND_URL}/api/ai/notex/process`, {
       method: 'POST',
       headers: {
