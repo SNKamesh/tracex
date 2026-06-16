@@ -1,7 +1,9 @@
 // tracex/src/lib/notexAi.ts
 
-// Automatically uses your production Render URL or drops back to local dev port
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+
+// Match the exact type name your UI expects
+export type NoteXMode = "summarize" | "explain" | "improve" | "ask" | "brainstorm";
 
 export interface NoteXResponse {
   success: boolean;
@@ -9,8 +11,15 @@ export interface NoteXResponse {
   error?: string;
 }
 
-export async function processNotesWithAI(documentText: string, formatType: string): Promise<NoteXResponse> {
+/**
+ * Handles communication with the backend for NoteX Bot processing
+ * Renamed back to askNoteXAI to fix the Vercel build compilation crash
+ */
+export async function askNoteXAI(documentText: string, formatType: NoteXMode): Promise<NoteXResponse> {
   try {
+    // Format type mapping to match your backend's expected capitalization
+    const capitalizedFormat = formatType.charAt(0).toUpperCase() + formatType.slice(1);
+
     const response = await fetch(`${BACKEND_URL}/api/ai/notex/process`, {
       method: 'POST',
       headers: {
@@ -18,7 +27,7 @@ export async function processNotesWithAI(documentText: string, formatType: strin
       },
       body: JSON.stringify({
         documentText,
-        formatType
+        formatType: capitalizedFormat
       }),
     });
 
