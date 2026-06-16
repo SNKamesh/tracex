@@ -37,7 +37,7 @@ export default function ProtectedRoute({
 
 
       router.replace(
-        "/login"
+        "/signup"
       );
 
 
