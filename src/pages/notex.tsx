@@ -40,7 +40,12 @@ export default function NoteX() {
         mode,
       });
 
-      setAnswer(result);
+      // FIX: Check for success and extract the string data
+      if (result.success) {
+        setAnswer(result.data);
+      } else {
+        setAnswer(result.error || "AI unavailable. Please try again later.");
+      }
     } catch {
       setAnswer(
         "AI unavailable. Please try again later."
