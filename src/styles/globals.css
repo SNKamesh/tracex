@@ -1,41 +1,533 @@
+@import "./tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html,
+
+/* ==================================================
+   TRACE X GLOBAL DESIGN ENGINE
+   Production UI Foundation
+================================================== */
+
+
+/* ---------- RESET ---------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+
+html {
+
+  min-height: 100%;
+
+  background:
+    var(--background);
+
+  scroll-behavior: smooth;
+
+}
+
+
 body {
-  height: 100%;
-  background-color: #000000;
+
+  min-height: 100%;
+
   margin: 0;
+
+  font-family:
+    var(--font-primary),
+    system-ui,
+    sans-serif;
+
+
+  background:
+
+    radial-gradient(
+      circle at top left,
+      color-mix(
+        in srgb,
+        var(--primary),
+        transparent 82%
+      ),
+      transparent 35%
+    ),
+
+    radial-gradient(
+      circle at bottom right,
+      color-mix(
+        in srgb,
+        var(--accent),
+        transparent 88%
+      ),
+      transparent 40%
+    ),
+
+    var(--background);
+
+
+  color:
+    var(--text);
+
+
+  text-rendering:
+    optimizeLegibility;
+
+
+  -webkit-font-smoothing:
+    antialiased;
+
+
+  transition:
+    background 250ms var(--ease),
+    color 250ms var(--ease);
+
 }
 
-body {
-  @apply transition-colors duration-200;
+
+#__next {
+
+  min-height: 100vh;
+
 }
 
-body.tracex-theme-amoled {
-  background-color: #000000;
-  color: #f8fafc;
+
+
+/* ---------- TEXT ---------- */
+
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+
+  color:
+    var(--text);
+
+  letter-spacing:
+    -0.03em;
+
 }
 
-body.tracex-theme-dark {
-  background-color: #0f172a;
-  color: #f8fafc;
+
+
+p {
+
+  color:
+    var(--muted);
+
 }
 
-body.tracex-theme-light {
-  background-color: #e2e8f0;
-  color: #0f172a;
+
+
+/* ---------- LINKS ---------- */
+
+
+a {
+
+  color:
+    inherit;
+
+  text-decoration:
+    none;
+
 }
 
-.glass {
-  @apply bg-slate-900/70 backdrop-blur border border-slate-800;
+
+
+/* ---------- FORM RESET ---------- */
+
+
+button,
+input,
+textarea,
+select {
+
+  font:
+    inherit;
+
 }
 
-.card {
-  @apply rounded-2xl p-5 shadow-lg shadow-slate-950/30;
+
+button {
+
+  cursor:
+    pointer;
+
 }
 
-.chip {
-  @apply rounded-full px-3 py-1 text-xs font-medium bg-slate-800 text-slate-200;
+
+button:disabled {
+
+  cursor:
+    not-allowed;
+
+  opacity:
+    .55;
+
+}
+
+
+
+/* ==================================================
+   PREMIUM COMPONENT CLASSES
+================================================== */
+
+
+/* Glass Surface */
+
+.glass,
+.tx-glass {
+
+  background:
+    var(--surface);
+
+
+  backdrop-filter:
+    blur(22px)
+    saturate(160%);
+
+
+  border:
+    1px solid
+    var(--border);
+
+
+  box-shadow:
+    var(--shadow);
+
+}
+
+
+
+/* Card */
+
+.card,
+.tx-card {
+
+  background:
+    var(--surface);
+
+
+  border:
+    1px solid
+    var(--border);
+
+
+  border-radius:
+    var(--radius-lg);
+
+
+  padding:
+    var(--space-6);
+
+
+  box-shadow:
+    var(--shadow);
+
+
+  transition:
+    transform .25s var(--ease),
+    border-color .25s var(--ease),
+    background .25s var(--ease);
+
+}
+
+
+.tx-card:hover {
+
+  transform:
+    translateY(-3px);
+
+}
+
+
+
+/* Button */
+
+.tx-button {
+
+  display:
+    inline-flex;
+
+
+  align-items:
+    center;
+
+
+  justify-content:
+    center;
+
+
+  gap:
+    .5rem;
+
+
+  background:
+
+    linear-gradient(
+      135deg,
+      var(--primary),
+      var(--accent)
+    );
+
+
+  color:
+    white;
+
+
+  border:
+    none;
+
+
+  border-radius:
+    var(--radius-md);
+
+
+  padding:
+    .75rem 1.25rem;
+
+
+  font-weight:
+    600;
+
+
+  transition:
+    transform .2s var(--ease),
+    filter .2s var(--ease);
+
+}
+
+
+.tx-button:hover {
+
+  transform:
+    translateY(-2px);
+
+
+  filter:
+    brightness(1.08);
+
+}
+
+
+
+/* Input */
+
+.tx-input {
+
+  width:
+    100%;
+
+
+  background:
+    var(--surface-solid);
+
+
+  color:
+    var(--text);
+
+
+  border:
+    1px solid
+    var(--border);
+
+
+  border-radius:
+    var(--radius-md);
+
+
+  padding:
+    .75rem 1rem;
+
+
+  transition:
+    border .2s var(--ease),
+    box-shadow .2s var(--ease);
+
+}
+
+
+
+.tx-input:focus {
+
+
+  border-color:
+    var(--primary);
+
+
+  outline:
+    none;
+
+
+  box-shadow:
+
+    0 0 0 4px
+
+    color-mix(
+      in srgb,
+      var(--primary),
+      transparent 80%
+    );
+
+}
+
+
+
+/* Small badges */
+
+.chip,
+.tx-chip {
+
+
+  display:
+    inline-flex;
+
+
+  align-items:
+    center;
+
+
+  border-radius:
+    999px;
+
+
+  padding:
+    .35rem .75rem;
+
+
+  background:
+
+    color-mix(
+      in srgb,
+      var(--primary),
+      transparent 85%
+    );
+
+
+  color:
+    var(--text);
+
+
+  font-size:
+    .75rem;
+
+
+  font-weight:
+    600;
+
+}
+
+
+
+
+/* ---------- ACCESSIBILITY ---------- */
+
+
+*:focus-visible {
+
+
+  outline:
+    2px solid
+    var(--primary);
+
+
+  outline-offset:
+    3px;
+
+}
+
+
+
+
+/* ---------- SCROLLBAR ---------- */
+
+
+::-webkit-scrollbar {
+
+  width:
+    10px;
+
+}
+
+
+::-webkit-scrollbar-track {
+
+
+  background:
+    var(--background);
+
+}
+
+
+
+::-webkit-scrollbar-thumb {
+
+
+  background:
+
+    color-mix(
+      in srgb,
+      var(--primary),
+      transparent 60%
+    );
+
+
+  border-radius:
+    999px;
+
+}
+
+
+
+
+/* ---------- SELECTION ---------- */
+
+
+::selection {
+
+
+  background:
+    var(--primary);
+
+
+  color:
+    white;
+
+}
+
+
+
+
+/* ---------- REDUCED MOTION ---------- */
+
+
+@media
+(prefers-reduced-motion: reduce) {
+
+
+  *,
+  *::before,
+  *::after {
+
+
+    animation:
+      none !important;
+
+
+    transition:
+      none !important;
+
+
+    scroll-behavior:
+      auto !important;
+
+  }
+
+
 }
