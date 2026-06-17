@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
 
 import {
   Brain,
@@ -9,62 +14,40 @@ import {
   MousePointer2,
   ShieldCheck,
   AlertTriangle,
+  Activity,
 } from "lucide-react";
+
 
 import CameraEngine from "./CameraEngine";
 
 
-export default function MicroStrictTracker() {
-
-
-  const [tabSwitches, setTabSwitches] = useState(0);
-
-  const [idleTime, setIdleTime] = useState(0);
-
-  const [focusScore, setFocusScore] = useState(100);
-
-  const [active, setActive] = useState(true);
 
 
 
-  /*
-    TAB SWITCH TRACKING
-  */
-
-  useEffect(() => {
+export default function MicroStrictTracker(){
 
 
-    function handleVisibility() {
+  const lastActivity =
+    useRef(Date.now());
 
 
-      if (document.hidden) {
-
-        setTabSwitches((v) => v + 1);
-
-        setFocusScore((v) =>
-          Math.max(v - 10, 0)
-        );
-
-      }
+  const [tabSwitches,setTabSwitches] =
+    useState(0);
 
 
-    }
+  const [idleTime,setIdleTime] =
+    useState(0);
 
 
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibility
-    );
+  const [focusScore,setFocusScore] =
+    useState(0);
 
 
-    return () =>
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibility
-      );
+  const [active,setActive] =
+    useState(false);
 
 
-  }, []);
+
 
 
 
@@ -72,86 +55,74 @@ export default function MicroStrictTracker() {
 
 
   /*
-    IDLE TRACKING
+    REAL ACTIVITY TRACKER
   */
 
-  useEffect(() => {
+  useEffect(()=>{
 
 
-    let seconds = 0;
+    function activity(){
 
 
+      lastActivity.current =
+        Date.now();
 
-    function reset() {
-
-      seconds = 0;
 
       setIdleTime(0);
 
+
       setActive(true);
+
 
     }
 
 
 
-    window.addEventListener(
+
+    const events = [
+
       "mousemove",
-      reset
-    );
 
+      "mousedown",
 
-    window.addEventListener(
       "keydown",
-      reset
+
+      "scroll",
+
+      "touchstart",
+
+    ];
+
+
+
+
+    events.forEach(
+
+      e =>
+
+      window.addEventListener(
+        e,
+        activity
+      )
+
     );
 
 
 
-    const interval =
-      setInterval(() => {
 
 
-        seconds += 1;
+    return()=>{
 
 
-        setIdleTime(seconds);
+      events.forEach(
 
+        e =>
 
+        window.removeEventListener(
+          e,
+          activity
+        )
 
-        if (seconds > 30) {
-
-
-          setActive(false);
-
-
-          setFocusScore((v) =>
-            Math.max(v - 1, 0)
-          );
-
-
-        }
-
-
-      }, 1000);
-
-
-
-
-    return () => {
-
-
-      clearInterval(interval);
-
-
-      window.removeEventListener(
-        "mousemove",
-        reset
-      );
-
-
-      window.removeEventListener(
-        "keydown",
-        reset
       );
 
 
@@ -159,7 +130,7 @@ export default function MicroStrictTracker() {
 
 
 
-  }, []);
+  },[]);
 
 
 
@@ -167,28 +138,225 @@ export default function MicroStrictTracker() {
 
 
 
-  return (
 
-    <div
 
-      className="
-      rounded-[32px]
-      border
-      p-5
-      space-y-5
-      "
 
-      style={{
 
-        background:
-          "var(--surface)",
 
-        borderColor:
-          "var(--border)",
+  /*
+    TAB SWITCH
+  */
 
-      }}
+  useEffect(()=>{
+
+
+    function visibility(){
+
+
+      if(document.hidden){
+
+
+        setTabSwitches(
+          v=>v+1
+        );
+
+
+        setFocusScore(
+          v=>Math.max(v-15,0)
+        );
+
+
+      }
+
+
+    }
+
+
+
+
+    document.addEventListener(
+
+      "visibilitychange",
+
+      visibility
+
+    );
+
+
+
+
+
+    return()=>{
+
+
+      document.removeEventListener(
+
+        "visibilitychange",
+
+        visibility
+
+      );
+
+
+    };
+
+
+
+  },[]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /*
+    MICROSTRICT SCORE ENGINE
+  */
+
+  useEffect(()=>{
+
+
+
+    const engine =
+
+    setInterval(()=>{
+
+
+
+      const idle =
+
+      Math.floor(
+
+        (Date.now()
+
+        -
+
+        lastActivity.current)
+
+        /1000
+
+      );
+
+
+
+
+      setIdleTime(idle);
+
+
+
+
+
+      if(idle > 30){
+
+
+
+        setActive(false);
+
+
+
+        setFocusScore(
+
+          v =>
+
+          Math.max(
+            v-2,
+            0
+          )
+
+        );
+
+
+
+      }
+
+
+
+
+      else{
+
+
+
+        setActive(true);
+
+
+
+        setFocusScore(
+
+          v =>
+
+          Math.min(
+            v+1,
+            100
+          )
+
+        );
+
+
+
+      }
+
+
+
+    },500);
+
+
+
+
+
+
+    return()=>clearInterval(engine);
+
+
+
+  },[]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+  return(
+
+
+    <section
+
+    className="
+    rounded-[32px]
+    border
+    p-5
+    space-y-5
+    "
+
+    style={{
+
+      background:
+      "var(--surface)",
+
+
+      borderColor:
+      "var(--border)",
+
+    }}
 
     >
+
+
+
+
 
 
 
@@ -196,55 +364,51 @@ export default function MicroStrictTracker() {
 
 
       <div
-
-        className="
-        flex
-        items-center
-        justify-between
-        "
-
+      className="
+      flex
+      items-center
+      justify-between
+      "
       >
+
 
 
         <div>
 
 
           <h2
-
-            className="
-            text-xl
-            font-black
-            flex
-            gap-2
-            items-center
-            "
-
+          className="
+          text-xl
+          font-black
+          flex
+          gap-2
+          items-center
+          "
           >
 
-            <Brain size={22} />
+
+            <Brain/>
 
             MicroStrict Guardian
+
 
           </h2>
 
 
 
+
+
           <p
-
-            className="text-sm"
-
-            style={{
-
-              color:
-                "var(--muted)",
-
-            }}
-
+          className="text-sm"
+          style={{
+            color:"var(--muted)"
+          }}
           >
 
-            AI anti-distraction system
+            Vision + activity integrity
 
           </p>
+
 
 
         </div>
@@ -255,16 +419,20 @@ export default function MicroStrictTracker() {
 
         {
 
-          active ?
 
-            <ShieldCheck color="#22c55e" />
+        active
 
-            :
+        ?
 
-            <AlertTriangle color="#f59e0b" />
+        <ShieldCheck color="#22c55e"/>
+
+        :
+
+        <AlertTriangle color="#f59e0b"/>
 
 
         }
+
 
 
       </div>
@@ -276,11 +444,8 @@ export default function MicroStrictTracker() {
 
 
 
-      {/* CAMERA */}
-
 
       <CameraEngine />
-
 
 
 
@@ -294,27 +459,16 @@ export default function MicroStrictTracker() {
 
 
       <div
-
-        className="
-        rounded-2xl
-        border
-        p-5
-        "
-
+      className="
+      rounded-2xl
+      border
+      p-5
+      "
       >
 
 
         <p
-
-          className="text-sm"
-
-          style={{
-
-            color:
-              "var(--muted)",
-
-          }}
-
+        className="text-sm"
         >
 
           Focus Integrity
@@ -323,22 +477,22 @@ export default function MicroStrictTracker() {
 
 
 
-
         <h1
-
-          className="
-          text-5xl
-          font-black
-          "
-
+        className="
+        text-5xl
+        font-black
+        "
         >
 
           {focusScore}%
 
+
         </h1>
 
 
+
       </div>
+
 
 
 
@@ -352,21 +506,21 @@ export default function MicroStrictTracker() {
 
 
       <div
-
-        className="
-        grid
-        grid-cols-3
-        gap-3
-        "
-
+      className="
+      grid
+      grid-cols-3
+      gap-3
+      "
       >
+
+
 
 
 
         <div className="rounded-xl border p-4">
 
 
-          <EyeOff />
+          <EyeOff/>
 
 
           <h2 className="text-2xl font-black">
@@ -383,7 +537,9 @@ export default function MicroStrictTracker() {
           </p>
 
 
+
         </div>
+
 
 
 
@@ -393,7 +549,7 @@ export default function MicroStrictTracker() {
         <div className="rounded-xl border p-4">
 
 
-          <MousePointer2 />
+          <MousePointer2/>
 
 
           <h2 className="text-2xl font-black">
@@ -418,10 +574,24 @@ export default function MicroStrictTracker() {
 
 
 
+
         <div className="rounded-xl border p-4">
 
 
-          <Keyboard />
+          {
+
+          active
+
+          ?
+
+          <Keyboard/>
+
+          :
+
+          <Activity/>
+
+          }
+
 
 
           <h2 className="text-xl font-black">
@@ -429,14 +599,21 @@ export default function MicroStrictTracker() {
 
             {
 
-              active
-                ? "ON"
-                : "OFF"
+            active
+
+            ?
+
+            "ON"
+
+            :
+
+            "OFF"
 
             }
 
 
           </h2>
+
 
 
           <p className="text-sm">
@@ -451,13 +628,18 @@ export default function MicroStrictTracker() {
 
 
 
+
+
       </div>
 
 
 
 
 
-    </div>
+
+
+    </section>
+
 
   );
 

@@ -1,53 +1,35 @@
 "use client";
 
 import {
-
-useEffect,
-
-useRef,
-
-useState,
-
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 
 
 import {
-
-Camera,
-
-Eye,
-
-ShieldCheck,
-
-AlertTriangle,
-
-Activity,
-
-Video,
-
-VideoOff,
-
+  Camera,
+  Eye,
+  ShieldCheck,
+  AlertTriangle,
+  Activity,
+  Video,
+  VideoOff,
 } from "lucide-react";
 
 
+import {
+  FaceDetector,
+  FilesetResolver,
+} from "@mediapipe/tasks-vision";
 
 
 
 
 type FocusState =
-
-"focused"
-
-|
-
-"away"
-
-|
-
-"distracted";
-
-
-
+  | "focused"
+  | "away"
+  | "distracted";
 
 
 
@@ -57,60 +39,82 @@ type FocusState =
 export default function CameraEngine(){
 
 
+  const videoRef =
+    useRef<HTMLVideoElement | null>(null);
 
-const videoRef =
 
-useRef<HTMLVideoElement | null>(null);
+  const streamRef =
+    useRef<MediaStream | null>(null);
 
 
+  const detectorRef =
+    useRef<FaceDetector | null>(null);
 
-const streamRef =
 
-useRef<MediaStream | null>(null);
+  const lastVideoTime =
+    useRef(-1);
 
 
 
+  const [enabled,setEnabled] =
+    useState(false);
 
-const lastActivity =
 
-useRef(Date.now());
+  const [aiReady,setAiReady] =
+    useState(false);
 
 
+  const [focus,setFocus] =
+    useState<FocusState>("away");
 
 
+  const [confidence,setConfidence] =
+    useState(0);
 
 
-const [enabled,setEnabled] =
+  const [awayTime,setAwayTime] =
+    useState(0);
 
-useState(false);
 
+  const [cameraError,setCameraError] =
+    useState("");
 
 
-const [focus,setFocus] =
 
-useState<FocusState>("focused");
 
 
 
-const [confidence,setConfidence] =
 
-useState(100);
 
 
+  async function loadAI(){
 
-const [awayTime,setAwayTime] =
 
-useState(0);
+    const vision =
+      await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+      );
 
 
 
-const [cameraError,setCameraError] =
+    detectorRef.current =
+      await FaceDetector.createFromOptions(
+        vision,
+        {
+          baseOptions:{
+            modelAssetPath:
+            "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite",
+          },
 
-useState("");
 
+          runningMode:"VIDEO",
+        }
+      );
 
 
+    setAiReady(true);
 
+  }
 
 
 
@@ -120,304 +124,388 @@ useState("");
 
 
 
-async function startCamera(){
 
+  async function startCamera(){
 
-try{
 
+    try{
 
-setCameraError("");
 
+      setCameraError("");
 
 
-const stream =
+      const stream =
+        await navigator.mediaDevices
+        .getUserMedia({
 
-await navigator.mediaDevices.getUserMedia({
+          video:{
+            width:1280,
+            height:720,
+            facingMode:"user",
+          },
 
-video:{
+          audio:false,
 
-width:1280,
+        });
 
-height:720,
 
-facingMode:"user",
 
-},
+      streamRef.current =
+        stream;
 
-audio:false,
 
-});
 
+      if(videoRef.current){
 
+        videoRef.current.srcObject =
+          stream;
 
 
+        await videoRef.current.play();
 
-streamRef.current = stream;
+      }
 
 
 
+      await loadAI();
 
 
-if(videoRef.current){
 
+      setEnabled(true);
 
-videoRef.current.srcObject = stream;
 
 
-await videoRef.current.play();
+    }
 
+    catch(error){
 
-}
 
+      console.error(error);
 
 
+      setCameraError(
+        "Camera or AI failed to start"
+      );
 
 
-setEnabled(true);
+    }
 
 
+  }
 
-}
 
-catch(error){
 
 
 
-console.error(error);
 
 
 
-setCameraError(
 
-"Camera access blocked"
 
-);
+  /*
+    REAL MICROSTRICT VISION ENGINE
+  */
 
 
+  useEffect(()=>{
 
-}
 
+    if(!enabled || !aiReady)
+      return;
 
-}
 
 
+    let animation:number;
 
 
 
+    function scan(){
 
 
 
+      const video =
+        videoRef.current;
 
 
+      const detector =
+        detectorRef.current;
 
 
-/* USER ACTIVITY */
 
+      if(
 
-useEffect(()=>{
+        video &&
 
+        detector &&
 
+        video.currentTime !==
+        lastVideoTime.current
 
-function active(){
+      ){
 
 
-lastActivity.current = Date.now();
 
+        lastVideoTime.current =
+          video.currentTime;
 
-}
 
 
 
+        const result =
+          detector.detectForVideo(
 
-window.addEventListener(
+            video,
 
-"mousemove",
+            performance.now()
 
-active
+          );
 
-);
 
 
 
-window.addEventListener(
 
-"keydown",
+        const faceFound =
+          result.detections.length > 0;
 
-active
 
-);
 
 
 
+        if(faceFound){
 
-return()=>{
 
+          setFocus(
+            "focused"
+          );
 
-window.removeEventListener(
 
-"mousemove",
+          setConfidence(
+            98
+          );
 
-active
 
-);
+          setAwayTime(
+            0
+          );
 
 
-window.removeEventListener(
+        }
 
-"keydown",
 
-active
+        else{
 
-);
 
+          setAwayTime(v=>{
 
-};
 
+            const next =
+              v + 1;
 
 
-},[]);
 
+            if(next > 10){
 
 
+              setFocus(
+                "distracted"
+              );
 
 
+              setConfidence(
+                20
+              );
 
 
+            }
 
 
+            else{
 
 
+              setFocus(
+                "away"
+              );
 
-/* MICROSTRICT ENGINE */
 
+              setConfidence(
+                60
+              );
 
-useEffect(()=>{
 
+            }
 
-if(!enabled)
 
-return;
 
+            return next;
 
 
+          });
 
 
-const interval =
 
-setInterval(()=>{
+        }
 
 
+      }
 
 
 
-const idle =
+      animation =
+        requestAnimationFrame(scan);
 
-Date.now()
 
--
+    }
 
-lastActivity.current;
 
 
 
+    scan();
 
 
-const tabHidden =
 
-document.hidden;
 
+    return()=>{
 
+      cancelAnimationFrame(
+        animation
+      );
 
+    };
 
 
 
-if(
+  },[
+    enabled,
+    aiReady
+  ]);
 
-tabHidden ||
 
-idle > 30000
 
-){
 
 
 
-setFocus("distracted");
 
 
-setConfidence(40);
 
 
+  /*
+    CLEAN CAMERA
+  */
 
-setAwayTime(
+  useEffect(()=>{
 
-v=>v+5
 
-);
+    return()=>{
 
 
+      streamRef.current
+      ?.getTracks()
+      .forEach(
+        track =>
+          track.stop()
+      );
 
-}
 
+    };
 
 
+  },[]);
 
-else if(
 
-idle > 15000
 
-){
 
 
 
-setFocus("away");
 
 
 
-setConfidence(75);
 
+  return (
 
+    <section
 
-}
+      className="
+      rounded-[32px]
+      border
+      p-5
+      overflow-hidden
+      "
 
+      style={{
 
+        background:
+        "var(--surface)",
 
 
-else{
+        borderColor:
+        "var(--border)",
 
+      }}
 
+    >
 
-setFocus("focused");
 
 
 
-setConfidence(98);
+      {/* HEADER */}
 
 
+      <div className="
+      flex
+      justify-between
+      items-center
+      mb-5
+      ">
 
-setAwayTime(0);
 
+        <div>
 
 
-}
+          <h2 className="
+          font-black
+          text-xl
+          ">
 
+            MicroStrict Vision
 
+          </h2>
 
 
-},5000);
 
+          <p
+          className="text-sm"
+          style={{
+            color:"var(--muted)"
+          }}
+          >
 
+            {
+              enabled
+              ?
+              "AI vision analysis running"
+              :
+              "Enable camera to start analysis"
+            }
 
+          </p>
 
 
+        </div>
 
-return()=>clearInterval(interval);
 
 
 
+        {
+          enabled
+          ?
+          <Video color="#22c55e"/>
+          :
+          <VideoOff color="#64748b"/>
+        }
 
-},[enabled]);
 
 
+      </div>
 
 
 
@@ -427,36 +515,67 @@ return()=>clearInterval(interval);
 
 
 
+      {/* CAMERA */}
 
-/* CAMERA CLEANUP */
 
+      <div className="
+      relative
+      aspect-video
+      bg-black
+      rounded-3xl
+      overflow-hidden
+      ">
 
-useEffect(()=>{
 
 
-return()=>{
+        <video
 
+          ref={videoRef}
 
-streamRef.current
+          autoPlay
 
-?.getTracks()
+          muted
 
-.forEach(
+          playsInline
 
-track=>track.stop()
+          className="
+          absolute
+          inset-0
+          h-full
+          w-full
+          object-cover
+          scale-x-[-1]
+          "
 
-);
+        />
 
 
-};
 
 
-},[]);
 
+        {
+          enabled &&
+          aiReady &&
+          (
 
+          <div className="
+          absolute
+          top-4
+          left-4
+          rounded-full
+          bg-black/60
+          px-4
+          py-2
+          text-xs
+          text-green-400
+          ">
 
+            ● AI ACTIVE
 
+          </div>
 
+          )
+        }
 
 
 
@@ -464,535 +583,162 @@ track=>track.stop()
 
 
 
-return(
 
-<section
+        {
+          !enabled &&
 
+          <div className="
+          absolute
+          inset-0
+          flex
+          items-center
+          justify-center
+          ">
 
-className="
 
-rounded-[32px]
+            <button
 
-border
+            onClick={startCamera}
 
-p-5
+            className="
+            flex
+            gap-2
+            items-center
+            rounded-xl
+            px-6
+            py-3
+            font-bold
+            "
 
-overflow-hidden
+            style={{
 
-"
+              background:
+              "linear-gradient(135deg,#2563eb,#06b6d4)",
 
-style={{
+              color:"white"
 
+            }}
 
-background:
+            >
 
-"var(--surface)",
 
+              <Camera size={18}/>
 
-borderColor:
+              Enable Vision
 
-"var(--border)",
 
+            </button>
 
-}}
 
->
+          </div>
 
+        }
 
 
 
 
+      </div>
 
 
 
 
 
-{/* HEADER */}
 
 
 
-<div
 
-className="
+      {
+        cameraError &&
 
-flex
+        <p className="
+        text-red-400
+        text-sm
+        mt-3
+        ">
 
-items-center
+          {cameraError}
 
-justify-between
+        </p>
 
-mb-5
+      }
 
-"
 
->
 
 
 
 
 
-<div>
 
 
 
-<h2
 
-className="
+      {/* STATS */}
 
-font-black
 
-text-xl
+      <div className="
+      grid
+      grid-cols-3
+      gap-3
+      mt-5
+      ">
 
-"
 
->
 
 
-MicroStrict Vision
+        <div className="vision-card">
 
+          <Eye size={16}/>
 
-</h2>
+          <p>State</p>
 
+          <h3>
+            {focus}
+          </h3>
 
+        </div>
 
 
 
-<p
 
-className="text-sm"
 
-style={{
+        <div className="vision-card">
 
-color:"var(--muted)"
+          <ShieldCheck size={16}/>
 
-}}
+          <p>Trust</p>
 
->
+          <h3>
+            {confidence}%
+          </h3>
 
+        </div>
 
-AI focus guardian active
 
 
-</p>
 
 
+        <div className="vision-card">
 
+          <Activity size={16}/>
 
-</div>
+          <p>Away</p>
 
+          <h3>
+            {awayTime}s
+          </h3>
 
+        </div>
 
 
 
 
-{
+      </div>
 
 
-enabled
 
-?
+    </section>
 
-
-<Video color="#22c55e"/>
-
-:
-
-
-<VideoOff color="#64748b"/>
-
-
-}
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-{/* VIDEO */}
-
-
-<div
-
-className="
-
-relative
-
-aspect-video
-
-rounded-3xl
-
-overflow-hidden
-
-bg-black
-
-"
-
->
-
-
-
-
-
-
-<video
-
-
-ref={videoRef}
-
-
-autoPlay
-
-
-muted
-
-
-playsInline
-
-
-className="
-
-absolute
-
-inset-0
-
-h-full
-
-w-full
-
-object-cover
-
-scale-x-[-1]
-
-"
-
-/>
-
-
-
-
-
-
-
-
-
-
-{/* HUD */}
-
-
-{
-
-enabled &&
-
-
-<div
-
-className="
-
-absolute
-
-top-4
-
-left-4
-
-rounded-full
-
-bg-black/50
-
-backdrop-blur
-
-px-4
-
-py-2
-
-text-xs
-
-text-green-400
-
-"
-
->
-
-
-● TRACKING
-
-
-</div>
-
-
-}
-
-
-
-
-
-
-
-
-
-
-
-{
-
-
-!enabled &&
-
-
-<div
-
-className="
-
-absolute
-
-inset-0
-
-flex
-
-items-center
-
-justify-center
-
-"
-
->
-
-
-
-<button
-
-
-onClick={startCamera}
-
-
-className="
-
-flex
-
-items-center
-
-gap-2
-
-rounded-xl
-
-px-6
-
-py-3
-
-font-bold
-
-transition
-
-hover:scale-105
-
-"
-
-style={{
-
-
-background:
-
-"linear-gradient(135deg,#2563eb,#06b6d4)",
-
-
-color:"white",
-
-
-}}
-
->
-
-
-
-<Camera size={18}/>
-
-
-
-Enable Vision
-
-
-
-</button>
-
-
-
-</div>
-
-
-}
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-{
-
-cameraError &&
-
-
-<p
-
-className="
-
-text-red-400
-
-text-sm
-
-mt-3
-
-"
-
->
-
-
-{cameraError}
-
-
-</p>
-
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-{/* STATS */}
-
-
-<div
-
-className="
-
-grid
-
-grid-cols-3
-
-gap-3
-
-mt-5
-
-"
-
->
-
-
-
-
-
-
-<div className="vision-card">
-
-
-<Eye size={16}/>
-
-
-<p>State</p>
-
-
-<h3>
-
-{focus}
-
-</h3>
-
-
-</div>
-
-
-
-
-
-
-
-<div className="vision-card">
-
-
-<ShieldCheck size={16}/>
-
-
-<p>Trust</p>
-
-
-<h3>
-
-{confidence}%
-
-</h3>
-
-
-</div>
-
-
-
-
-
-
-
-<div className="vision-card">
-
-
-<Activity size={16}/>
-
-
-<p>Away</p>
-
-
-<h3>
-
-{awayTime}s
-
-</h3>
-
-
-</div>
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-</section>
-
-);
+  );
 
 
 }
