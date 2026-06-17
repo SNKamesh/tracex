@@ -16,29 +16,26 @@ import {
 
 
 type Status =
-| "focused"
-| "checking"
-| "away";
+  | "focused"
+  | "checking"
+  | "away";
 
 
 
-type Props={
+type Props = {
 
-mode:
-"preview" |
-"strict";
+  mode?: "preview" | "strict";
 
-view?:
-"normal" |
-"mirror";
+  view?: "normal" | "mirror";
 
-onUpdate?:(data:{
-status:Status;
-away:number;
-})=>void;
+  onUpdate?: (data:{
+    status:Status;
+    away:number;
+  })=>void;
 
-onVisionLost?:()=>void;
-onVisionBack?:()=>void;
+  onVisionLost?:()=>void;
+
+  onVisionBack?:()=>void;
 
 };
 
@@ -46,13 +43,16 @@ onVisionBack?:()=>void;
 
 
 
-
 export default function CameraEngine({
 
-mode,
+mode="preview",
+
 view="normal",
+
 onUpdate,
+
 onVisionLost,
+
 onVisionBack,
 
 }:Props){
@@ -106,7 +106,6 @@ useState(0);
 
 
 
-
 async function loadAI(){
 
 
@@ -134,13 +133,12 @@ vision,
 baseOptions:{
 
 modelAssetPath:
-"https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite"
+"https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite",
 
 },
 
 
 runningMode:"VIDEO",
-
 
 }
 
@@ -161,33 +159,34 @@ setReady(true);
 
 
 
-async function startCamera(){
 
+async function startCamera(){
 
 
 const stream =
 await navigator.mediaDevices.getUserMedia({
 
-
 video:{
 
 width:1280,
+
 height:720,
+
 facingMode:"user",
 
 },
 
-
 audio:false,
-
 
 });
 
 
 
 
+
 streamRef.current =
 stream;
+
 
 
 
@@ -215,7 +214,6 @@ if(videoRef.current){
 
 videoRef.current.srcObject =
 stream;
-
 
 
 await videoRef.current.play();
@@ -260,6 +258,9 @@ onVisionBack?.();
 
 
 
+
+
+
 useEffect(()=>{
 
 
@@ -275,13 +276,15 @@ return;
 
 
 
-const ai =
+
+const interval =
 setInterval(()=>{
 
 
 
 const video =
 videoRef.current;
+
 
 
 const track =
@@ -291,11 +294,12 @@ streamRef.current
 
 
 
+
+
 if(
 !track ||
 track.readyState!=="live"
 ){
-
 
 
 if(!lost.current){
@@ -320,13 +324,17 @@ return;
 
 
 
+
+
 if(
 !video ||
-video.readyState<2 ||
-video.videoWidth<=0 ||
+video.readyState < 2 ||
+video.videoWidth <=0 ||
 video.videoHeight<=0
 )
 return;
+
+
 
 
 
@@ -337,15 +345,17 @@ let face=false;
 
 
 
-
 try{
 
 
 const result =
 detector.current
 ?.detectForVideo(
+
 video,
+
 performance.now()
+
 );
 
 
@@ -354,6 +364,7 @@ face =
 (result?.detections.length ?? 0)
 >
 0;
+
 
 
 }
@@ -365,6 +376,7 @@ return;
 
 
 }
+
 
 
 
@@ -396,7 +408,7 @@ return;
 if(!missingSince.current){
 
 
-missingSince.current=
+missingSince.current =
 Date.now();
 
 
@@ -407,6 +419,8 @@ return;
 
 
 }
+
+
 
 
 
@@ -452,7 +466,9 @@ setStatus("checking");
 
 
 
-return()=>clearInterval(ai);
+
+
+return()=>clearInterval(interval);
 
 
 
@@ -471,12 +487,14 @@ onVisionLost
 
 
 
+
 useEffect(()=>{
 
 
 onUpdate?.({
 
 status,
+
 away,
 
 });
@@ -505,14 +523,15 @@ return()=>{
 
 streamRef.current
 ?.getTracks()
-.forEach(t=>t.stop());
+.forEach(
+t=>t.stop()
+);
 
 
 };
 
 
 },[]);
-
 
 
 
@@ -554,13 +573,17 @@ bg-black
 
 
 
+
 <video
 
 ref={videoRef}
 
 autoPlay
+
 muted
+
 playsInline
+
 
 className={
 
@@ -593,13 +616,17 @@ scale-x-[-1]
 
 
 
+
+
 {
+
 !enabled &&
 
 
 <button
 
 onClick={startCamera}
+
 
 className="
 absolute
