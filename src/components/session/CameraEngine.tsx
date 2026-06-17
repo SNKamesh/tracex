@@ -6,17 +6,7 @@ import {
   useState,
 } from "react";
 
-
-import {
-  Camera,
-  Eye,
-  ShieldCheck,
-  AlertTriangle,
-  Activity,
-  Video,
-  VideoOff,
-} from "lucide-react";
-
+import { Camera } from "lucide-react";
 
 import {
   FaceDetector,
@@ -25,361 +15,356 @@ import {
 
 
 
+type Status =
+| "focused"
+| "checking"
+| "away";
 
-type FocusState =
-  | "focused"
-  | "away"
-  | "distracted";
 
 
+type Props={
 
+mode:
+"preview" |
+"strict";
 
+view?:
+"normal" |
+"mirror";
 
+onUpdate?:(data:{
+status:Status;
+away:number;
+})=>void;
 
-export default function CameraEngine(){
+onVisionLost?:()=>void;
+onVisionBack?:()=>void;
 
+};
 
-  const videoRef =
-    useRef<HTMLVideoElement | null>(null);
 
 
-  const streamRef =
-    useRef<MediaStream | null>(null);
 
 
-  const detectorRef =
-    useRef<FaceDetector | null>(null);
 
+export default function CameraEngine({
 
-  const lastVideoTime =
-    useRef(-1);
+mode,
+view="normal",
+onUpdate,
+onVisionLost,
+onVisionBack,
 
+}:Props){
 
 
-  const [enabled,setEnabled] =
-    useState(false);
 
 
-  const [aiReady,setAiReady] =
-    useState(false);
 
+const videoRef =
+useRef<HTMLVideoElement|null>(null);
 
-  const [focus,setFocus] =
-    useState<FocusState>("away");
 
+const streamRef =
+useRef<MediaStream|null>(null);
 
-  const [confidence,setConfidence] =
-    useState(0);
 
+const detector =
+useRef<FaceDetector|null>(null);
 
-  const [awayTime,setAwayTime] =
-    useState(0);
 
+const missingSince =
+useRef<number|null>(null);
 
-  const [cameraError,setCameraError] =
-    useState("");
 
+const lost =
+useRef(false);
 
 
 
 
 
+const [enabled,setEnabled] =
+useState(false);
 
 
+const [ready,setReady] =
+useState(false);
 
-  async function loadAI(){
 
+const [status,setStatus] =
+useState<Status>("checking");
 
-    const vision =
-      await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
-      );
 
+const [away,setAway] =
+useState(0);
 
 
-    detectorRef.current =
-      await FaceDetector.createFromOptions(
-        vision,
-        {
-          baseOptions:{
-            modelAssetPath:
-            "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite",
-          },
 
 
-          runningMode:"VIDEO",
-        }
-      );
 
 
-    setAiReady(true);
 
-  }
 
 
+async function loadAI(){
 
 
+if(
+mode==="preview" ||
+detector.current
+)
+return;
 
 
 
+const vision =
+await FilesetResolver.forVisionTasks(
+"https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+);
 
 
 
-  async function startCamera(){
 
+detector.current =
+await FaceDetector.createFromOptions(
+vision,
+{
 
-    try{
+baseOptions:{
 
+modelAssetPath:
+"https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite"
 
-      setCameraError("");
+},
 
 
-      const stream =
-        await navigator.mediaDevices
-        .getUserMedia({
+runningMode:"VIDEO",
 
-          video:{
-            width:1280,
-            height:720,
-            facingMode:"user",
-          },
 
-          audio:false,
+}
 
-        });
+);
 
 
 
-      streamRef.current =
-        stream;
+setReady(true);
 
 
+}
 
-      if(videoRef.current){
 
-        videoRef.current.srcObject =
-          stream;
 
 
-        await videoRef.current.play();
 
-      }
 
 
 
-      await loadAI();
 
+async function startCamera(){
 
 
-      setEnabled(true);
 
+const stream =
+await navigator.mediaDevices.getUserMedia({
 
 
-    }
+video:{
 
-    catch(error){
+width:1280,
+height:720,
+facingMode:"user",
 
+},
 
-      console.error(error);
 
+audio:false,
 
-      setCameraError(
-        "Camera or AI failed to start"
-      );
 
+});
 
-    }
 
 
-  }
 
+streamRef.current =
+stream;
 
 
 
 
+stream
+.getVideoTracks()[0]
+.onended=()=>{
 
 
+lost.current=true;
 
 
+onVisionLost?.();
 
-  /*
-    REAL MICROSTRICT VISION ENGINE
-  */
 
+};
 
-  useEffect(()=>{
 
 
-    if(!enabled || !aiReady)
-      return;
 
 
 
-    let animation:number;
+if(videoRef.current){
 
 
+videoRef.current.srcObject =
+stream;
 
-    function scan(){
 
 
+await videoRef.current.play();
 
-      const video =
-        videoRef.current;
 
+}
 
-      const detector =
-        detectorRef.current;
 
 
 
-      if(
 
-        video &&
 
-        detector &&
+await loadAI();
 
-        video.currentTime !==
-        lastVideoTime.current
 
-      ){
 
+setEnabled(true);
 
 
-        lastVideoTime.current =
-          video.currentTime;
 
 
+if(lost.current){
 
 
-        const result =
-          detector.detectForVideo(
+lost.current=false;
 
-            video,
 
-            performance.now()
+onVisionBack?.();
 
-          );
 
+}
 
 
 
+}
 
-        const faceFound =
-          result.detections.length > 0;
 
 
 
 
 
-        if(faceFound){
 
 
-          setFocus(
-            "focused"
-          );
 
+useEffect(()=>{
 
-          setConfidence(
-            98
-          );
 
 
-          setAwayTime(
-            0
-          );
+if(
+mode!=="strict" ||
+!enabled ||
+!ready
+)
+return;
 
 
-        }
 
 
-        else{
 
+const ai =
+setInterval(()=>{
 
-          setAwayTime(v=>{
 
 
-            const next =
-              v + 1;
+const video =
+videoRef.current;
 
 
+const track =
+streamRef.current
+?.getVideoTracks()[0];
 
-            if(next > 10){
 
 
-              setFocus(
-                "distracted"
-              );
 
+if(
+!track ||
+track.readyState!=="live"
+){
 
-              setConfidence(
-                20
-              );
 
 
-            }
+if(!lost.current){
 
 
-            else{
+lost.current=true;
 
 
-              setFocus(
-                "away"
-              );
+onVisionLost?.();
 
 
-              setConfidence(
-                60
-              );
+}
 
 
-            }
+return;
 
 
+}
 
-            return next;
 
 
-          });
 
 
 
-        }
+if(
+!video ||
+video.readyState<2 ||
+video.videoWidth<=0 ||
+video.videoHeight<=0
+)
+return;
 
 
-      }
 
 
 
-      animation =
-        requestAnimationFrame(scan);
 
+let face=false;
 
-    }
 
 
 
+try{
 
-    scan();
 
+const result =
+detector.current
+?.detectForVideo(
+video,
+performance.now()
+);
 
 
 
-    return()=>{
+face =
+(result?.detections.length ?? 0)
+>
+0;
 
-      cancelAnimationFrame(
-        animation
-      );
 
-    };
+}
 
+catch{
 
 
-  },[
-    enabled,
-    aiReady
-  ]);
+return;
 
 
+}
 
 
 
@@ -388,357 +373,273 @@ export default function CameraEngine(){
 
 
 
-  /*
-    CLEAN CAMERA
-  */
+if(face){
 
-  useEffect(()=>{
 
+missingSince.current=null;
 
-    return()=>{
 
+setStatus("focused");
 
-      streamRef.current
-      ?.getTracks()
-      .forEach(
-        track =>
-          track.stop()
-      );
 
+return;
 
-    };
 
+}
 
-  },[]);
 
 
 
 
 
 
+if(!missingSince.current){
 
 
+missingSince.current=
+Date.now();
 
 
-  return (
+setStatus("checking");
 
-    <section
 
-      className="
-      rounded-[32px]
-      border
-      p-5
-      overflow-hidden
-      "
+return;
 
-      style={{
 
-        background:
-        "var(--surface)",
+}
 
 
-        borderColor:
-        "var(--border)",
 
-      }}
 
-    >
 
+const missing =
+Date.now()
+-
+missingSince.current;
 
 
 
-      {/* HEADER */}
 
 
-      <div className="
-      flex
-      justify-between
-      items-center
-      mb-5
-      ">
 
+if(missing>18000){
 
-        <div>
 
+setStatus("away");
 
-          <h2 className="
-          font-black
-          text-xl
-          ">
 
-            MicroStrict Vision
+setAway(
+Math.floor(missing/1000)
+);
 
-          </h2>
 
+}
 
+else{
 
-          <p
-          className="text-sm"
-          style={{
-            color:"var(--muted)"
-          }}
-          >
 
-            {
-              enabled
-              ?
-              "AI vision analysis running"
-              :
-              "Enable camera to start analysis"
-            }
+setStatus("checking");
 
-          </p>
 
+}
 
-        </div>
 
 
 
 
-        {
-          enabled
-          ?
-          <Video color="#22c55e"/>
-          :
-          <VideoOff color="#64748b"/>
-        }
+},1000);
 
 
 
-      </div>
 
+return()=>clearInterval(ai);
 
 
 
+},[
+mode,
+enabled,
+ready,
+onVisionLost
+]);
 
 
 
 
 
-      {/* CAMERA */}
 
 
-      <div className="
-      relative
-      aspect-video
-      bg-black
-      rounded-3xl
-      overflow-hidden
-      ">
 
 
+useEffect(()=>{
 
-        <video
 
-          ref={videoRef}
+onUpdate?.({
 
-          autoPlay
+status,
+away,
 
-          muted
+});
 
-          playsInline
 
-          className="
-          absolute
-          inset-0
-          h-full
-          w-full
-          object-cover
-          scale-x-[-1]
-          "
+},[
+status,
+away,
+onUpdate
+]);
 
-        />
 
 
 
 
 
-        {
-          enabled &&
-          aiReady &&
-          (
 
-          <div className="
-          absolute
-          top-4
-          left-4
-          rounded-full
-          bg-black/60
-          px-4
-          py-2
-          text-xs
-          text-green-400
-          ">
 
-            ● AI ACTIVE
 
-          </div>
 
-          )
-        }
+useEffect(()=>{
 
 
+return()=>{
 
 
+streamRef.current
+?.getTracks()
+.forEach(t=>t.stop());
 
 
+};
 
 
-        {
-          !enabled &&
+},[]);
 
-          <div className="
-          absolute
-          inset-0
-          flex
-          items-center
-          justify-center
-          ">
 
 
-            <button
 
-            onClick={startCamera}
 
-            className="
-            flex
-            gap-2
-            items-center
-            rounded-xl
-            px-6
-            py-3
-            font-bold
-            "
 
-            style={{
 
-              background:
-              "linear-gradient(135deg,#2563eb,#06b6d4)",
 
-              color:"white"
 
-            }}
 
-            >
+return(
 
+<div
 
-              <Camera size={18}/>
+className={
 
-              Enable Vision
+view==="mirror"
 
+?
 
-            </button>
+`
+absolute
+inset-0
+bg-black
+`
 
+:
 
-          </div>
+`
+relative
+overflow-hidden
+rounded-2xl
+bg-black
+`
 
-        }
+}
 
+>
 
 
 
-      </div>
 
+<video
 
+ref={videoRef}
 
+autoPlay
+muted
+playsInline
 
+className={
 
+view==="mirror"
 
+?
 
+`
+h-full
+w-full
+object-cover
+scale-x-[-1]
+`
 
+:
 
-      {
-        cameraError &&
+`
+w-full
+aspect-video
+object-cover
+scale-x-[-1]
+`
 
-        <p className="
-        text-red-400
-        text-sm
-        mt-3
-        ">
+}
 
-          {cameraError}
+/>
 
-        </p>
 
-      }
 
 
 
 
+{
+!enabled &&
 
 
+<button
 
+onClick={startCamera}
 
+className="
+absolute
+inset-0
 
+flex
+items-center
+justify-center
 
+gap-2
 
-      {/* STATS */}
+bg-black/50
 
+backdrop-blur
 
-      <div className="
-      grid
-      grid-cols-3
-      gap-3
-      mt-5
-      ">
+font-black
 
+text-white
+"
 
+>
 
 
-        <div className="vision-card">
+<Camera size={18}/>
 
-          <Eye size={16}/>
 
-          <p>State</p>
+Enable Vision
 
-          <h3>
-            {focus}
-          </h3>
 
-        </div>
+</button>
 
 
+}
 
 
 
-        <div className="vision-card">
 
-          <ShieldCheck size={16}/>
 
-          <p>Trust</p>
+</div>
 
-          <h3>
-            {confidence}%
-          </h3>
-
-        </div>
-
-
-
-
-
-        <div className="vision-card">
-
-          <Activity size={16}/>
-
-          <p>Away</p>
-
-          <h3>
-            {awayTime}s
-          </h3>
-
-        </div>
-
-
-
-
-      </div>
-
-
-
-    </section>
-
-  );
-
+);
 
 }

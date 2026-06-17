@@ -1,24 +1,23 @@
 "use client";
 
 import {
-  useEffect,
-  useRef,
   useState,
 } from "react";
 
 
 import {
   Brain,
-  EyeOff,
-  Keyboard,
-  MousePointer2,
+  Maximize2,
   ShieldCheck,
-  AlertTriangle,
-  Activity,
+  Camera,
+  Clock3,
+  Sparkles,
 } from "lucide-react";
 
 
 import CameraEngine from "./CameraEngine";
+import MicroStrictRoom from "./MicroStrictRoom";
+
 
 
 
@@ -27,621 +26,472 @@ import CameraEngine from "./CameraEngine";
 export default function MicroStrictTracker(){
 
 
-  const lastActivity =
-    useRef(Date.now());
+const [running,setRunning] =
+useState(false);
 
 
-  const [tabSwitches,setTabSwitches] =
-    useState(0);
 
 
-  const [idleTime,setIdleTime] =
-    useState(0);
 
+return(
 
-  const [focusScore,setFocusScore] =
-    useState(0);
+<>
 
 
-  const [active,setActive] =
-    useState(false);
+<section
 
+className="
+relative
 
+overflow-hidden
 
+rounded-[34px]
 
+border
 
+p-7
 
+space-y-7
+"
 
+style={{
 
+background:
+`
+linear-gradient(
+135deg,
+rgba(37,99,235,.12),
+rgba(6,182,212,.08),
+rgba(0,0,0,.05)
+),
+var(--surface)
+`,
 
-  /*
-    REAL ACTIVITY TRACKER
-  */
+borderColor:
+"var(--border)",
 
-  useEffect(()=>{
+}}
 
+>
 
-    function activity(){
 
 
-      lastActivity.current =
-        Date.now();
 
+{/* glow */}
 
-      setIdleTime(0);
+<div
 
+className="
+absolute
+-top-20
+-right-20
 
-      setActive(true);
+h-56
+w-56
 
+rounded-full
 
-    }
+bg-cyan-500/20
 
+blur-[80px]
 
+pointer-events-none
+"
 
+/>
 
-    const events = [
 
-      "mousemove",
 
-      "mousedown",
 
-      "keydown",
 
-      "scroll",
 
-      "touchstart",
 
-    ];
 
 
+{/* HEADER */}
 
 
-    events.forEach(
+<div className="relative z-10">
 
-      e =>
 
-      window.addEventListener(
-        e,
-        activity
-      )
+<div
 
-    );
+className="
+inline-flex
 
+items-center
 
+gap-2
 
+rounded-full
 
+border
 
-    return()=>{
+px-4
+py-2
 
+text-xs
 
-      events.forEach(
+mb-5
 
-        e =>
+bg-white/5
 
-        window.removeEventListener(
-          e,
-          activity
-        )
+backdrop-blur
+"
 
-      );
+>
 
 
-    };
+<Sparkles size={14}/>
 
 
+AI Focus Guardian
 
-  },[]);
 
+</div>
 
 
 
 
 
 
+<h2
 
+className="
+text-3xl
 
+font-black
 
+tracking-tight
 
+flex
+items-center
+gap-3
+"
 
-  /*
-    TAB SWITCH
-  */
+>
 
-  useEffect(()=>{
 
+<Brain size={30}/>
 
-    function visibility(){
 
+MicroStrict
 
-      if(document.hidden){
 
+</h2>
 
-        setTabSwitches(
-          v=>v+1
-        );
 
 
-        setFocusScore(
-          v=>Math.max(v-15,0)
-        );
 
 
-      }
+<p
 
+className="
+text-sm
 
-    }
+opacity-60
 
+mt-2
 
+max-w-sm
+"
 
+>
 
-    document.addEventListener(
+Your private AI guardian verifies real focus time and protects your deep work sessions.
 
-      "visibilitychange",
 
-      visibility
+</p>
 
-    );
 
 
+</div>
 
 
 
-    return()=>{
 
 
-      document.removeEventListener(
 
-        "visibilitychange",
 
-        visibility
 
-      );
 
 
-    };
 
+{/* STATS */}
 
+<div
 
-  },[]);
+className="
+relative
 
+z-10
 
+grid
+grid-cols-3
 
+gap-3
+"
 
+>
 
 
+{[
 
+{
+icon:<ShieldCheck size={18}/>,
+text:"Trust"
+},
 
+{
+icon:<Camera size={18}/>,
+text:"Vision"
+},
 
+{
+icon:<Clock3 size={18}/>,
+text:"Focus"
+},
 
+].map((item,i)=>(
 
 
+<div
 
-  /*
-    MICROSTRICT SCORE ENGINE
-  */
+key={i}
 
-  useEffect(()=>{
+className="
+rounded-2xl
 
+border
 
+bg-white/5
 
-    const engine =
+backdrop-blur
 
-    setInterval(()=>{
+p-4
+"
 
+>
 
 
-      const idle =
+{item.icon}
 
-      Math.floor(
 
-        (Date.now()
+<p
 
-        -
+className="
+mt-3
 
-        lastActivity.current)
+text-xs
 
-        /1000
+font-bold
 
-      );
+opacity-70
+"
 
+>
 
+{item.text}
 
+</p>
 
-      setIdleTime(idle);
 
+</div>
 
 
+))}
 
 
-      if(idle > 30){
+</div>
 
 
 
-        setActive(false);
 
 
 
-        setFocusScore(
 
-          v =>
 
-          Math.max(
-            v-2,
-            0
-          )
 
-        );
 
 
 
-      }
+{/* CAMERA CHECK */}
 
+<div
 
+className="
+relative
+z-10
 
+rounded-[26px]
 
-      else{
+border
 
+bg-black/20
 
+p-4
 
-        setActive(true);
+space-y-3
+"
 
+>
 
 
-        setFocusScore(
 
-          v =>
+<div>
 
-          Math.min(
-            v+1,
-            100
-          )
 
-        );
+<p
 
+className="
+font-black
+"
 
+>
 
-      }
+Vision Check
 
 
+</p>
 
-    },500);
 
+<p
 
+className="
+text-xs
+opacity-50
+"
 
+>
 
+Permission test only • Tracking begins inside focus mode
 
 
-    return()=>clearInterval(engine);
+</p>
 
 
+</div>
 
-  },[]);
 
 
 
+<CameraEngine
 
+mode="preview"
 
+/>
 
 
 
+</div>
 
 
 
 
 
-  return(
 
 
-    <section
 
-    className="
-    rounded-[32px]
-    border
-    p-5
-    space-y-5
-    "
 
-    style={{
 
-      background:
-      "var(--surface)",
 
 
-      borderColor:
-      "var(--border)",
 
-    }}
+{/* START */}
 
-    >
+<button
 
 
+onClick={()=>setRunning(true)}
 
 
+className="
+relative
 
+z-10
 
+w-full
 
-      {/* HEADER */}
+rounded-2xl
 
+py-5
 
-      <div
-      className="
-      flex
-      items-center
-      justify-between
-      "
-      >
 
+font-black
 
+text-lg
 
-        <div>
 
+flex
 
-          <h2
-          className="
-          text-xl
-          font-black
-          flex
-          gap-2
-          items-center
-          "
-          >
+items-center
 
+justify-center
 
-            <Brain/>
+gap-3
 
-            MicroStrict Guardian
 
+transition
 
-          </h2>
 
+hover:scale-[1.02]
 
+active:scale-95
+"
 
 
+style={{
 
-          <p
-          className="text-sm"
-          style={{
-            color:"var(--muted)"
-          }}
-          >
+background:
+"linear-gradient(135deg,#2563eb,#06b6d4)",
 
-            Vision + activity integrity
+color:"white"
 
-          </p>
+}}
 
+>
 
 
-        </div>
+<Maximize2 size={20}/>
 
 
+Enter Focus World
 
 
+</button>
 
-        {
 
 
-        active
 
-        ?
 
-        <ShieldCheck color="#22c55e"/>
 
-        :
+</section>
 
-        <AlertTriangle color="#f59e0b"/>
 
 
-        }
 
 
 
-      </div>
 
 
+{
 
+running &&
 
+<MicroStrictRoom
 
+onClose={()=>setRunning(false)}
 
+/>
 
+}
 
 
-      <CameraEngine />
 
+</>
 
 
-
-
-
-
-
-
-      {/* SCORE */}
-
-
-      <div
-      className="
-      rounded-2xl
-      border
-      p-5
-      "
-      >
-
-
-        <p
-        className="text-sm"
-        >
-
-          Focus Integrity
-
-        </p>
-
-
-
-        <h1
-        className="
-        text-5xl
-        font-black
-        "
-        >
-
-          {focusScore}%
-
-
-        </h1>
-
-
-
-      </div>
-
-
-
-
-
-
-
-
-
-
-      {/* METRICS */}
-
-
-      <div
-      className="
-      grid
-      grid-cols-3
-      gap-3
-      "
-      >
-
-
-
-
-
-        <div className="rounded-xl border p-4">
-
-
-          <EyeOff/>
-
-
-          <h2 className="text-2xl font-black">
-
-            {tabSwitches}
-
-          </h2>
-
-
-          <p className="text-sm">
-
-            Tabs
-
-          </p>
-
-
-
-        </div>
-
-
-
-
-
-
-
-        <div className="rounded-xl border p-4">
-
-
-          <MousePointer2/>
-
-
-          <h2 className="text-2xl font-black">
-
-            {idleTime}s
-
-          </h2>
-
-
-          <p className="text-sm">
-
-            Idle
-
-          </p>
-
-
-        </div>
-
-
-
-
-
-
-
-
-        <div className="rounded-xl border p-4">
-
-
-          {
-
-          active
-
-          ?
-
-          <Keyboard/>
-
-          :
-
-          <Activity/>
-
-          }
-
-
-
-          <h2 className="text-xl font-black">
-
-
-            {
-
-            active
-
-            ?
-
-            "ON"
-
-            :
-
-            "OFF"
-
-            }
-
-
-          </h2>
-
-
-
-          <p className="text-sm">
-
-            Input
-
-          </p>
-
-
-        </div>
-
-
-
-
-
-
-      </div>
-
-
-
-
-
-
-
-    </section>
-
-
-  );
+);
 
 
 }
