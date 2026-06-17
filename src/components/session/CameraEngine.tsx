@@ -1,13 +1,12 @@
 "use client";
 
-
 import {
 
 useEffect,
 
 useRef,
 
-useState
+useState,
 
 } from "react";
 
@@ -22,7 +21,14 @@ ShieldCheck,
 
 AlertTriangle,
 
+Activity,
+
+Video,
+
+VideoOff,
+
 } from "lucide-react";
+
 
 
 
@@ -46,13 +52,31 @@ type FocusState =
 
 
 
+
+
 export default function CameraEngine(){
 
 
 
 const videoRef =
 
-useRef<HTMLVideoElement>(null);
+useRef<HTMLVideoElement | null>(null);
+
+
+
+const streamRef =
+
+useRef<MediaStream | null>(null);
+
+
+
+
+const lastActivity =
+
+useRef(Date.now());
+
+
+
 
 
 
@@ -68,25 +92,31 @@ useState<FocusState>("focused");
 
 
 
-const [missingSeconds,setMissingSeconds] =
-
-useState(0);
-
-
-
 const [confidence,setConfidence] =
 
 useState(100);
 
 
 
+const [awayTime,setAwayTime] =
+
+useState(0);
+
+
+
+const [cameraError,setCameraError] =
+
+useState("");
 
 
 
 
 
 
-/* START CAMERA */
+
+
+
+
 
 
 
@@ -96,15 +126,35 @@ async function startCamera(){
 try{
 
 
+setCameraError("");
+
+
+
 const stream =
 
 await navigator.mediaDevices.getUserMedia({
 
-video:true,
+video:{
+
+width:1280,
+
+height:720,
+
+facingMode:"user",
+
+},
 
 audio:false,
 
 });
+
+
+
+
+
+streamRef.current = stream;
+
+
 
 
 
@@ -114,7 +164,12 @@ if(videoRef.current){
 videoRef.current.srcObject = stream;
 
 
+await videoRef.current.play();
+
+
 }
+
+
 
 
 
@@ -124,25 +179,26 @@ setEnabled(true);
 
 }
 
-catch(err){
+catch(error){
 
 
-console.error(
 
-"Camera denied",
+console.error(error);
 
-err
+
+
+setCameraError(
+
+"Camera access blocked"
 
 );
 
 
-}
-
-
 
 }
 
 
+}
 
 
 
@@ -150,15 +206,89 @@ err
 
 
 
-/*
 
-TEMP MICROSTRICT ENGINE
 
-later replace this logic with:
 
-MediaPipe / TensorFlow
 
-*/
+
+/* USER ACTIVITY */
+
+
+useEffect(()=>{
+
+
+
+function active(){
+
+
+lastActivity.current = Date.now();
+
+
+}
+
+
+
+
+window.addEventListener(
+
+"mousemove",
+
+active
+
+);
+
+
+
+window.addEventListener(
+
+"keydown",
+
+active
+
+);
+
+
+
+
+return()=>{
+
+
+window.removeEventListener(
+
+"mousemove",
+
+active
+
+);
+
+
+window.removeEventListener(
+
+"keydown",
+
+active
+
+);
+
+
+};
+
+
+
+},[]);
+
+
+
+
+
+
+
+
+
+
+
+
+/* MICROSTRICT ENGINE */
 
 
 useEffect(()=>{
@@ -178,88 +308,72 @@ setInterval(()=>{
 
 
 
-/*
-
-For now:
-
-browser camera active = focused
-
-later AI detection plugs here
-
-*/
 
 
-const detected =
+const idle =
 
-videoRef.current &&
+Date.now()
 
-videoRef.current.readyState >= 2;
+-
+
+lastActivity.current;
 
 
 
 
 
-if(detected){
+const tabHidden =
+
+document.hidden;
 
 
 
-setMissingSeconds(0);
-
-
-setConfidence(100);
-
-
-setFocus("focused");
 
 
 
-}
+if(
 
-else{
+tabHidden ||
 
+idle > 30000
 
-
-setMissingSeconds(v=>{
-
-
-const next = v+2;
-
-
-
-if(next > 30){
+){
 
 
 
 setFocus("distracted");
 
 
-setConfidence(30);
+setConfidence(40);
+
+
+
+setAwayTime(
+
+v=>v+5
+
+);
 
 
 
 }
 
 
-else if(next > 10){
+
+
+else if(
+
+idle > 15000
+
+){
 
 
 
 setFocus("away");
 
 
-setConfidence(70);
 
-
-
-}
-
-
-
-return next;
-
-
-
-});
+setConfidence(75);
 
 
 
@@ -268,7 +382,28 @@ return next;
 
 
 
-},2000);
+else{
+
+
+
+setFocus("focused");
+
+
+
+setConfidence(98);
+
+
+
+setAwayTime(0);
+
+
+
+}
+
+
+
+
+},5000);
 
 
 
@@ -276,6 +411,7 @@ return next;
 
 
 return()=>clearInterval(interval);
+
 
 
 
@@ -291,11 +427,46 @@ return()=>clearInterval(interval);
 
 
 
+
+/* CAMERA CLEANUP */
+
+
+useEffect(()=>{
+
+
+return()=>{
+
+
+streamRef.current
+
+?.getTracks()
+
+.forEach(
+
+track=>track.stop()
+
+);
+
+
+};
+
+
+},[]);
+
+
+
+
+
+
+
+
+
+
+
+
 return(
 
-
-
-<div
+<section
 
 
 className="
@@ -305,6 +476,8 @@ rounded-[32px]
 border
 
 p-5
+
+overflow-hidden
 
 "
 
@@ -316,10 +489,9 @@ background:
 "var(--surface)",
 
 
-
 borderColor:
 
-"var(--border)"
+"var(--border)",
 
 
 }}
@@ -332,6 +504,10 @@ borderColor:
 
 
 
+
+
+
+{/* HEADER */}
 
 
 
@@ -353,12 +529,21 @@ mb-5
 
 
 
+
+
 <div>
+
 
 
 <h2
 
-className="font-black text-xl"
+className="
+
+font-black
+
+text-xl
+
+"
 
 >
 
@@ -367,6 +552,8 @@ MicroStrict Vision
 
 
 </h2>
+
+
 
 
 
@@ -383,10 +570,11 @@ color:"var(--muted)"
 >
 
 
-AI presence monitoring
+AI focus guardian active
 
 
 </p>
+
 
 
 
@@ -399,18 +587,22 @@ AI presence monitoring
 
 {
 
-focus==="focused"
+
+enabled
 
 ?
 
-<ShieldCheck color="#22c55e"/>
+
+<Video color="#22c55e"/>
 
 :
 
-<AlertTriangle color="#f59e0b"/>
+
+<VideoOff color="#64748b"/>
 
 
 }
+
 
 
 
@@ -427,19 +619,24 @@ focus==="focused"
 
 
 
+
+
+{/* VIDEO */}
+
+
 <div
 
 className="
 
 relative
 
-overflow-hidden
+aspect-video
 
 rounded-3xl
 
-bg-black
+overflow-hidden
 
-aspect-video
+bg-black
 
 "
 
@@ -467,16 +664,79 @@ playsInline
 
 className="
 
+absolute
+
+inset-0
+
 h-full
 
 w-full
 
 object-cover
 
+scale-x-[-1]
+
 "
 
-
 />
+
+
+
+
+
+
+
+
+
+
+{/* HUD */}
+
+
+{
+
+enabled &&
+
+
+<div
+
+className="
+
+absolute
+
+top-4
+
+left-4
+
+rounded-full
+
+bg-black/50
+
+backdrop-blur
+
+px-4
+
+py-2
+
+text-xs
+
+text-green-400
+
+"
+
+>
+
+
+● TRACKING
+
+
+</div>
+
+
+}
+
+
+
+
 
 
 
@@ -486,7 +746,27 @@ object-cover
 
 {
 
+
 !enabled &&
+
+
+<div
+
+className="
+
+absolute
+
+inset-0
+
+flex
+
+items-center
+
+justify-center
+
+"
+
+>
 
 
 
@@ -496,55 +776,58 @@ object-cover
 onClick={startCamera}
 
 
-
 className="
 
-absolute
+flex
 
-inset-0
+items-center
 
-m-auto
-
-h-14
-
-w-48
+gap-2
 
 rounded-xl
 
+px-6
+
+py-3
+
 font-bold
 
-"
+transition
 
+hover:scale-105
+
+"
 
 style={{
 
 
 background:
 
-"var(--primary)",
+"linear-gradient(135deg,#2563eb,#06b6d4)",
 
 
-color:"white"
+color:"white",
 
 
 }}
-
 
 >
 
 
 
-<Camera
+<Camera size={18}/>
 
-className="inline mr-2"
-
-/>
 
 
 Enable Vision
 
 
+
 </button>
+
+
+
+</div>
 
 
 }
@@ -553,6 +836,7 @@ Enable Vision
 
 
 
+
 </div>
 
 
@@ -563,70 +847,85 @@ Enable Vision
 
 
 
-<div
+
+
+{
+
+cameraError &&
+
+
+<p
 
 className="
 
-mt-5
+text-red-400
+
+text-sm
+
+mt-3
+
+"
+
+>
+
+
+{cameraError}
+
+
+</p>
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+{/* STATS */}
+
+
+<div
+
+className="
 
 grid
 
-grid-cols-2
+grid-cols-3
 
 gap-3
 
-"
-
->
-
-
-
-
-
-
-<div
-
-className="
-
-rounded-xl
-
-border
-
-p-3
+mt-5
 
 "
 
 >
 
+
+
+
+
+
+<div className="vision-card">
 
 
 <Eye size={16}/>
 
 
-
-<p className="mt-2 text-sm">
-
-
-State
+<p>State</p>
 
 
-</p>
-
-
-
-
-<h3
-
-className="font-black capitalize"
-
->
-
+<h3>
 
 {focus}
 
-
 </h3>
-
 
 
 </div>
@@ -637,57 +936,47 @@ className="font-black capitalize"
 
 
 
-
-<div
-
-className="
-
-rounded-xl
-
-border
-
-p-3
-
-"
-
->
+<div className="vision-card">
 
 
-
-<p className="text-sm">
-
-
-Confidence
+<ShieldCheck size={16}/>
 
 
-</p>
+<p>Trust</p>
 
 
-
-
-<h3
-
-className="text-2xl font-black"
-
->
-
+<h3>
 
 {confidence}%
 
+</h3>
+
+
+</div>
+
+
+
+
+
+
+
+<div className="vision-card">
+
+
+<Activity size={16}/>
+
+
+<p>Away</p>
+
+
+<h3>
+
+{awayTime}s
 
 </h3>
 
 
-
-
 </div>
-
-
-
-
-
-</div>
-
 
 
 
@@ -697,6 +986,11 @@ className="text-2xl font-black"
 </div>
 
 
+
+
+
+
+</section>
 
 );
 

@@ -63,9 +63,51 @@ function hasAbuse(text: string): boolean {
 
 async function sendOtp(email: string, otp: string) {
   try {
-    const r = await fetch("/api/send-otp", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({email, otp}) });
-    return r.ok;
-  } catch { return false; }
+    const response = await fetch("/api/send-otp", {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify({
+        email,
+        otp,
+      }),
+    });
+
+
+    let data = null;
+
+    try {
+      data = await response.json();
+    } catch {}
+
+
+    if (!response.ok) {
+      console.error(
+        "OTP SERVER ERROR:",
+        data
+      );
+
+      throw new Error(
+        data?.error ||
+        "Failed to send OTP"
+      );
+    }
+
+
+    return true;
+
+  } catch (error) {
+
+    console.error(
+      "SEND OTP FAILED:",
+      error
+    );
+
+    throw error;
+  }
 }
 
 function Err({ msg }: { msg: string }) {
@@ -258,20 +300,21 @@ export default function Signup() {
       setStep("create_otp");
   
   
-    } catch (err) {
-  
-  
+    } catch (err:any) {
+
+
       console.error(
         "Signup OTP error:",
         err
       );
-  
-  
+    
+    
       setCaEmailErr(
-        "Something went wrong. Please try again."
+        err?.message ||
+        "Unable to send OTP. Try again."
       );
-  
-  
+    
+    
     } finally {
   
       setCaLoading(false);

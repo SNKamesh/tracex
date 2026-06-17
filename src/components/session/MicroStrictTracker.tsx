@@ -1,794 +1,465 @@
 "use client";
 
-import {
-
-useEffect,
-
-useState,
-
-useRef,
-
-} from "react";
-
+import { useEffect, useState } from "react";
 
 import {
-
-Brain,
-
-ShieldCheck,
-
-AlertTriangle,
-
-MousePointer2,
-
-Keyboard,
-
-EyeOff,
-
+  Brain,
+  EyeOff,
+  Keyboard,
+  MousePointer2,
+  ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 
+import CameraEngine from "./CameraEngine";
 
 
+export default function MicroStrictTracker() {
 
 
+  const [tabSwitches, setTabSwitches] = useState(0);
 
-type FocusState =
+  const [idleTime, setIdleTime] = useState(0);
 
-"Flow"
+  const [focusScore, setFocusScore] = useState(100);
 
-|
+  const [active, setActive] = useState(true);
 
-"Active"
 
-|
 
-"Away"
+  /*
+    TAB SWITCH TRACKING
+  */
 
-|
+  useEffect(() => {
 
-"Distracted";
 
+    function handleVisibility() {
 
 
+      if (document.hidden) {
 
+        setTabSwitches((v) => v + 1);
 
+        setFocusScore((v) =>
+          Math.max(v - 10, 0)
+        );
 
+      }
 
 
+    }
 
-export default function MicroStrictTracker(){
 
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibility
+    );
 
 
-const [score,setScore] =
+    return () =>
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibility
+      );
 
-useState(100);
 
+  }, []);
 
 
-const [state,setState] =
 
-useState<FocusState>("Flow");
 
 
 
-const [tabSwitches,setTabSwitches] =
+  /*
+    IDLE TRACKING
+  */
 
-useState(0);
+  useEffect(() => {
 
 
+    let seconds = 0;
 
-const [idle,setIdle] =
 
-useState(0);
 
+    function reset() {
 
+      seconds = 0;
 
-const lastActivity =
+      setIdleTime(0);
 
-useRef(Date.now());
+      setActive(true);
 
+    }
 
 
 
+    window.addEventListener(
+      "mousemove",
+      reset
+    );
 
 
+    window.addEventListener(
+      "keydown",
+      reset
+    );
 
 
 
+    const interval =
+      setInterval(() => {
 
 
-/* ACTIVITY TRACKER */
+        seconds += 1;
 
 
-useEffect(()=>{
+        setIdleTime(seconds);
 
 
 
-function active(){
+        if (seconds > 30) {
 
 
-lastActivity.current =
+          setActive(false);
 
-Date.now();
 
+          setFocusScore((v) =>
+            Math.max(v - 1, 0)
+          );
 
 
-setIdle(0);
+        }
 
 
-}
+      }, 1000);
 
 
 
 
-window.addEventListener(
+    return () => {
 
-"mousemove",
 
-active
+      clearInterval(interval);
 
-);
 
+      window.removeEventListener(
+        "mousemove",
+        reset
+      );
 
 
-window.addEventListener(
+      window.removeEventListener(
+        "keydown",
+        reset
+      );
 
-"keydown",
 
-active
+    };
 
-);
 
 
+  }, []);
 
 
-return()=>{
 
 
-window.removeEventListener(
 
-"mousemove",
 
-active
 
-);
+  return (
 
+    <div
 
-window.removeEventListener(
+      className="
+      rounded-[32px]
+      border
+      p-5
+      space-y-5
+      "
 
-"keydown",
+      style={{
 
-active
+        background:
+          "var(--surface)",
 
-);
+        borderColor:
+          "var(--border)",
 
+      }}
 
-};
+    >
 
 
 
-},[]);
+      {/* HEADER */}
 
 
+      <div
 
+        className="
+        flex
+        items-center
+        justify-between
+        "
 
+      >
 
 
+        <div>
 
 
+          <h2
 
+            className="
+            text-xl
+            font-black
+            flex
+            gap-2
+            items-center
+            "
 
+          >
 
-/* TAB TRACKER */
+            <Brain size={22} />
 
+            MicroStrict Guardian
 
-useEffect(()=>{
+          </h2>
 
 
 
-function checkTab(){
+          <p
 
+            className="text-sm"
 
+            style={{
 
-if(
+              color:
+                "var(--muted)",
 
-document.hidden
+            }}
 
-){
+          >
 
+            AI anti-distraction system
 
+          </p>
 
-setTabSwitches(v=>v+1);
 
+        </div>
 
 
-setScore(v=>
 
-Math.max(
 
-0,
 
-v-5
+        {
 
-)
+          active ?
 
-);
+            <ShieldCheck color="#22c55e" />
 
+            :
 
+            <AlertTriangle color="#f59e0b" />
 
-}
 
+        }
 
 
-}
+      </div>
 
 
 
 
-document.addEventListener(
 
-"visibilitychange",
 
-checkTab
 
-);
 
+      {/* CAMERA */}
 
 
+      <CameraEngine />
 
 
-return()=>{
 
 
-document.removeEventListener(
 
-"visibilitychange",
 
-checkTab
 
-);
 
 
-};
 
+      {/* SCORE */}
 
 
-},[]);
+      <div
 
+        className="
+        rounded-2xl
+        border
+        p-5
+        "
 
+      >
 
 
+        <p
 
+          className="text-sm"
 
+          style={{
 
+            color:
+              "var(--muted)",
 
+          }}
 
+        >
 
+          Focus Integrity
 
+        </p>
 
-/* SCORE ENGINE */
 
 
-useEffect(()=>{
 
+        <h1
 
+          className="
+          text-5xl
+          font-black
+          "
 
-const engine =
+        >
 
-setInterval(()=>{
+          {focusScore}%
 
+        </h1>
 
 
-const idleSeconds =
+      </div>
 
 
-Math.floor(
 
-(Date.now()-lastActivity.current)
 
-/1000
 
-);
 
 
 
-setIdle(idleSeconds);
 
+      {/* METRICS */}
 
 
+      <div
 
+        className="
+        grid
+        grid-cols-3
+        gap-3
+        "
 
+      >
 
-if(
 
-idleSeconds>120
 
-){
+        <div className="rounded-xl border p-4">
 
 
-setState(
+          <EyeOff />
 
-"Distracted"
 
-);
+          <h2 className="text-2xl font-black">
 
+            {tabSwitches}
 
-setScore(v=>
+          </h2>
 
-Math.max(
 
-0,
+          <p className="text-sm">
 
-v-10
+            Tabs
 
-)
+          </p>
 
-);
 
+        </div>
 
-}
 
 
 
-else if(
 
-idleSeconds>45
 
-){
+        <div className="rounded-xl border p-4">
 
 
-setState(
+          <MousePointer2 />
 
-"Away"
 
-);
+          <h2 className="text-2xl font-black">
 
+            {idleTime}s
 
-}
+          </h2>
 
 
+          <p className="text-sm">
 
-else if(
+            Idle
 
-score>90
+          </p>
 
-){
 
+        </div>
 
-setState(
 
-"Flow"
 
-);
 
 
-}
 
 
+        <div className="rounded-xl border p-4">
 
-else{
 
+          <Keyboard />
 
-setState(
 
-"Active"
+          <h2 className="text-xl font-black">
 
-);
 
+            {
 
-}
+              active
+                ? "ON"
+                : "OFF"
 
+            }
 
 
+          </h2>
 
-},5000);
 
+          <p className="text-sm">
 
+            Input
 
+          </p>
 
 
-return()=>clearInterval(engine);
+        </div>
 
 
 
-},[score]);
 
+      </div>
 
 
 
 
 
+    </div>
 
-
-
-
-
-
-return(
-
-
-<div
-
-
-className="
-
-rounded-3xl
-
-border
-
-p-5
-
-"
-
-style={{
-
-
-background:
-
-"var(--surface)",
-
-
-borderColor:
-
-"var(--border)"
-
-
-}}
-
->
-
-
-
-
-
-
-
-
-<div
-
-className="flex justify-between"
-
->
-
-
-
-
-
-<div>
-
-
-<Brain />
-
-
-
-<h3
-
-className="
-
-font-black
-
-mt-3
-
-"
-
->
-
-
-MicroStrict Tracker
-
-
-</h3>
-
-
-
-
-</div>
-
-
-
-
-
-
-
-{
-
-
-state==="Flow"
-
-?
-
-
-<ShieldCheck
-
-color="#22c55e"
-
-/>
-
-
-:
-
-
-<AlertTriangle
-
-color="#f59e0b"
-
-/>
-
-
-}
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-<div
-
-className="mt-6"
-
->
-
-
-
-
-<p
-
-className="
-
-text-5xl
-
-font-black
-
-"
-
->
-
-
-{score}%
-
-
-</p>
-
-
-
-
-
-<p
-
-style={{
-
-
-color:
-
-"var(--muted)"
-
-
-}}
-
->
-
-
-{state} State
-
-
-</p>
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div
-
-className="
-
-grid
-
-grid-cols-3
-
-gap-3
-
-mt-6
-
-text-center
-
-"
-
->
-
-
-
-
-
-
-<div
-
-className="
-
-rounded-xl
-
-border
-
-p-3
-
-"
-
->
-
-
-<EyeOff
-
-size={16}
-
-className="mx-auto"
-
-/>
-
-
-<p className="text-xl font-bold">
-
-
-{tabSwitches}
-
-
-</p>
-
-
-<small>
-
-Tabs
-
-</small>
-
-
-</div>
-
-
-
-
-
-
-
-
-
-<div
-
-className="
-
-rounded-xl
-
-border
-
-p-3
-
-"
-
->
-
-
-<MousePointer2
-
-size={16}
-
-className="mx-auto"
-
-/>
-
-
-<p className="text-xl font-bold">
-
-
-{idle}s
-
-
-</p>
-
-
-<small>
-
-Idle
-
-</small>
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-<div
-
-className="
-
-rounded-xl
-
-border
-
-p-3
-
-"
-
->
-
-
-<Keyboard
-
-size={16}
-
-className="mx-auto"
-
-/>
-
-
-<p className="text-xl font-bold">
-
-
-ON
-
-
-</p>
-
-
-<small>
-
-Input
-
-</small>
-
-
-</div>
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-</div>
-
-
-);
+  );
 
 
 }
