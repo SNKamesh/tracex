@@ -1,286 +1,1101 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { db, auth } from "@/lib/firebase";
+import { useEffect, useState } from "react";
+
 import {
-  collection,
-  query,
-  onSnapshot,
+  Clock,
+  Flag,
+  GripVertical,
+  Trash2,
+} from "lucide-react";
+
+import {
+  DndContext,
+  closestCenter,
+  DragEndEvent,
+} from "@dnd-kit/core";
+
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+
+import { CSS } from "@dnd-kit/utilities";
+
+import { auth, db } from "@/lib/firebase";
+
+import {
   addDoc,
-  serverTimestamp,
+  collection,
   deleteDoc,
   doc,
+  onSnapshot,
   orderBy,
+  query,
+  serverTimestamp,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 
+
+
 interface Task {
-  id: string;
-  text: string;
-  reminderTime?: string;
-  completed?: boolean;
-  createdAt?: any;
+  id:string;
+  text:string;
+  priority?:"low"|"medium"|"high";
+  reminderTime?:string;
+  displayTime?:string;
+  completed?:boolean;
+  order?:number;
 }
 
-export default function StudyPlanList() {
-  const [uid, setUid] = useState<string | null>(null);
-  const [items, setItems] = useState<Task[]>([]);
-  const [newTask, setNewTask] = useState("");
-  const [reminderTime, setReminderTime] = useState("");
-  const [inputError, setInputError] = useState("");
-  const [loading, setLoading] = useState(true);
 
-  const timeInputRef = useRef<HTMLInputElement>(null);
-  const notifiedTasks = useRef<Set<string>>(new Set());
 
-  // ── Request notification permission ───────────────────────
-  useEffect(() => {
-    if (Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-  }, []);
 
-  // ── Auth listener ──────────────────────────────────────────
-  useEffect(() => {
-    const unsub = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setUid(user.uid);
-      } else {
-        setUid(null);
-        setItems([]);
-        setLoading(false);
-      }
-    });
-    return () => unsub();
-  }, []);
+function SortableTask({
+  task,
+  remove,
+  toggle,
+}:{
+  task:Task;
+  remove:(id:string)=>void;
+  toggle:(t:Task)=>void;
+}){
 
-  // ── Real-time Firestore listener (syncs phone + PC) ────────
-  useEffect(() => {
-    if (!uid) return;
 
-    const q = query(
-      collection(db, "users", uid, "studyPlans"),
-      orderBy("createdAt", "desc")
-    );
+const {
+attributes,
+listeners,
+setNodeRef,
+transform,
+transition,
+}=useSortable({
+id:task.id
+});
 
-    const unsub = onSnapshot(q, (snapshot) => {
-      const taskData = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      })) as Task[];
-      setItems(taskData);
-      setLoading(false);
-    });
 
-    return () => unsub();
-  }, [uid]);
 
-  // ── Alarm / reminder engine ────────────────────────────────
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now
-        .getMinutes()
-        .toString()
-        .padStart(2, "0")}`;
+return (
 
-      items.forEach((task) => {
-        if (
-          task.reminderTime === currentTime &&
-          !notifiedTasks.current.has(task.id)
-        ) {
-          if (Notification.permission === "granted") {
-            new Notification("TraceX", {
-              body: `Time to lock in: ${task.text}`,
-              icon: "/favicon.ico",
-            });
-            notifiedTasks.current.add(task.id);
-          }
-        }
-      });
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [items]);
+<div
 
-  // ── Add task ───────────────────────────────────────────────
-  async function handleAddTask() {
-    if (!newTask.trim()) {
-      setInputError(
-        "Whoops! Your mind went blank for a second. Type a task first! 👻"
-      );
-      return;
-    }
-    if (!uid) return;
+ref={setNodeRef}
 
-    try {
-      await addDoc(collection(db, "users", uid, "studyPlans"), {
-        text: newTask.trim(),
-        reminderTime: reminderTime || null,
-        completed: false,
-        createdAt: serverTimestamp(),
-      });
-      setNewTask("");
-      setReminderTime("");
-      setInputError("");
-    } catch (error) {
-      console.error("Error adding task:", error);
-    }
-  }
+style={{
+transform:CSS.Transform.toString(transform),
+transition,
+background:"var(--surface)",
+border:"1px solid var(--border)",
+}}
 
-  // ── Toggle complete ────────────────────────────────────────
-  async function toggleComplete(id: string, current: boolean) {
-    if (!uid) return;
-    try {
-      await updateDoc(doc(db, "users", uid, "studyPlans", id), {
-        completed: !current,
-      });
-    } catch (error) {
-      console.error("Error updating task:", error);
-    }
-  }
+className="
+rounded-xl
+p-4
+flex
+justify-between
+items-center
+"
+>
 
-  // ── Delete task ────────────────────────────────────────────
-  async function handleDelete(id: string) {
-    if (!uid) return;
-    try {
-      await deleteDoc(doc(db, "users", uid, "studyPlans", id));
-    } catch (error) {
-      console.error("Error deleting task:", error);
-    }
-  }
 
-  // ── UI ─────────────────────────────────────────────────────
-  if (loading)
-    return (
-      <p className="text-slate-500 text-xs py-4 italic">
-        Syncing with cloud...
-      </p>
-    );
+<div className="flex gap-3 items-center">
 
-  if (!uid)
-    return (
-      <p className="text-slate-400 text-sm py-4">
-        Please sign in to view your study plan.
-      </p>
-    );
 
-  return (
-    <div className="flex flex-col gap-4">
+<button
+{...attributes}
+{...listeners}
+>
 
-      {/* ADD TASK CONTROLS */}
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-col md:flex-row gap-2">
-          <input
-            type="text"
-            value={newTask}
-            onChange={(e) => {
-              setNewTask(e.target.value);
-              if (inputError) setInputError("");
-            }}
-            placeholder="Add a subject (e.g. Biology)"
-            className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-all"
-            onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
-          />
+<GripVertical size={17}/>
 
-          <div className="flex gap-2">
-            <div
-              onClick={() => timeInputRef.current?.showPicker()}
-              className="relative flex-1 md:w-36 h-[48px] bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center active:bg-slate-800 transition-all cursor-pointer group hover:border-slate-600"
-            >
-              <input
-                ref={timeInputRef}
-                type="time"
-                value={reminderTime}
-                onChange={(e) => setReminderTime(e.target.value)}
-                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-20"
-                style={{ colorScheme: "dark" }}
-              />
-              <div className="flex items-center gap-2 pointer-events-none text-slate-400 group-hover:text-blue-400 transition-colors">
-                <span className="text-lg">🕒</span>
-                <span className="text-xs font-medium">
-                  {reminderTime || "Set Time"}
-                </span>
-              </div>
-            </div>
+</button>
 
-            <button
-              onClick={handleAddTask}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 h-[48px] rounded-xl text-sm font-bold shadow-lg transition-all active:scale-95"
-            >
-              Add
-            </button>
-          </div>
-        </div>
 
-        {inputError && (
-          <p className="text-red-400 text-[10px] mt-1 ml-2 animate-pulse font-medium">
-            {inputError}
-          </p>
-        )}
-      </div>
 
-      {/* TASK LIST */}
-      <div className="flex flex-col gap-2">
-        {items.length === 0 ? (
-          <p className="text-slate-500 text-sm italic py-2">
-            No tasks yet. Add one above!
-          </p>
-        ) : (
-          items.map((item) => (
-            <div
-              key={item.id}
-              className={`rounded-xl border px-4 py-3 text-sm flex justify-between items-center group transition-all hover:border-slate-700 ${
-                item.completed
-                  ? "bg-slate-900/20 border-slate-800/30"
-                  : "bg-slate-900/40 border-slate-800/60 hover:bg-slate-900/60"
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                {/* Checkbox */}
-                <input
-                  type="checkbox"
-                  checked={item.completed || false}
-                  onChange={() => toggleComplete(item.id, item.completed || false)}
-                  className="w-4 h-4 accent-blue-500 cursor-pointer mt-0.5"
-                />
-                <div className="flex flex-col gap-1">
-                  <span
-                    className={`font-medium ${
-                      item.completed
-                        ? "line-through text-slate-500"
-                        : "text-slate-200"
-                    }`}
-                  >
-                    {item.text}
-                  </span>
-                  {item.reminderTime && (
-                    <div className="flex items-center gap-1 text-blue-400 text-[11px] font-semibold">
-                      <span className="text-xs">🔔</span>
-                      <span>Remind at {item.reminderTime}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+<input
 
-              {/* Delete button */}
-              <button
-                onClick={() => handleDelete(item.id)}
-                className="text-slate-500 hover:text-red-500 transition-all p-2 rounded-lg hover:bg-red-500/10"
-                title="Remove task"
-              >
-                <span className="text-lg leading-none">✕</span>
-              </button>
-            </div>
-          ))
-        )}
-      </div>
+type="checkbox"
 
-      {/* Completed count */}
-      {items.length > 0 && (
-        <p className="text-slate-500 text-xs text-right">
-          {items.filter((i) => i.completed).length} / {items.length} completed
-        </p>
-      )}
-    </div>
-  );
+checked={task.completed || false}
+
+onChange={()=>toggle(task)}
+
+/>
+
+
+
+
+<div>
+
+
+<p
+
+className={
+task.completed
+?
+"line-through opacity-50"
+:
+"font-semibold"
+}
+
+>
+
+{task.text}
+
+</p>
+
+
+
+
+<small style={{color:"var(--muted)"}}>
+
+<Flag size={12} className="inline"/>
+
+{" "}
+
+{task.priority}
+
+{" • "}
+
+{task.displayTime || "No reminder"}
+
+</small>
+
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+<button onClick={()=>remove(task.id)}>
+
+<Trash2 size={16}/>
+
+</button>
+
+
+
+
+</div>
+
+);
+
+}
+
+
+
+
+
+
+
+
+
+export default function StudyPlanList(){
+
+
+const [uid,setUid] =
+useState<string|null>(null);
+
+
+const [items,setItems] =
+useState<Task[]>([]);
+
+
+const [task,setTask] =
+useState("");
+
+
+const [error,setError] =
+useState("");
+
+
+
+const [priority,setPriority] =
+useState<"low"|"medium"|"high">(
+"medium"
+);
+
+
+
+const [clock,setClock] =
+useState(false);
+
+
+
+const [hour,setHour] =
+useState("06");
+
+const [minute,setMinute] =
+useState("00");
+
+
+const [period,setPeriod] =
+useState<"AM"|"PM">("PM");
+
+
+const [savedTime,setSavedTime] =
+useState("");
+
+
+const [display,setDisplay] =
+useState("");
+
+
+
+const [alerted,setAlerted] =
+useState<string[]>([]);
+
+
+
+
+
+
+
+/* AUTH */
+
+
+useEffect(()=>{
+
+
+return auth.onAuthStateChanged(user=>{
+
+
+if(user)
+
+setUid(user.uid);
+
+
+});
+
+
+},[]);
+
+
+
+
+
+
+
+/* FIRESTORE SYNC */
+
+
+useEffect(()=>{
+
+
+if(!uid)
+
+return;
+
+
+
+return onSnapshot(
+
+query(
+
+collection(
+db,
+"users",
+uid,
+"studyPlans"
+),
+
+orderBy("order")
+
+),
+
+snap=>{
+
+
+setItems(
+
+snap.docs.map(d=>({
+
+id:d.id,
+
+...d.data(),
+
+})) as Task[]
+
+);
+
+
+}
+
+
+);
+
+
+},[uid]);
+
+
+
+
+
+
+
+
+
+
+/* ALARM */
+
+
+useEffect(()=>{
+
+
+const timer=setInterval(()=>{
+
+
+const now=new Date();
+
+
+const current =
+
+`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+
+
+
+
+items.forEach(t=>{
+
+
+if(
+
+t.reminderTime===current &&
+
+!alerted.includes(t.id)
+
+){
+
+
+
+new Audio("/alarm.mp3")
+.play()
+.catch(()=>{});
+
+
+
+if(Notification.permission==="granted"){
+
+
+new Notification(
+
+"TraceX Reminder",
+
+{
+
+body:`${t.text} starts now`
+
+}
+
+);
+
+
+}
+
+
+
+setAlerted(a=>[...a,t.id]);
+
+
+}
+
+
+});
+
+
+},20000);
+
+
+
+return()=>clearInterval(timer);
+
+
+},[items,alerted]);
+
+
+
+
+
+
+
+useEffect(()=>{
+
+
+if(
+
+typeof Notification!=="undefined" &&
+
+Notification.permission==="default"
+
+)
+
+Notification.requestPermission();
+
+
+},[]);
+
+
+
+
+
+
+
+
+
+
+function saveClock(){
+
+
+let h=Number(hour);
+
+
+if(period==="PM" && h!==12)
+
+h+=12;
+
+
+if(period==="AM" && h===12)
+
+h=0;
+
+
+
+setSavedTime(
+
+`${String(h).padStart(2,"0")}:${minute}`
+
+);
+
+
+
+setDisplay(
+
+`${hour.padStart(2,"0")}:${minute} ${period}`
+
+);
+
+
+setClock(false);
+
+
+}
+
+
+
+
+
+
+
+
+
+
+async function addTask(){
+
+
+if(!uid)
+
+return;
+
+
+
+if(!task.trim()){
+
+
+
+setError(
+
+"Add a mission name before launching your focus block."
+
+);
+
+
+
+setTimeout(()=>{
+
+setError("");
+
+},3000);
+
+
+
+return;
+
+
+}
+
+
+
+
+await addDoc(
+
+collection(
+
+db,
+
+"users",
+
+uid,
+
+"studyPlans"
+
+),
+
+{
+
+
+text:task.trim(),
+
+
+priority,
+
+
+reminderTime:savedTime,
+
+
+displayTime:display,
+
+
+completed:false,
+
+
+order:Date.now(),
+
+
+createdAt:serverTimestamp(),
+
+
+}
+
+
+);
+
+
+
+
+setTask("");
+
+setDisplay("");
+
+setSavedTime("");
+
+setError("");
+
+
+}
+
+
+
+
+
+
+
+
+
+async function toggle(t:Task){
+
+
+if(!uid)return;
+
+
+
+await updateDoc(
+
+doc(
+
+db,
+
+"users",
+
+uid,
+
+"studyPlans",
+
+t.id
+
+),
+
+{
+
+completed:!t.completed
+
+}
+
+);
+
+
+}
+
+
+
+
+
+
+
+
+
+async function remove(id:string){
+
+
+if(!uid)return;
+
+
+
+await deleteDoc(
+
+doc(
+
+db,
+
+"users",
+
+uid,
+
+"studyPlans",
+
+id
+
+)
+
+);
+
+
+}
+
+
+
+
+
+
+
+
+
+async function dragEnd(e:DragEndEvent){
+
+
+
+if(
+
+!e.over ||
+
+e.active.id===e.over.id
+
+)
+
+return;
+
+
+
+
+const oldIndex=
+
+items.findIndex(
+
+i=>i.id===e.active.id
+
+);
+
+
+
+const newIndex=
+
+items.findIndex(
+
+i=>i.id===e.over?.id
+
+);
+
+
+
+
+const moved=
+
+arrayMove(
+
+items,
+
+oldIndex,
+
+newIndex
+
+);
+
+
+
+setItems(moved);
+
+
+
+
+if(!uid)return;
+
+
+
+
+const batch=
+
+writeBatch(db);
+
+
+
+moved.forEach((item,index)=>{
+
+
+batch.update(
+
+doc(
+
+db,
+
+"users",
+
+uid,
+
+"studyPlans",
+
+item.id
+
+),
+
+{
+
+order:index
+
+}
+
+);
+
+
+});
+
+
+
+await batch.commit();
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+return (
+
+<div className="flex flex-col gap-5">
+
+
+
+
+
+<div className="flex gap-3">
+
+
+<input
+
+value={task}
+
+onChange={e=>{
+
+setTask(e.target.value);
+
+if(error)setError("");
+
+}}
+
+placeholder="Create focus mission..."
+
+className="flex-1 rounded-xl px-4 py-3"
+
+/>
+
+
+
+
+
+
+<select
+
+value={priority}
+
+onChange={e=>
+
+setPriority(e.target.value as any)
+
+}
+
+className="rounded-xl px-4"
+
+>
+
+
+<option value="high">
+High Priority
+</option>
+
+<option value="medium">
+Medium Priority
+</option>
+
+<option value="low">
+Low Priority
+</option>
+
+
+</select>
+
+
+
+
+
+
+
+<button
+
+onClick={()=>setClock(true)}
+
+className="tx-button"
+
+>
+
+<Clock size={17}/>
+
+{display || "Focus Time"}
+
+</button>
+
+
+
+
+
+
+<button
+
+onClick={addTask}
+
+className="tx-button"
+
+>
+
+Add Task
+
+</button>
+
+
+
+</div>
+
+
+
+
+
+
+
+{error && (
+
+<p
+
+style={{color:"var(--danger)"}}
+
+className="text-sm font-medium animate-pulse"
+
+>
+
+{error}
+
+</p>
+
+)}
+
+
+
+
+
+
+
+
+
+{clock && (
+
+
+<div
+
+className="
+fixed
+inset-0
+z-[9999]
+flex
+items-center
+justify-center
+bg-black/60
+backdrop-blur-sm
+"
+
+>
+
+
+<div
+
+style={{
+background:"var(--surface-solid)"
+}}
+
+className="
+rounded-2xl
+p-6
+w-80
+"
+
+>
+
+
+<h2 className="font-bold mb-5">
+
+Set Reminder
+
+</h2>
+
+
+
+<div className="flex gap-3">
+
+
+<input
+
+value={hour}
+
+onChange={e=>setHour(e.target.value)}
+
+className="w-20 p-3 rounded-xl text-center"
+
+/>
+
+
+
+<input
+
+value={minute}
+
+onChange={e=>setMinute(e.target.value)}
+
+className="w-20 p-3 rounded-xl text-center"
+
+/>
+
+
+
+
+<button
+
+onClick={()=>setPeriod(period==="AM"?"PM":"AM")}
+
+>
+
+{period}
+
+</button>
+
+
+</div>
+
+
+
+
+<button
+
+onClick={saveClock}
+
+className="tx-button mt-5 w-full"
+
+>
+
+Save
+
+</button>
+
+
+</div>
+
+
+</div>
+
+
+)}
+
+
+
+
+
+
+
+
+
+
+<DndContext
+
+collisionDetection={closestCenter}
+
+onDragEnd={dragEnd}
+
+>
+
+
+<SortableContext
+
+items={items.map(i=>i.id)}
+
+strategy={verticalListSortingStrategy}
+
+>
+
+
+<div className="flex flex-col gap-3">
+
+
+{items.map(t=>(
+
+
+<SortableTask
+
+key={t.id}
+
+task={t}
+
+remove={remove}
+
+toggle={toggle}
+
+/>
+
+
+))}
+
+
+</div>
+
+
+</SortableContext>
+
+
+</DndContext>
+
+
+
+
+</div>
+
+);
+
+
 }

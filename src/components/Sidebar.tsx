@@ -3,335 +3,483 @@
 import React from "react";
 import { useRouter } from "next/router";
 
+import {
+  Home,
+  LayoutDashboard,
+  Timer,
+  CalendarCheck,
+  Users,
+  FileStack,
+  Bot,
+  ShieldOff,
+  Palette,
+  Settings,
+} from "lucide-react";
+
 
 const navItems = [
 
-  {
-    name:"Home",
-    href:"/home",
-    icon:"⌂"
-  },
+  { name:"Home", href:"/home", icon:Home, anim:"home" },
 
-  {
-    name:"Dashboard",
-    href:"/dashboard",
-    icon:"▣"
-  },
+  { name:"Dashboard", href:"/dashboard", icon:LayoutDashboard, anim:"dashboard" },
 
-  {
-    name:"Study Sessions",
-    href:"/sessions",
-    icon:"◴"
-  },
+  { name:"Study Sessions", href:"/sessions", icon:Timer, anim:"clock" },
 
-  {
-    name:"Study Plans",
-    href:"/study-plans",
-    icon:"☷"
-  },
+  { name:"Study Plans", href:"/study-plans", icon:CalendarCheck, anim:"plan" },
 
-  {
-    name:"Friends",
-    href:"/friends",
-    icon:"◇"
-  },
+  { name:"Friends", href:"/friends", icon:Users, anim:"friends" },
 
-  {
-    name:"File Converter",
-    href:"/converter",
-    icon:"⇄"
-  },
+  { name:"File Converter", href:"/converter", icon:FileStack, anim:"convert" },
 
-  {
-    name:"NoteX Bot",
-    href:"/notex",
-    icon:"✦"
-  },
+  { name:"NoteX Bot", href:"/notex", icon:Bot, anim:"bot" },
 
-  {
-    name:"Blocker",
-    href:"/blocker",
-    icon:"⊘"
-  },
+  { name:"Blocker", href:"/blocker", icon:ShieldOff, anim:"shield" },
 
-  {
-    name:"Theme",
-    href:"/theme",
-    icon:"◐"
-  },
+  { name:"Theme", href:"/theme", icon:Palette, anim:"paint" },
 
-  {
-    name:"Settings",
-    href:"/settings",
-    icon:"⚙"
-  },
+  { name:"Settings", href:"/settings", icon:Settings, anim:"gear" },
 
 ];
+
+
+
+function animation(type:string){
+
+
+  switch(type){
+
+
+    case "clock":
+
+      return `
+      group-hover:rotate-[360deg]
+      duration-700
+      `;
+
+
+
+    case "gear":
+
+      return `
+      group-hover:rotate-180
+      duration-700
+      `;
+
+
+
+    case "bot":
+
+      return `
+      group-hover:scale-125
+      group-hover:-translate-y-1
+      duration-500
+      `;
+
+
+
+    case "paint":
+
+      return `
+      group-hover:-rotate-[25deg]
+      group-hover:translate-y-1
+      group-hover:scale-125
+      duration-500
+      `;
+
+
+
+    case "dashboard":
+
+      return `
+      group-hover:scale-125
+      group-hover:rotate-3
+      duration-300
+      `;
+
+
+
+    case "friends":
+
+      return `
+      group-hover:scale-125
+      duration-300
+      `;
+
+
+
+    case "convert":
+
+      return `
+      group-hover:translate-x-1
+      group-hover:scale-110
+      duration-300
+      `;
+
+
+
+    case "shield":
+
+      return `
+      group-hover:scale-110
+      group-hover:-rotate-12
+      duration-300
+      `;
+
+
+
+    case "plan":
+
+      return `
+      group-hover:-translate-y-1
+      group-hover:scale-110
+      duration-300
+      `;
+
+
+
+    default:
+
+      return `
+      group-hover:-translate-y-1
+      group-hover:scale-110
+      duration-300
+      `;
+
+
+  }
+
+
+}
+
 
 
 
 export default function Sidebar(){
 
 
-  const router =
-    useRouter();
+const router =
+useRouter();
 
 
 
-  return (
+return(
 
 
-    <aside
+<aside
 
 
-      style={{
+style={{
 
 
-        background:
-          "var(--surface)",
+background:
+"var(--surface)",
 
 
-        borderColor:
-          "var(--border)",
+borderColor:
+"var(--border)",
 
 
-        color:
-          "var(--text)",
+color:
+"var(--text)",
 
 
-      }}
+boxShadow:
+"var(--shadow-sm)",
 
 
-      className="
+}}
 
-        sticky
 
-        top-0
+className="
 
-        h-screen
+sticky
 
-        w-[260px]
+top-0
 
-        shrink-0
+h-screen
 
+w-[260px]
 
-        border-r
+shrink-0
 
+border-r
 
-        px-4
+px-4
 
-        py-6
+py-6
 
+backdrop-blur-xl
 
-        backdrop-blur-xl
+"
 
+>
 
-      "
 
-    >
 
+<div className="group px-3 mb-8">
 
 
-      <div
+<h1
 
-        className="
+className="
 
-          px-3
+text-2xl
 
-          mb-8
+font-black
 
-        "
+tracking-tight
 
-      >
+transition-all
 
+duration-300
 
-        <h1
+group-hover:scale-105
 
-          className="
+"
 
-            text-2xl
+>
 
-            font-black
+Trace
 
-            tracking-tight
+<span style={{color:"var(--primary)"}}>
 
-          "
+X
 
-        >
+</span>
 
-          Trace
 
-          <span
+</h1>
 
-            style={{
 
-              color:
-                "var(--primary)"
 
-            }}
+<p
 
-          >
+style={{color:"var(--muted)"}}
 
-            X
+className="text-xs mt-1"
 
-          </span>
+>
 
+Learning Command Center
 
-        </h1>
+</p>
 
 
+</div>
 
-        <p
 
-          style={{
 
-            color:
-              "var(--muted)"
 
-          }}
 
-          className="text-xs mt-1"
 
-        >
+<nav className="flex flex-col gap-1.5">
 
-          Learning Command Center
 
-        </p>
+{navItems.map((item)=>{
 
 
-      </div>
+const Icon =
+item.icon;
 
 
 
+const active =
 
+router.pathname === item.href;
 
-      <nav
 
-        className="
 
-          flex
+return(
 
-          flex-col
 
-          gap-1
 
-        "
+<button
 
-      >
 
+key={item.href}
 
-        {navItems.map(
-          (item)=>{
 
+onClick={()=>
 
-            const active =
-              router.pathname ===
-              item.href;
+router.push(item.href)
 
+}
 
 
-            return (
 
+style={{
 
-              <button
 
+background:
 
-                key={
-                  item.href
-                }
+active
 
+?
 
-                onClick={()=>
+"var(--surface-hover)"
 
-                  router.push(
-                    item.href
-                  )
+:
 
-                }
+"transparent",
 
 
-                style={{
 
+color:
 
-                  background:
-                    active
-                      ? "var(--surface-hover)"
-                      : "transparent",
+active
 
+?
 
-                  color:
-                    active
-                      ? "var(--primary)"
-                      : "var(--text)",
+"var(--primary)"
 
+:
 
-                }}
+"var(--text)",
 
 
+}}
 
-                className="
 
 
-                  flex
+className="
 
-                  items-center
 
-                  gap-3
+group
 
+relative
 
-                  rounded-[var(--radius-md)]
+flex
 
+items-center
 
-                  px-3
+gap-3
 
-                  py-2.5
+overflow-hidden
 
 
-                  text-sm
+rounded-[var(--radius-md)]
 
-                  font-medium
 
+px-3
 
-                  transition-all
+py-2.5
 
-                  duration-200
 
+text-sm
 
-                  hover:translate-x-1
+font-medium
 
 
-                "
+transition-all
 
-              >
+duration-300
 
 
-                <span>
+hover:translate-x-1
 
-                  {item.icon}
 
-                </span>
+"
 
+>
 
-                {item.name}
 
 
+<div
 
-              </button>
+className="
 
+absolute
 
-            );
+inset-0
 
-          }
-        )}
+opacity-0
 
+group-hover:opacity-10
 
-      </nav>
+transition-opacity
 
+"
 
-    </aside>
+style={{
 
+background:
 
-  );
+"var(--gradient-primary)"
+
+}}
+
+/>
+
+
+
+
+<span
+
+
+className={`
+
+relative
+
+z-10
+
+flex
+
+h-8
+
+w-8
+
+items-center
+
+justify-center
+
+
+transition-all
+
+
+${animation(item.anim)}
+
+
+`}
+
+>
+
+
+<Icon size={18}/>
+
+
+</span>
+
+
+
+
+<span className="relative z-10">
+
+
+{item.name}
+
+
+</span>
+
+
+
+</button>
+
+
+);
+
+
+})}
+
+
+
+</nav>
+
+
+
+</aside>
+
+
+);
 
 
 }

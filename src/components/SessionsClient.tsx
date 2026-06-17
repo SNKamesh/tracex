@@ -8,7 +8,7 @@ import Input from "./Input";
 import Select from "./Select";
 import Toggle from "./Toggle";
 import Button from "./Button";
-import MicroStrictTracker from "./MicroStrictTracker";
+import MicroStrictTracker from "./session/MicroStrictTracker";
 import ImmersiveVirtualRoom from "./ImmersiveVirtualRoom";
 
 export default function SessionsClient() {
