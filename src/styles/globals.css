@@ -227,6 +227,7 @@ body .tracex-intro .trace {
 
 body .tracex-intro .moving-x {
   opacity: 1 !important;
+  margin-left: clamp(12px, 1.2vw, 20px) !important;
   transform: translate(-50%, -50%) !important;
 }
 
