@@ -211,13 +211,13 @@ select:focus-visible {
 }
 
 /* ==================================================
-   TRACE X INTRO MICRO-ADJUSTMENT
-   Keep the animation/path unchanged; only give the
-   landing X a small rightward visual offset so it
-   clears the final e cleanly.
+   TRACE X INTRO DOCK SPACING
+   Keep the flight untouched; add the clearance to
+   the hidden final wordmark anchor that defines the
+   endpoint of the path.
 ================================================== */
-body .tracex-intro .moving-x {
-  margin-left: 8px;
+body .tracex-intro .wordmark-anchor-x {
+  margin-left: .10em !important;
 }
 
 /* ==================================================
