@@ -188,7 +188,9 @@ async function renderPdfPages(file: File, type: "png" | "jpg") {
     const canvas = document.createElement("canvas")
     canvas.width = viewport.width
     canvas.height = viewport.height
-    await page.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise
+    const context = canvas.getContext("2d")
+    if (!context) throw new Error("Canvas rendering is unavailable")
+    await page.render({ canvas, canvasContext: context, viewport }).promise
     const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not render page")), type === "jpg" ? "image/jpeg" : "image/png", 0.92))
     results.push(blob)
   }
