@@ -6,376 +6,233 @@ interface TraceXIntroProps {
 
 type Point = { x: number; y: number };
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
 
-function easeOutCubic(t: number) {
-  return 1 - Math.pow(1 - t, 3);
-}
+const easeOutQuint = (t: number) => 1 - Math.pow(1 - t, 5);
 
-function easeInOutCubic(t: number) {
-  return t < 0.5
-    ? 4 * t * t * t
-    : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
+const easeInOutCubic = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
-function easeOutQuint(t: number) {
-  return 1 - Math.pow(1 - t, 5);
-}
-
-function getPointAtPathLength(path: SVGPathElement | null, progress: number): Point | null {
+function pointOnPath(path: SVGPathElement | null, progress: number): Point | null {
   if (!path) return null;
   const length = path.getTotalLength();
-  const point = path.getPointAtLength(clamp(progress, 0, 1) * length);
-  return { x: point.x, y: point.y };
+  const p = path.getPointAtLength(clamp(progress, 0, 1) * length);
+  return { x: p.x, y: p.y };
 }
 
 export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
   const pathRef = useRef<SVGPathElement | null>(null);
-  const animationRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
   const completedRef = useRef(false);
+
   const reducedMotion = useMemo(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }, []);
 
+  const [phase, setPhase] = useState<"intro" | "fly" | "impact" | "exit">(
+    reducedMotion ? "impact" : "intro",
+  );
   const [progress, setProgress] = useState(0);
-  const [phase, setPhase] = useState<
-    "boot" | "trace" | "orbit" | "impact" | "lock" | "exit"
-  >(reducedMotion ? "lock" : "boot");
-  const [xPoint, setXPoint] = useState<Point>({ x: 28, y: 68 });
+  const [xPoint, setXPoint] = useState<Point>({ x: 46, y: 74 });
 
   useEffect(() => {
     if (reducedMotion) {
-      const timer = window.setTimeout(() => onComplete(), 450);
+      const timer = window.setTimeout(onComplete, 700);
       return () => window.clearTimeout(timer);
     }
 
-    const startedAt = performance.now();
-    const total = 2950;
+    const start = performance.now();
+    const duration = 2700;
 
     const tick = (now: number) => {
-      const elapsed = now - startedAt;
-      const t = clamp(elapsed / total, 0, 1);
+      const elapsed = now - start;
+      const t = clamp(elapsed / duration, 0, 1);
 
-      if (t < 0.16) setPhase("boot");
-      else if (t < 0.31) setPhase("trace");
-      else if (t < 0.80) setPhase("orbit");
-      else if (t < 0.88) setPhase("impact");
-      else if (t < 0.94) setPhase("lock");
+      if (t < 0.18) setPhase("intro");
+      else if (t < 0.82) setPhase("fly");
+      else if (t < 0.91) setPhase("impact");
       else setPhase("exit");
 
-      let motionProgress = 0;
-      if (t >= 0.27 && t < 0.81) {
-        motionProgress = easeInOutCubic(clamp((t - 0.27) / 0.54, 0, 1));
-      } else if (t >= 0.81) {
-        motionProgress = 1;
+      if (t >= 0.18 && t < 0.83) {
+        const raw = clamp((t - 0.18) / 0.65, 0, 1);
+        const motion = easeInOutCubic(raw);
+        const p = pointOnPath(pathRef.current, motion);
+        if (p) setXPoint(p);
+        setProgress(motion);
+      } else if (t >= 0.83) {
+        setProgress(1);
+        const p = pointOnPath(pathRef.current, 1);
+        if (p) setXPoint(p);
       }
 
-      const point = getPointAtPathLength(pathRef.current, motionProgress);
-      if (point) setXPoint(point);
-      setProgress(motionProgress);
-
       if (t < 1) {
-        animationRef.current = requestAnimationFrame(tick);
+        rafRef.current = requestAnimationFrame(tick);
       } else if (!completedRef.current) {
         completedRef.current = true;
         onComplete();
       }
     };
 
-    animationRef.current = requestAnimationFrame(tick);
+    rafRef.current = requestAnimationFrame(tick);
 
     return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [onComplete, reducedMotion]);
 
-  const traceOpacity =
-    phase === "boot"
-      ? 0
-      : phase === "trace"
-        ? 1
-        : 1;
-  const backgroundOpacity = phase === "exit" ? 0.28 : 1;
-  const logoOpacity = phase === "lock" || phase === "exit" ? 1 : 0;
-  const impactScale = phase === "impact" ? 1.08 : 1;
-  const xOpacity = phase === "boot" || phase === "trace" ? 0 : 1;
+  const traceOpacity = reducedMotion || phase !== "intro" ? 1 : 0;
+  const movingXOpacity = reducedMotion || phase !== "intro" ? 1 : 0;
+  const impactScale = phase === "impact" ? 1.12 : 1;
+  const fade = phase === "exit" ? 0.18 : 1;
 
   return (
-    <main className={`tracex-intro tracex-intro--${phase}`} aria-label="TraceX loading">
+    <main className="tracex-intro" aria-label="TraceX intro">
       <style jsx>{`
         .tracex-intro {
           position: fixed;
           inset: 0;
           z-index: 9999;
           overflow: hidden;
-          color: #f8fbff;
           background:
-            radial-gradient(circle at 53% 43%, rgba(0,216,255,0.10), transparent 26%),
-            radial-gradient(circle at 20% 20%, rgba(93,90,255,0.08), transparent 28%),
-            #020305;
-          font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            radial-gradient(circle at 50% 46%, rgba(0, 216, 255, 0.08), transparent 28%),
+            radial-gradient(circle at 14% 20%, rgba(83, 75, 255, 0.055), transparent 28%),
+            linear-gradient(135deg, #010204 0%, #03050a 50%, #020305 100%);
+          color: #f7fbff;
           isolation: isolate;
         }
 
-        .ambient {
+        .intro-bg {
           position: absolute;
           inset: 0;
-          pointer-events: none;
-          opacity: ${backgroundOpacity};
+          opacity: ${fade};
           transition: opacity 600ms ease;
-        }
-
-        .ambient::before {
-          content: "";
-          position: absolute;
-          inset: -20%;
-          background:
-            radial-gradient(circle at 72% 28%, rgba(0,216,255,0.08), transparent 18%),
-            radial-gradient(circle at 24% 75%, rgba(94,95,255,0.07), transparent 18%);
-          filter: blur(28px);
-          animation: drift 12s ease-in-out infinite alternate;
         }
 
         .grid {
           position: absolute;
-          inset: 0;
-          opacity: 0.14;
+          inset: -8%;
           background-image:
-            linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
-          background-size: 56px 56px;
-          mask-image: radial-gradient(circle at center, black 0%, rgba(0,0,0,0.75) 46%, transparent 88%);
+            linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+          background-size: 64px 64px;
+          mask-image: radial-gradient(circle at 50% 48%, black 0%, rgba(0,0,0,.75) 50%, transparent 88%);
+          animation: drift 16s ease-in-out infinite alternate;
         }
 
-        .dashboard {
+        .aurora {
           position: absolute;
+          inset: -30%;
+          background:
+            radial-gradient(circle at 66% 40%, rgba(0,216,255,.075), transparent 18%),
+            radial-gradient(circle at 31% 69%, rgba(93, 85, 255, .055), transparent 19%);
+          filter: blur(42px);
+          animation: aurora 12s ease-in-out infinite alternate;
+        }
+
+        .ghost-dashboard {
+          position: absolute;
+          width: min(980px, 82vw);
           left: 50%;
           top: 50%;
-          width: min(1030px, 78vw);
-          transform: translate(-50%, -50%) scale(1.035);
-          opacity: 0.16;
-          filter: blur(7px) saturate(0.85);
-          transition: opacity 900ms ease, transform 1200ms cubic-bezier(.16,1,.3,1);
+          transform: translate(-50%, -50%) scale(1.045);
+          opacity: 0.105;
+          filter: blur(10px) saturate(.8);
+          pointer-events: none;
         }
 
         .browser {
-          border: 1px solid rgba(255,255,255,0.07);
+          border: 1px solid rgba(255,255,255,.07);
           border-radius: 26px;
-          background: linear-gradient(180deg, rgba(18,21,29,.78), rgba(8,10,14,.82));
-          box-shadow: 0 40px 120px rgba(0,0,0,.55), 0 0 100px rgba(0,216,255,.04);
+          background: rgba(13, 16, 23, .75);
+          box-shadow: 0 45px 120px rgba(0,0,0,.55);
+          overflow: hidden;
         }
 
-        .browser-bar {
+        .browser-top {
+          height: 42px;
           display: flex;
           align-items: center;
           gap: 7px;
-          height: 42px;
           padding: 0 16px;
-          border-bottom: 1px solid rgba(255,255,255,.055);
+          border-bottom: 1px solid rgba(255,255,255,.05);
         }
 
-        .dot { width: 8px; height: 8px; border-radius: 999px; background: rgba(255,255,255,.14); }
-        .address {
-          flex: 1;
-          max-width: 340px;
+        .window-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: rgba(255,255,255,.15);
+        }
+
+        .browser-pill {
+          width: 320px;
           height: 22px;
           margin: 0 auto;
           border-radius: 999px;
-          background: rgba(255,255,255,.035);
+          background: rgba(255,255,255,.03);
         }
 
         .browser-body {
           display: grid;
-          grid-template-columns: 165px 1fr;
-          min-height: 360px;
+          grid-template-columns: 150px 1fr;
+          min-height: 340px;
         }
 
-        .ghost-sidebar {
+        .sidebar {
           padding: 22px 14px;
-          border-right: 1px solid rgba(255,255,255,.045);
+          border-right: 1px solid rgba(255,255,255,.04);
         }
 
-        .ghost-brand {
-          width: 86px;
-          height: 15px;
+        .brand-bar {
+          width: 84px;
+          height: 14px;
+          margin: 0 0 28px 12px;
           border-radius: 5px;
-          background: linear-gradient(90deg, rgba(255,255,255,.28), rgba(0,216,255,.25));
-          margin: 0 0 32px 12px;
+          background: linear-gradient(90deg, rgba(255,255,255,.28), rgba(0,216,255,.19));
         }
 
-        .ghost-nav { height: 38px; border-radius: 11px; background: rgba(255,255,255,.045); margin-bottom: 8px; }
-        .ghost-nav.active { background: rgba(100,110,255,.10); border: 1px solid rgba(100,110,255,.10); }
+        .nav-bar {
+          height: 36px;
+          margin-bottom: 8px;
+          border-radius: 10px;
+          background: rgba(255,255,255,.038);
+        }
 
-        .ghost-main { padding: 24px 26px 28px; }
-        .ghost-title { width: 44%; height: 17px; border-radius: 6px; background: rgba(255,255,255,.22); margin-bottom: 10px; }
-        .ghost-subtitle { width: 34%; height: 10px; border-radius: 5px; background: rgba(255,255,255,.08); margin-bottom: 28px; }
+        .nav-bar.active {
+          background: rgba(110, 114, 255, .09);
+          border: 1px solid rgba(110, 114, 255, .10);
+        }
 
-        .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        .stat { height: 88px; border-radius: 16px; border: 1px solid rgba(255,255,255,.05); background: rgba(255,255,255,.025); padding: 16px; }
-        .stat-label { width: 54%; height: 9px; border-radius: 5px; background: rgba(255,255,255,.08); margin-bottom: 16px; }
-        .stat-value { width: 64%; height: 20px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,.22), rgba(0,216,255,.12)); }
+        .dashboard-main { padding: 24px; }
+        .ghost-line { height: 14px; border-radius: 6px; background: rgba(255,255,255,.15); }
+        .ghost-line.large { width: 48%; margin-bottom: 10px; }
+        .ghost-line.small { width: 32%; height: 9px; margin-bottom: 26px; background: rgba(255,255,255,.07); }
 
-        .ghost-panel { margin-top: 16px; height: 138px; border-radius: 18px; border: 1px solid rgba(255,255,255,.05); background: rgba(255,255,255,.025); }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .stat-card {
+          height: 86px;
+          padding: 15px;
+          border-radius: 15px;
+          border: 1px solid rgba(255,255,255,.045);
+          background: rgba(255,255,255,.022);
+        }
 
-        .center-stage {
+        .stat-caption { width: 48%; height: 8px; border-radius: 5px; background: rgba(255,255,255,.07); margin-bottom: 15px; }
+        .stat-value { width: 62%; height: 19px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,.20), rgba(0,216,255,.11)); }
+        .ghost-panel { height: 132px; margin-top: 14px; border-radius: 17px; border: 1px solid rgba(255,255,255,.045); background: rgba(255,255,255,.02); }
+
+        .status {
           position: absolute;
-          inset: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          pointer-events: none;
-        }
-
-        .stage-shell {
-          position: relative;
-          width: min(920px, 88vw);
-          height: min(620px, 72vh);
-        }
-
-        .path-svg {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          overflow: visible;
-        }
-
-        .wordmark {
-          position: absolute;
-          left: 50%;
-          top: 53%;
-          transform: translate(-50%, -50%) scale(${phase === "impact" ? 1.035 : 1});
-          opacity: ${traceOpacity};
-          transition: opacity 650ms ease, transform 300ms cubic-bezier(.17,.89,.32,1.26);
-          letter-spacing: -0.065em;
-          font-weight: 850;
-          font-size: clamp(66px, 8.6vw, 118px);
-          line-height: 0.95;
-          white-space: nowrap;
-          text-shadow: 0 0 34px rgba(255,255,255,.06);
-        }
-
-        .wordmark-x { color: #00d8ff; text-shadow: 0 0 30px rgba(0,216,255,.40); }
-
-        .moving-x {
-          position: absolute;
-          left: 0;
-          top: 0;
-          transform: translate(${xPoint.x}px, ${xPoint.y}px) translate(-50%, -50%) scale(${impactScale});
-          opacity: ${xOpacity};
-          transition: opacity 280ms ease, filter 280ms ease, transform 140ms cubic-bezier(.2,.85,.25,1.18);
-          font-size: clamp(66px, 8vw, 112px);
-          font-weight: 900;
-          color: #00d8ff;
-          letter-spacing: -0.08em;
-          text-shadow:
-            0 0 12px rgba(0,216,255,.55),
-            0 0 42px rgba(0,216,255,.42),
-            0 0 90px rgba(0,216,255,.18);
-          will-change: transform;
-        }
-
-        .moving-x::after {
-          content: "";
-          position: absolute;
-          width: 130px;
-          height: 130px;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -50%);
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(0,216,255,.15), transparent 66%);
-          filter: blur(9px);
-          z-index: -1;
-        }
-
-        .trace-light {
-          position: absolute;
-          left: 50%;
-          top: 53%;
-          width: min(540px, 62vw);
-          height: 120px;
-          transform: translate(-50%, -50%);
-          border-radius: 50%;
-          background: radial-gradient(ellipse, rgba(0,216,255,.12), transparent 67%);
-          filter: blur(24px);
-          opacity: ${phase === "impact" || phase === "lock" ? 1 : .3};
-          transition: opacity 500ms ease;
-        }
-
-        .orbit-glow {
-          position: absolute;
-          width: 360px;
-          height: 160px;
-          border-radius: 50%;
-          border: 1px solid rgba(0,216,255,.07);
-          left: 55%;
-          top: 46%;
-          transform: translate(-50%, -50%) rotate(-10deg);
-          filter: blur(1px);
-          opacity: ${progress > 0 ? 1 : 0};
-          transition: opacity 350ms ease;
-        }
-
-        .lock-logo {
-          position: absolute;
-          left: 50%;
-          top: 53%;
-          transform: translate(-50%, -50%) scale(${logoOpacity ? 1 : .98});
-          opacity: ${logoOpacity};
-          transition: opacity 420ms ease, transform 420ms cubic-bezier(.17,.89,.32,1.25);
-          display: flex;
-          align-items: baseline;
-          font-size: clamp(66px, 8.6vw, 118px);
-          font-weight: 850;
-          letter-spacing: -0.065em;
-          white-space: nowrap;
-          text-shadow: 0 0 36px rgba(255,255,255,.06);
-        }
-
-        .lock-logo .x { color: #00d8ff; text-shadow: 0 0 35px rgba(0,216,255,.55); }
-
-        .impact-ring {
-          position: absolute;
-          left: 50%;
-          top: 53%;
-          width: 80px;
-          height: 80px;
-          border-radius: 50%;
-          transform: translate(-50%, -50%) scale(${phase === "impact" ? 2.2 : 0.6});
-          opacity: ${phase === "impact" ? .9 : 0};
-          border: 1px solid rgba(0,216,255,.58);
-          box-shadow: 0 0 40px rgba(0,216,255,.18), inset 0 0 26px rgba(0,216,255,.08);
-          transition: transform 420ms cubic-bezier(.16,1,.3,1), opacity 250ms ease;
-        }
-
-        .caption {
-          position: absolute;
-          left: 50%;
-          top: calc(53% + 104px);
-          transform: translateX(-50%);
-          opacity: ${phase === "lock" || phase === "exit" ? .72 : 0};
-          transition: opacity 600ms ease;
-          color: rgba(219,230,241,.58);
-          font-size: 12px;
-          letter-spacing: .16em;
-          text-transform: uppercase;
-          white-space: nowrap;
-        }
-
-        .corner-status {
-          position: absolute;
-          right: 26px;
           top: 24px;
+          right: 28px;
           display: flex;
           align-items: center;
           gap: 8px;
+          color: rgba(255,255,255,.34);
           font-size: 10px;
-          color: rgba(255,255,255,.38);
-          letter-spacing: .12em;
+          letter-spacing: .14em;
           text-transform: uppercase;
         }
 
@@ -384,13 +241,135 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           height: 7px;
           border-radius: 50%;
           background: #00d8ff;
-          box-shadow: 0 0 12px rgba(0,216,255,.75);
+          box-shadow: 0 0 14px rgba(0,216,255,.85);
           animation: pulse 1.6s ease-in-out infinite;
         }
 
+        .stage {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .stage-inner {
+          position: relative;
+          width: min(920px, 92vw);
+          height: min(620px, 80vh);
+        }
+
+        .motion-path {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          overflow: visible;
+          pointer-events: none;
+        }
+
+        .motion-path-ghost {
+          opacity: .10;
+        }
+
+        .trace {
+          position: absolute;
+          left: 50%;
+          top: 52%;
+          transform: translate(-50%, -50%);
+          opacity: ${traceOpacity};
+          transition: opacity 450ms ease;
+          font-size: clamp(64px, 8.4vw, 116px);
+          font-weight: 850;
+          line-height: .92;
+          letter-spacing: -.07em;
+          white-space: nowrap;
+          text-shadow: 0 0 34px rgba(255,255,255,.05);
+        }
+
+        .moving-x {
+          position: absolute;
+          left: 0;
+          top: 0;
+          transform: translate(${xPoint.x}px, ${xPoint.y}px) translate(-50%, -50%) scale(${impactScale});
+          opacity: ${movingXOpacity};
+          color: #00d8ff;
+          font-size: clamp(68px, 8.2vw, 114px);
+          font-weight: 900;
+          line-height: .9;
+          letter-spacing: -.08em;
+          text-shadow:
+            0 0 12px rgba(0,216,255,.72),
+            0 0 36px rgba(0,216,255,.48),
+            0 0 84px rgba(0,216,255,.16);
+          will-change: transform;
+          transition: opacity 260ms ease, transform 130ms cubic-bezier(.15,.9,.25,1.15);
+        }
+
+        .moving-x::before {
+          content: "";
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 150px;
+          height: 150px;
+          transform: translate(-50%, -50%);
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(0,216,255,.18), transparent 64%);
+          filter: blur(10px);
+          z-index: -1;
+        }
+
+        .lock-glow {
+          position: absolute;
+          left: 50%;
+          top: 52%;
+          width: min(560px, 65vw);
+          height: 150px;
+          transform: translate(-50%, -50%);
+          border-radius: 50%;
+          background: radial-gradient(ellipse, rgba(0,216,255,.12), transparent 68%);
+          filter: blur(28px);
+          opacity: ${phase === "impact" ? 1 : .35};
+          transition: opacity 500ms ease;
+        }
+
+        .impact-ring {
+          position: absolute;
+          left: 50%;
+          top: 52%;
+          width: 80px;
+          height: 80px;
+          transform: translate(-50%, -50%) scale(${phase === "impact" ? 2.25 : .6});
+          opacity: ${phase === "impact" ? .9 : 0};
+          border: 1px solid rgba(0,216,255,.72);
+          border-radius: 50%;
+          box-shadow: 0 0 48px rgba(0,216,255,.16), inset 0 0 22px rgba(0,216,255,.08);
+          transition: transform 430ms cubic-bezier(.16,1,.3,1), opacity 220ms ease;
+        }
+
+        .caption {
+          position: absolute;
+          left: 50%;
+          top: calc(52% + 98px);
+          transform: translateX(-50%);
+          color: rgba(226,236,245,.42);
+          opacity: ${phase === "impact" || phase === "exit" ? 1 : 0};
+          transition: opacity 550ms ease;
+          font-size: 11px;
+          letter-spacing: .18em;
+          text-transform: uppercase;
+          white-space: nowrap;
+        }
+
         @keyframes drift {
-          from { transform: translate3d(-2%, -1%, 0) scale(1); }
-          to { transform: translate3d(3%, 2%, 0) scale(1.06); }
+          from { transform: translate3d(-1%, -1%, 0); }
+          to { transform: translate3d(2%, 2%, 0); }
+        }
+
+        @keyframes aurora {
+          from { transform: scale(1) translate3d(-1%, 0, 0); }
+          to { transform: scale(1.08) translate3d(2%, 1%, 0); }
         }
 
         @keyframes pulse {
@@ -398,43 +377,45 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           50% { opacity: 1; transform: scale(1.1); }
         }
 
-        @media (max-width: 800px) {
-          .dashboard { width: 1050px; opacity: .08; }
-          .stage-shell { width: 100vw; height: 78vh; }
-          .browser-body { grid-template-columns: 130px 1fr; }
-          .caption { top: calc(53% + 88px); }
+        @media (max-width: 760px) {
+          .ghost-dashboard { width: 980px; opacity: .055; }
+          .status { right: 16px; top: 16px; }
+          .stage-inner { width: 100vw; height: 76vh; }
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .ambient::before, .status-dot { animation: none; }
-          .moving-x, .wordmark, .lock-logo, .impact-ring { transition-duration: 1ms; }
+          .grid, .aurora, .status-dot { animation: none; }
+          .moving-x { transition: none; }
         }
       `}</style>
 
-      <div className="ambient">
+      <div className="intro-bg" aria-hidden="true">
+        <div className="aurora" />
         <div className="grid" />
-        <div className="dashboard" aria-hidden="true">
+        <div className="ghost-dashboard">
           <div className="browser">
-            <div className="browser-bar">
-              <span className="dot" /><span className="dot" /><span className="dot" />
-              <div className="address" />
+            <div className="browser-top">
+              <span className="window-dot" />
+              <span className="window-dot" />
+              <span className="window-dot" />
+              <div className="browser-pill" />
             </div>
             <div className="browser-body">
-              <aside className="ghost-sidebar">
-                <div className="ghost-brand" />
-                <div className="ghost-nav active" />
-                <div className="ghost-nav" />
-                <div className="ghost-nav" />
-                <div className="ghost-nav" />
-                <div className="ghost-nav" />
+              <aside className="sidebar">
+                <div className="brand-bar" />
+                <div className="nav-bar active" />
+                <div className="nav-bar" />
+                <div className="nav-bar" />
+                <div className="nav-bar" />
+                <div className="nav-bar" />
               </aside>
-              <section className="ghost-main">
-                <div className="ghost-title" />
-                <div className="ghost-subtitle" />
-                <div className="stat-row">
+              <section className="dashboard-main">
+                <div className="ghost-line large" />
+                <div className="ghost-line small" />
+                <div className="stats">
                   {[1, 2, 3].map((item) => (
-                    <div className="stat" key={item}>
-                      <div className="stat-label" />
+                    <div className="stat-card" key={item}>
+                      <div className="stat-caption" />
                       <div className="stat-value" />
                     </div>
                   ))}
@@ -444,50 +425,33 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
             </div>
           </div>
         </div>
-
-        <div className="corner-status"><span className="status-dot" /> TraceX system ready</div>
+        <div className="status"><span className="status-dot" /> TraceX system ready</div>
       </div>
 
-      <div className="center-stage">
-        <div className="stage-shell">
-          <svg className="path-svg" viewBox="0 0 920 620" aria-hidden="true">
-            <defs>
-              <filter id="tracexPathGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="5" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-              <linearGradient id="trailGradient" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#00d8ff" stopOpacity="0" />
-                <stop offset="100%" stopColor="#00d8ff" stopOpacity="0.6" />
-              </linearGradient>
-            </defs>
+      <div className="stage">
+        <div className="stage-inner">
+          <svg className="motion-path" viewBox="0 0 920 620" aria-hidden="true">
             <path
               ref={pathRef}
-              d="M 48 76 C 230 10, 530 16, 756 152 C 884 229, 884 345, 744 432 C 635 500, 500 448, 430 356"
+              d="M 42 72 C 245 -5, 600 20, 790 190 C 900 290, 865 430, 730 500 C 680 526, 635 480, 620 430 C 609 393, 610 355, 628 320"
               fill="none"
               stroke="none"
             />
             <path
-              d="M 48 76 C 230 10, 530 16, 756 152 C 884 229, 884 345, 744 432 C 635 500, 500 448, 430 356"
+              className="motion-path-ghost"
+              d="M 42 72 C 245 -5, 600 20, 790 190 C 900 290, 865 430, 730 500 C 680 526, 635 480, 620 430 C 609 393, 610 355, 628 320"
               fill="none"
-              stroke="url(#trailGradient)"
+              stroke="#00d8ff"
               strokeWidth="1"
+              strokeDasharray="2 16"
               strokeLinecap="round"
-              opacity="0.14"
-              strokeDasharray="2 14"
-              filter="url(#tracexPathGlow)"
             />
           </svg>
 
-          <div className="trace-light" />
-          <div className="orbit-glow" />
-          <div className="wordmark">Trace<span className="wordmark-x">X</span></div>
+          <div className="lock-glow" />
+          <div className="trace">Trace</div>
           <div className="moving-x">X</div>
           <div className="impact-ring" />
-          <div className="lock-logo"><span>Trace</span><span className="x">X</span></div>
           <div className="caption">Learning command center</div>
         </div>
       </div>
