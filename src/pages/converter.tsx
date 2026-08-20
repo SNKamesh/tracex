@@ -6,7 +6,6 @@ import {
   ArrowLeftRight,
   Check,
   ChevronDown,
-  Download,
   FileArchive,
   FileAudio2,
   FileCode2,
@@ -61,6 +60,36 @@ function formatOf(ext: string): Format {
 
 function extensionOf(name: string) {
   return name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] || ""
+}
+
+function matchesSource(file: File, source: string) {
+  const ext = extensionOf(file.name)
+  if (source === "jpg") return ext === "jpg" || ext === "jpeg"
+  if (source === "tif") return ext === "tif" || ext === "tiff"
+  return ext === source
+}
+
+function acceptFor(source: string) {
+  const aliases: Record<string, string> = {
+    jpg: ".jpg,.jpeg,image/jpeg",
+    jpeg: ".jpg,.jpeg,image/jpeg",
+    tif: ".tif,.tiff,image/tiff",
+    tiff: ".tif,.tiff,image/tiff",
+    pdf: ".pdf,application/pdf",
+    png: ".png,image/png",
+    webp: ".webp,image/webp",
+    gif: ".gif,image/gif",
+    avif: ".avif,image/avif",
+    mp3: ".mp3,audio/mpeg",
+    wav: ".wav,audio/wav",
+    flac: ".flac,audio/flac",
+    m4a: ".m4a,audio/mp4",
+    mp4: ".mp4,video/mp4",
+    mov: ".mov,video/quicktime",
+    mkv: ".mkv,video/x-matroska",
+    webm: ".webm,video/webm",
+  }
+  return aliases[source] || `.${source}`
 }
 
 function Selector({ label, value, onClick }: { label: string; value: Format; onClick: () => void }) {
@@ -131,19 +160,23 @@ function FormatPicker({ side, value, onClose, onSelect }: { side: "from" | "to";
   )
 }
 
-function DropZone({ files, onFiles, onRemove }: { files: File[]; onFiles: (files: File[]) => void; onRemove: (name: string) => void }) {
+function DropZone({ files, sourceFormat, onFiles, onRemove }: { files: File[]; sourceFormat: string; onFiles: (files: File[]) => void; onRemove: (name: string) => void }) {
   const input = useRef<HTMLInputElement>(null)
-  const addFiles = (items: FileList | File[]) => onFiles([...files, ...Array.from(items)])
+  const accept = acceptFor(sourceFormat)
+  const addFiles = (items: FileList | File[]) => {
+    const accepted = Array.from(items).filter((file) => matchesSource(file, sourceFormat))
+    if (accepted.length) onFiles([...files, ...accepted])
+  }
 
   if (!files.length) {
     return (
       <div>
-        <input ref={input} type="file" multiple className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.currentTarget.value = "" }} />
+        <input ref={input} type="file" accept={accept} multiple className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.currentTarget.value = "" }} />
         <button type="button" onClick={() => input.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files) }} className="group flex min-h-[210px] w-full flex-col items-center justify-center rounded-3xl border border-dashed border-white/12 bg-white/[0.018] px-6 text-center transition hover:border-cyan-400/25">
           <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 group-hover:text-cyan-300"><Upload className="h-5 w-5" /></div>
-          <div className="text-sm font-semibold text-slate-200">Drop files here</div>
-          <div className="mt-1 text-xs text-slate-600">or click to browse from your computer</div>
-          <div className="mt-4 text-[11px] text-slate-700">Multiple files supported</div>
+          <div className="text-sm font-semibold text-slate-200">Drop {sourceFormat.toUpperCase()} files here</div>
+          <div className="mt-1 text-xs text-slate-600">or click to browse compatible files</div>
+          <div className="mt-4 text-[11px] text-slate-700">Only {sourceFormat.toUpperCase()} input files are accepted</div>
         </button>
       </div>
     )
@@ -152,10 +185,10 @@ function DropZone({ files, onFiles, onRemove }: { files: File[]; onFiles: (files
   return (
     <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-4">
       <div className="flex items-center justify-between gap-4">
-        <div><div className="text-sm font-semibold text-white">{files.length} file{files.length > 1 ? "s" : ""} ready</div><div className="mt-0.5 text-xs text-slate-600">Add more files or remove anything you do not need.</div></div>
+        <div><div className="text-sm font-semibold text-white">{files.length} file{files.length > 1 ? "s" : ""} ready</div><div className="mt-0.5 text-xs text-slate-600">Only {sourceFormat.toUpperCase()} files can be added to this conversion.</div></div>
         <button onClick={() => input.current?.click()} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-white/5">Add files</button>
       </div>
-      <input ref={input} type="file" multiple className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.currentTarget.value = "" }} />
+      <input ref={input} type="file" accept={accept} multiple className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.currentTarget.value = "" }} />
       <div className="mt-4 divide-y divide-white/6 rounded-2xl border border-white/8 bg-black/10">
         {files.map((file) => <div key={`${file.name}-${file.size}`} className="flex items-center gap-3 px-4 py-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/8 bg-white/[0.035] text-[10px] font-semibold text-slate-400">{extensionOf(file.name).slice(0, 4).toUpperCase() || "FILE"}</div><div className="min-w-0 flex-1"><div className="truncate text-sm font-medium text-slate-200">{file.name}</div><div className="text-[11px] text-slate-600">{(file.size / 1024 / 1024).toFixed(2)} MB</div></div><button onClick={() => onRemove(file.name)} className="rounded-lg p-2 text-slate-600 hover:bg-white/5 hover:text-slate-200"><X className="h-4 w-4" /></button></div>)}
       </div>
@@ -189,12 +222,25 @@ export default function Converter() {
     }
   }
 
+  const selectFrom = (format: Format) => {
+    setFrom(format)
+    const compatible = files.filter((file) => matchesSource(file, format.ext))
+    setFiles(compatible)
+    setStatus("idle")
+    setMessage(compatible.length === files.length ? "" : compatible.length ? `Removed files that were not ${format.ext.toUpperCase()} input files.` : files.length ? `Select ${format.ext.toUpperCase()} files to continue.` : "")
+    const preferred = HINTS[format.ext]?.[0]
+    if (preferred) setTo(formatOf(preferred))
+    setPicker(null)
+  }
+
   const swap = () => {
     const current = from
     setFrom(to)
     setTo(current)
+    const compatible = files.filter((file) => matchesSource(file, to.ext))
+    setFiles(compatible)
     setStatus("idle")
-    setMessage("")
+    setMessage(compatible.length === files.length ? "" : compatible.length ? `Removed files that do not match ${to.ext.toUpperCase()}.` : files.length ? `Select ${to.ext.toUpperCase()} files to continue.` : "")
   }
 
   async function convert() {
@@ -262,10 +308,10 @@ export default function Converter() {
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_340px]">
           <section className="rounded-[28px] border border-white/10 bg-[#0b0f14] p-4 sm:p-6">
             <div className="flex items-center justify-between gap-4">
-              <div><h2 className="text-sm font-semibold text-white">Files</h2><p className="mt-1 text-xs text-slate-600">Drop one file or a batch. The first file sets the input format automatically.</p></div>
+              <div><h2 className="text-sm font-semibold text-white">Files</h2><p className="mt-1 text-xs text-slate-600">Add files matching the selected input format.</p></div>
               {detected && <div className="rounded-xl border border-cyan-400/15 bg-cyan-400/[0.035] px-3 py-2 text-xs text-cyan-200">Detected {detected.toUpperCase()}</div>}
             </div>
-            <div className="mt-5"><DropZone files={files} onFiles={setFilesAndDetect} onRemove={(name) => setFilesAndDetect(files.filter((f) => f.name !== name))} /></div>
+            <div className="mt-5"><DropZone files={files} sourceFormat={from.ext} onFiles={setFilesAndDetect} onRemove={(name) => setFilesAndDetect(files.filter((f) => f.name !== name))} /></div>
           </section>
 
           <aside className="rounded-[28px] border border-white/10 bg-[#0b0f14] p-5 sm:p-6">
@@ -280,7 +326,7 @@ export default function Converter() {
             <div>
               <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-600">Current selection</div>
               <div className="mt-2 flex items-center gap-2 text-base font-semibold text-white"><span>{from.ext.toUpperCase()}</span><ArrowLeftRight className="h-4 w-4 text-slate-600" /><span>{to.ext.toUpperCase()}</span></div>
-              <div className="mt-1 text-xs text-slate-600">{files.length ? `${files.length} file${files.length > 1 ? "s" : ""} selected` : "Add a file to continue"}</div>
+              <div className="mt-1 text-xs text-slate-600">{files.length ? `${files.length} file${files.length > 1 ? "s" : ""} selected` : `Add a ${from.ext.toUpperCase()} file to continue`}</div>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => { setFiles([]); setFrom(formatOf("pdf")); setTo(formatOf("docx")); setStatus("idle"); setMessage("") }} className="rounded-xl border border-white/10 px-3 py-2.5 text-xs font-medium text-slate-500 hover:bg-white/5 hover:text-slate-300"><RotateCcw className="mr-2 inline h-3.5 w-3.5" />Reset</button>
@@ -293,7 +339,7 @@ export default function Converter() {
 
         <div className="mt-6 pb-8 text-center text-[11px] text-slate-700">Render conversion engine • Batch-ready • Context-aware format selection</div>
       </div>
-      {picker === "from" && <FormatPicker side="from" value={from} onClose={() => setPicker(null)} onSelect={(format) => { setFrom(format); setPicker(null); const preferred = HINTS[format.ext]?.[0]; if (preferred) setTo(formatOf(preferred)) }} />}
+      {picker === "from" && <FormatPicker side="from" value={from} onClose={() => setPicker(null)} onSelect={selectFrom} />}
       {picker === "to" && <FormatPicker side="to" value={to} onClose={() => setPicker(null)} onSelect={(format) => { setTo(format); setPicker(null) }} />}
     </AppShell>
   )
