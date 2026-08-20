@@ -5,7 +5,7 @@ interface TraceXIntroProps {
 }
 
 type Point = { x: number; y: number };
-type Phase = "intro" | "fly" | "impact" | "lock" | "exit";
+type Phase = "boot" | "trace" | "orbit" | "impact" | "lock" | "exit";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -16,38 +16,34 @@ const easeInOutCubic = (t: number) =>
 function pointOnPath(path: SVGPathElement | null, progress: number): Point | null {
   if (!path) return null;
   const length = path.getTotalLength();
-  const p = path.getPointAtLength(clamp(progress, 0, 1) * length);
-  return { x: p.x, y: p.y };
+  const point = path.getPointAtLength(clamp(progress, 0, 1) * length);
+  return { x: point.x, y: point.y };
 }
 
 export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const traceRef = useRef<HTMLSpanElement | null>(null);
   const finalXRef = useRef<HTMLSpanElement | null>(null);
   const pathRef = useRef<SVGPathElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const completedRef = useRef(false);
-  const targetRef = useRef<Point>({ x: 61.5, y: 51.5 });
+  const targetRef = useRef<Point>({ x: 62, y: 51.5 });
 
   const reducedMotion = useMemo(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }, []);
 
-  const [phase, setPhase] = useState<Phase>(reducedMotion ? "lock" : "intro");
+  const [phase, setPhase] = useState<Phase>(reducedMotion ? "lock" : "boot");
   const [target, setTarget] = useState<Point>(targetRef.current);
   const [xPoint, setXPoint] = useState<Point>(targetRef.current);
 
-  // Measure the real final wordmark so the moving X docks at the exact same
-  // baseline, height and horizontal position as the final TraceX lockup.
+  // Measure the real final X in the real wordmark. This becomes the exact
+  // docking point for the flying X, so the two states share one anchor.
   useLayoutEffect(() => {
-    let cancelled = false;
-
     const measure = () => {
       const stage = stageRef.current;
-      const trace = traceRef.current;
       const finalX = finalXRef.current;
-      if (!stage || !trace || !finalX) return;
+      if (!stage || !finalX) return;
 
       const stageRect = stage.getBoundingClientRect();
       const xRect = finalX.getBoundingClientRect();
@@ -57,53 +53,39 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
         y: clamp(((xRect.top + xRect.height / 2 - stageRect.top) / stageRect.height) * 100, 0, 100),
       };
 
-      if (!cancelled) {
-        targetRef.current = next;
-        setTarget(next);
-        setXPoint(next);
-      }
+      targetRef.current = next;
+      setTarget(next);
     };
 
-    const run = async () => {
-      try {
-        if (document.fonts?.ready) await document.fonts.ready;
-      } catch {}
-      measure();
-    };
-
-    run();
+    measure();
     window.addEventListener("resize", measure);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("resize", measure);
-    };
+    return () => window.removeEventListener("resize", measure);
   }, []);
 
   useEffect(() => {
     if (reducedMotion) {
-      const timer = window.setTimeout(onComplete, 380);
+      const timer = window.setTimeout(onComplete, 450);
       return () => window.clearTimeout(timer);
     }
 
-    // The animation starts immediately. The 1.5s hold after the finished logo
-    // is handled by the entry page before it routes to Signup/Home.
+    const animationDuration = 3000;
     const startedAt = performance.now();
-    const total = 3000;
 
     const tick = (now: number) => {
-      const t = clamp((now - startedAt) / total, 0, 1);
+      const t = clamp((now - startedAt) / animationDuration, 0, 1);
 
-      if (t < 0.16) setPhase("intro");
-      else if (t < 0.80) setPhase("fly");
-      else if (t < 0.88) setPhase("impact");
+      if (t < 0.15) setPhase("boot");
+      else if (t < 0.30) setPhase("trace");
+      else if (t < 0.79) setPhase("orbit");
+      else if (t < 0.86) setPhase("impact");
       else if (t < 0.94) setPhase("lock");
       else setPhase("exit");
 
-      if (t >= 0.14 && t < 0.82) {
-        const p = easeInOutCubic(clamp((t - 0.14) / 0.68, 0, 1));
-        const point = pointOnPath(pathRef.current, p);
+      if (t >= 0.30 && t < 0.80) {
+        const motion = easeInOutCubic(clamp((t - 0.30) / 0.50, 0, 1));
+        const point = pointOnPath(pathRef.current, motion);
         if (point) setXPoint(point);
-      } else if (t >= 0.82) {
+      } else if (t >= 0.80) {
         setXPoint(targetRef.current);
       }
 
@@ -116,16 +98,16 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
     };
 
     rafRef.current = requestAnimationFrame(tick);
-
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [onComplete, reducedMotion]);
 
-  const traceOpacity = phase === "intro" ? 0 : 1;
-  const movingOpacity = phase === "intro" ? 0 : 1;
-  const movingScale = phase === "impact" ? 1.04 : phase === "lock" || phase === "exit" ? 0.82 : 1;
-  const backgroundOpacity = phase === "exit" ? 0.78 : 1;
+  const traceOpacity = phase === "boot" ? 0 : 1;
+  const flyingOpacity = phase === "boot" || phase === "trace" ? 0 : phase === "impact" ? 1 : 0;
+  const finalOpacity = phase === "lock" || phase === "exit" ? 1 : phase === "impact" ? 0.08 : 0;
+  const flightScale = phase === "impact" ? 1.06 : 1;
+  const exitOpacity = phase === "exit" ? 0.88 : 1;
 
   return (
     <main className="tracex-intro" aria-label="TraceX intro">
@@ -135,20 +117,20 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           inset: 0;
           z-index: 9999;
           overflow: hidden;
-          color: #f7faff;
           background:
             radial-gradient(circle at 70% 28%, rgba(0,216,255,.045), transparent 24%),
-            radial-gradient(circle at 20% 30%, rgba(88,86,255,.035), transparent 26%),
+            radial-gradient(circle at 18% 30%, rgba(88,86,255,.035), transparent 26%),
             #020304;
-          isolation: isolate;
+          color: #f7faff;
           font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          isolation: isolate;
         }
 
         .ambient {
           position: absolute;
           inset: 0;
-          opacity: ${backgroundOpacity};
-          transition: opacity 650ms ease;
+          opacity: ${exitOpacity};
+          transition: opacity 600ms ease;
           pointer-events: none;
         }
 
@@ -157,9 +139,9 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           position: absolute;
           inset: -20%;
           background:
-            radial-gradient(circle at 72% 28%, rgba(0,216,255,.035), transparent 18%),
-            radial-gradient(circle at 24% 74%, rgba(94,95,255,.028), transparent 18%);
-          filter: blur(34px);
+            radial-gradient(circle at 72% 30%, rgba(0,216,255,.03), transparent 18%),
+            radial-gradient(circle at 22% 72%, rgba(94,95,255,.025), transparent 18%);
+          filter: blur(38px);
           animation: drift 14s ease-in-out infinite alternate;
         }
 
@@ -168,10 +150,10 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           inset: 0;
           opacity: .065;
           background-image:
-            linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+            linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
           background-size: 64px 64px;
-          mask-image: radial-gradient(circle at center, black 0%, rgba(0,0,0,.7) 48%, transparent 88%);
+          mask-image: radial-gradient(circle at center, black 0%, rgba(0,0,0,.65) 52%, transparent 90%);
         }
 
         .dashboard {
@@ -180,42 +162,38 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           top: 50%;
           width: min(1080px, 80vw);
           transform: translate(-50%, -50%) scale(1.045);
-          opacity: .065;
+          opacity: .055;
           filter: blur(12px) saturate(.65);
         }
 
         .browser {
-          border: 1px solid rgba(255,255,255,.05);
+          border: 1px solid rgba(255,255,255,.045);
           border-radius: 28px;
-          background: linear-gradient(180deg, rgba(18,21,29,.70), rgba(8,10,14,.78));
-          box-shadow: 0 40px 120px rgba(0,0,0,.56);
+          background: linear-gradient(180deg, rgba(18,21,29,.68), rgba(8,10,14,.76));
           overflow: hidden;
         }
 
         .browser-bar {
+          height: 42px;
           display: flex;
           align-items: center;
           gap: 7px;
-          height: 42px;
           padding: 0 16px;
           border-bottom: 1px solid rgba(255,255,255,.03);
         }
 
-        .dot { width: 8px; height: 8px; border-radius: 999px; background: rgba(255,255,255,.10); }
-        .address { flex: 1; max-width: 340px; height: 22px; margin: 0 auto; border-radius: 999px; background: rgba(255,255,255,.022); }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.09); }
+        .address { width: 320px; height: 22px; margin: 0 auto; border-radius: 999px; background: rgba(255,255,255,.022); }
         .browser-body { display: grid; grid-template-columns: 165px 1fr; min-height: 360px; }
         .ghost-sidebar { padding: 22px 14px; border-right: 1px solid rgba(255,255,255,.025); }
-        .ghost-brand { width: 86px; height: 15px; border-radius: 5px; background: linear-gradient(90deg, rgba(255,255,255,.14), rgba(0,216,255,.10)); margin: 0 0 32px 12px; }
-        .ghost-nav { height: 38px; border-radius: 11px; background: rgba(255,255,255,.02); margin-bottom: 8px; }
-        .ghost-nav.active { background: rgba(100,110,255,.04); border: 1px solid rgba(100,110,255,.045); }
-        .ghost-main { padding: 24px 26px 28px; }
-        .ghost-title { width: 44%; height: 17px; border-radius: 6px; background: rgba(255,255,255,.10); margin-bottom: 10px; }
-        .ghost-subtitle { width: 34%; height: 10px; border-radius: 5px; background: rgba(255,255,255,.04); margin-bottom: 28px; }
-        .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        .stat { height: 88px; border-radius: 16px; border: 1px solid rgba(255,255,255,.03); background: rgba(255,255,255,.012); padding: 16px; }
-        .stat-label { width: 54%; height: 9px; border-radius: 5px; background: rgba(255,255,255,.04); margin-bottom: 16px; }
-        .stat-value { width: 64%; height: 20px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,.09), rgba(0,216,255,.05)); }
-        .ghost-panel { margin-top: 16px; height: 138px; border-radius: 18px; border: 1px solid rgba(255,255,255,.03); background: rgba(255,255,255,.012); }
+        .ghost-brand { width: 86px; height: 15px; border-radius: 5px; background: rgba(255,255,255,.11); margin: 0 0 32px 12px; }
+        .ghost-nav { height: 38px; border-radius: 11px; background: rgba(255,255,255,.018); margin-bottom: 8px; }
+        .ghost-main { padding: 24px 26px; }
+        .ghost-title { width: 44%; height: 17px; border-radius: 6px; background: rgba(255,255,255,.07); margin-bottom: 10px; }
+        .ghost-subtitle { width: 34%; height: 10px; border-radius: 5px; background: rgba(255,255,255,.035); margin-bottom: 28px; }
+        .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+        .stat { height: 88px; border-radius: 16px; border: 1px solid rgba(255,255,255,.025); background: rgba(255,255,255,.01); }
+        .ghost-panel { margin-top: 16px; height: 138px; border-radius: 18px; border: 1px solid rgba(255,255,255,.025); background: rgba(255,255,255,.01); }
 
         .stage {
           position: absolute;
@@ -240,75 +218,97 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           overflow: visible;
         }
 
-        /* One measured wordmark. It defines the exact final X position. */
-        .wordmark-anchor {
-          position: absolute;
-          left: 50%;
-          top: 51.5%;
-          transform: translate(-50%, -50%);
-          display: flex;
-          align-items: baseline;
-          white-space: nowrap;
-          font-size: clamp(66px, 8.6vw, 118px);
-          line-height: .9;
-          letter-spacing: -.068em;
-          font-weight: 850;
-          visibility: hidden;
-          pointer-events: none;
-        }
-
-        .wordmark-anchor-x {
-          display: inline-block;
-          color: #00d8ff;
-          font-size: 1em;
-          line-height: .9;
-          transform: scale(.82) translateY(.015em);
-          transform-origin: center bottom;
-          margin-left: -.015em;
-        }
-
-        .trace {
+        .trace-only {
           position: absolute;
           left: 50%;
           top: 51.5%;
           transform: translate(-50%, -50%);
           opacity: ${traceOpacity};
-          font-size: clamp(66px, 8.6vw, 118px);
+          transition: opacity 500ms ease;
+          font-size: clamp(68px, 8.5vw, 118px);
+          font-weight: 850;
           line-height: .9;
           letter-spacing: -.068em;
-          font-weight: 850;
-          color: #f7faff;
           white-space: nowrap;
-          transition: opacity 420ms ease;
         }
 
-        .moving-x {
+        .trace-only span { display: inline-block; }
+
+        .final-wordmark {
+          position: absolute;
+          left: 50%;
+          top: 51.5%;
+          transform: translate(-50%, -50%) scale(${finalOpacity ? 1 : .985});
+          opacity: ${finalOpacity};
+          display: inline-flex;
+          align-items: baseline;
+          white-space: nowrap;
+          transition: opacity 300ms ease, transform 320ms cubic-bezier(.17,.89,.32,1.18);
+          font-size: clamp(68px, 8.5vw, 118px);
+          font-weight: 850;
+          line-height: .9;
+          letter-spacing: -.068em;
+        }
+
+        .final-trace { color: #f7faff; }
+
+        .final-x {
+          display: inline-block;
+          margin-left: -0.035em;
+          margin-bottom: 0.035em;
+          font-size: .76em;
+          line-height: 1;
+          color: #00d8ff;
+          letter-spacing: -.075em;
+          text-shadow: 0 0 22px rgba(0,216,255,.28);
+        }
+
+        .flying-x {
           position: absolute;
           left: ${xPoint.x}%;
           top: ${xPoint.y}%;
-          transform: translate(-50%, -50%) scale(${movingScale});
-          transform-origin: center bottom;
-          opacity: ${movingOpacity};
+          transform: translate(-50%, -50%) scale(${flightScale});
+          opacity: ${flyingOpacity};
           color: #00d8ff;
-          font-size: clamp(66px, 8.6vw, 118px);
-          line-height: .9;
-          font-weight: 850;
-          letter-spacing: -.068em;
-          text-shadow: 0 0 11px rgba(0,216,255,.30), 0 0 28px rgba(0,216,255,.12);
+          font-size: clamp(72px, 8.2vw, 114px);
+          font-weight: 900;
+          line-height: .8;
+          letter-spacing: -.08em;
+          text-shadow: 0 0 11px rgba(0,216,255,.52), 0 0 34px rgba(0,216,255,.20);
+          transition: opacity 260ms ease, transform 180ms cubic-bezier(.16,.9,.24,1.14);
           will-change: left, top, transform;
-          transition: opacity 220ms ease, transform 220ms cubic-bezier(.17,.89,.32,1.18);
         }
 
-        .impact-line {
+        .final-x-measure {
+          position: absolute;
+          visibility: hidden;
+          pointer-events: none;
+          left: 50%;
+          top: 51.5%;
+          transform: translate(-50%, -50%);
+          display: inline-flex;
+          align-items: baseline;
+          font-size: clamp(68px, 8.5vw, 118px);
+          font-weight: 850;
+          line-height: .9;
+          letter-spacing: -.068em;
+          white-space: nowrap;
+        }
+
+        .final-x-measure .final-x {
+          visibility: visible;
+        }
+
+        .impact-flash {
           position: absolute;
           left: ${target.x}%;
           top: ${target.y}%;
-          width: 72px;
-          height: 1px;
-          transform: translate(-50%, -50%) scaleX(${phase === "impact" ? 1 : 0.4});
-          opacity: ${phase === "impact" ? .58 : 0};
-          background: linear-gradient(90deg, transparent, rgba(0,216,255,.7), transparent);
-          transition: opacity 160ms ease, transform 200ms cubic-bezier(.16,1,.3,1);
+          width: 90px;
+          height: 2px;
+          transform: translate(-50%, -50%) scaleX(${phase === "impact" ? 1 : .4});
+          opacity: ${phase === "impact" ? .48 : 0};
+          background: rgba(0,216,255,.72);
+          transition: opacity 180ms ease, transform 220ms ease;
         }
 
         .caption {
@@ -316,28 +316,28 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           left: 50%;
           top: calc(51.5% + 84px);
           transform: translateX(-50%);
-          opacity: ${phase === "lock" || phase === "exit" ? .42 : 0};
-          color: rgba(219,230,241,.40);
+          opacity: ${phase === "lock" || phase === "exit" ? .38 : 0};
+          transition: opacity 500ms ease;
+          color: rgba(219,230,241,.38);
           font-size: 11px;
           letter-spacing: .15em;
           text-transform: uppercase;
           white-space: nowrap;
-          transition: opacity 500ms ease;
         }
 
         @keyframes drift {
-          from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
-          to { transform: translate3d(2%, 1.5%, 0) scale(1.045); }
+          from { transform: translate3d(-1%, -1%, 0) scale(1); }
+          to { transform: translate3d(2%, 1.5%, 0) scale(1.04); }
         }
 
         @media (max-width: 760px) {
-          .dashboard { width: 1080px; opacity: .042; }
+          .dashboard { width: 1080px; opacity: .04; }
           .stage-inner { width: 100vw; height: 76vh; }
         }
 
         @media (prefers-reduced-motion: reduce) {
           .ambient::before { animation: none; }
-          .moving-x { transition: none; }
+          .flying-x, .final-wordmark { transition: none; }
         }
       `}</style>
 
@@ -352,23 +352,12 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
             <div className="browser-body">
               <aside className="ghost-sidebar">
                 <div className="ghost-brand" />
-                <div className="ghost-nav active" />
-                <div className="ghost-nav" />
-                <div className="ghost-nav" />
-                <div className="ghost-nav" />
-                <div className="ghost-nav" />
+                <div className="ghost-nav" /><div className="ghost-nav" /><div className="ghost-nav" /><div className="ghost-nav" />
               </aside>
               <section className="ghost-main">
                 <div className="ghost-title" />
                 <div className="ghost-subtitle" />
-                <div className="stat-row">
-                  {[1, 2, 3].map((item) => (
-                    <div className="stat" key={item}>
-                      <div className="stat-label" />
-                      <div className="stat-value" />
-                    </div>
-                  ))}
-                </div>
+                <div className="stats"><div className="stat" /><div className="stat" /><div className="stat" /></div>
                 <div className="ghost-panel" />
               </section>
             </div>
@@ -381,21 +370,25 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           <svg className="motion-path" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <path
               ref={pathRef}
-              d={`M 7 11 C 27 2, 70 4, 87 25 C 97 39, 95 61, 81 74 C 70 83, 63 75, ${target.x.toFixed(2)} ${target.y.toFixed(2)}`}
+              d={`M 7 11 C 27 2, 69 4, 87 25 C 97 39, 95 61, 81 74 C 72 81, 66 77, ${target.x.toFixed(2)} ${target.y.toFixed(2)}`}
               fill="none"
               stroke="none"
             />
           </svg>
 
-          <div className="wordmark-anchor" aria-hidden="true">
-            <span>Trace</span>
-            <span className="wordmark-anchor-x" ref={finalXRef}>X</span>
+          <div className="trace-only"><span>Trace</span></div>
+
+          <div className="final-x-measure" aria-hidden="true">
+            <span className="final-trace">Trace</span><span className="final-x">X</span>
           </div>
 
-          <span className="trace" ref={traceRef}>Trace</span>
-          <span className="moving-x">X</span>
-          <span className="impact-line" aria-hidden="true" />
-          <span className="caption">Learning command center</span>
+          <div className="final-wordmark" aria-label="TraceX">
+            <span className="final-trace">Trace</span><span className="final-x" ref={finalXRef}>X</span>
+          </div>
+
+          <div className="flying-x">X</div>
+          <div className="impact-flash" />
+          <div className="caption">Learning command center</div>
         </div>
       </div>
     </main>
