@@ -211,12 +211,32 @@ select:focus-visible {
 }
 
 /* ==================================================
-   TRACE X INTRO DOCK SPACING
-   Keep the flight and final wordmark using the
-   exact same measured X spacing.
+   TRACE X INTRO — FINAL WORDMARK RULES
+   One visible Trace + one capital X. The X keeps the
+   same visual size throughout the complete flight.
 ================================================== */
 body .tracex-intro .wordmark-anchor-x {
+  font-size: 1em !important;
   margin-left: .10em !important;
+  transform: translateY(0) !important;
+}
+
+body .tracex-intro .trace {
+  opacity: 1 !important;
+}
+
+body .tracex-intro .moving-x {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+body .tracex-intro .final-wordmark {
+  display: none !important;
+}
+
+body .tracex-intro .impact-line {
+  opacity: 0 !important;
+  transform: translate(-50%, -50%) scaleX(.4) !important;
 }
 
 /* ==================================================
