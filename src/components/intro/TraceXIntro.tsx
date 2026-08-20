@@ -38,8 +38,8 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
   const [target, setTarget] = useState<Point>(targetRef.current);
   const [xPoint, setXPoint] = useState<Point>(targetRef.current);
 
-  // Measure the real final wordmark so the moving X docks at the exact same
-  // baseline, height and horizontal position as the final TraceX lockup.
+  // Measure the real final wordmark so the path terminates at the exact
+  // center of the final, smaller X on every screen size.
   useLayoutEffect(() => {
     let cancelled = false;
 
@@ -85,7 +85,7 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
       return () => window.clearTimeout(timer);
     }
 
-    // The animation starts immediately. The 1.5s hold after the finished logo
+    // Animation starts immediately. The 1.5s hold after the finished logo
     // is handled by the entry page before it routes to Signup/Home.
     const startedAt = performance.now();
     const total = 3000;
@@ -123,8 +123,9 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
   }, [onComplete, reducedMotion]);
 
   const traceOpacity = phase === "intro" ? 0 : 1;
-  const movingOpacity = phase === "intro" ? 0 : 1;
-  const movingScale = phase === "impact" ? 1.04 : phase === "lock" || phase === "exit" ? 0.82 : 1;
+  const movingOpacity = phase === "intro" || phase === "lock" || phase === "exit" ? 0 : 1;
+  const movingScale = phase === "impact" ? 1.06 : 1;
+  const finalWordmarkOpacity = phase === "lock" || phase === "exit" ? 1 : 0;
   const backgroundOpacity = phase === "exit" ? 0.78 : 1;
 
   return (
@@ -240,7 +241,6 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           overflow: visible;
         }
 
-        /* One measured wordmark. It defines the exact final X position. */
         .wordmark-anchor {
           position: absolute;
           left: 50%;
@@ -260,11 +260,11 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
         .wordmark-anchor-x {
           display: inline-block;
           color: #00d8ff;
-          font-size: 1em;
+          font-size: .82em;
           line-height: .9;
-          transform: scale(.82) translateY(.015em);
+          transform: translateY(.015em);
           transform-origin: center bottom;
-          margin-left: -.015em;
+          margin-left: .10em;
         }
 
         .trace {
@@ -296,7 +296,35 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           letter-spacing: -.068em;
           text-shadow: 0 0 11px rgba(0,216,255,.30), 0 0 28px rgba(0,216,255,.12);
           will-change: left, top, transform;
-          transition: opacity 220ms ease, transform 220ms cubic-bezier(.17,.89,.32,1.18);
+          transition: opacity 180ms ease, transform 180ms cubic-bezier(.17,.89,.32,1.18);
+        }
+
+        .final-wordmark {
+          position: absolute;
+          left: 50%;
+          top: 51.5%;
+          transform: translate(-50%, -50%);
+          display: flex;
+          align-items: baseline;
+          white-space: nowrap;
+          opacity: ${finalWordmarkOpacity};
+          font-size: clamp(66px, 8.6vw, 118px);
+          line-height: .9;
+          letter-spacing: -.068em;
+          font-weight: 850;
+          color: #f7faff;
+          transition: opacity 260ms ease;
+        }
+
+        .final-wordmark-x {
+          display: inline-block;
+          color: #00d8ff;
+          font-size: .82em;
+          line-height: .9;
+          transform: translateY(.015em);
+          transform-origin: center bottom;
+          margin-left: .10em;
+          text-shadow: 0 0 11px rgba(0,216,255,.22), 0 0 22px rgba(0,216,255,.08);
         }
 
         .impact-line {
@@ -338,6 +366,7 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
         @media (prefers-reduced-motion: reduce) {
           .ambient::before { animation: none; }
           .moving-x { transition: none; }
+          .final-wordmark { transition: none; }
         }
       `}</style>
 
@@ -394,6 +423,12 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
 
           <span className="trace" ref={traceRef}>Trace</span>
           <span className="moving-x">X</span>
+
+          <div className="final-wordmark" aria-hidden="true">
+            <span>Trace</span>
+            <span className="final-wordmark-x">X</span>
+          </div>
+
           <span className="impact-line" aria-hidden="true" />
           <span className="caption">Learning command center</span>
         </div>
