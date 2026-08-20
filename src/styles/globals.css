@@ -223,6 +223,21 @@ body .tracex-intro .final-wordmark-x {
 }
 
 /* ==================================================
+   TRACE X INTRO — no collision effect
+   Keep the flying X at its final size and remove the
+   decorative impact line; the measured target remains
+   the source of truth for the final landing position.
+================================================== */
+body .tracex-intro .moving-x {
+  transform: translate(-50%, -50%) scale(1) !important;
+}
+
+body .tracex-intro .impact-line {
+  opacity: 0 !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+/* ==================================================
    REDUCED MOTION
 ================================================== */
 @media (prefers-reduced-motion: reduce) {
