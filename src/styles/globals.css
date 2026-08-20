@@ -211,28 +211,15 @@ select:focus-visible {
 }
 
 /* ==================================================
-   TRACE X INTRO — FINAL WORDMARK RULES
-   Keep the final measured X aligned, while letting
-   the component's intro phase control visibility.
+   TRACE X INTRO — measured wordmark only
+   The component owns animation state. Global CSS only
+   keeps the measured X geometry consistent.
 ================================================== */
-body .tracex-intro .wordmark-anchor-x {
+body .tracex-intro .wordmark-anchor-x,
+body .tracex-intro .final-wordmark-x {
   font-size: 1em !important;
   margin-left: .24em !important;
   transform: translateY(0) !important;
-}
-
-body .tracex-intro .moving-x {
-  margin-left: clamp(12px, 1.2vw, 20px) !important;
-  transform: translate(-50%, -50%) !important;
-}
-
-body .tracex-intro .final-wordmark {
-  display: none !important;
-}
-
-body .tracex-intro .impact-line {
-  opacity: 0 !important;
-  transform: translate(-50%, -50%) scaleX(.4) !important;
 }
 
 /* ==================================================
