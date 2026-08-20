@@ -51,7 +51,6 @@ function genTracexId() {
   return "TRX-" + Array.from({length:6}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
 }
 
-// Word boundary check — won't flag "Harsha" for containing "ass"
 function hasAbuse(text: string): boolean {
   const lower = text.toLowerCase().trim();
   return BANNED_WORDS.some(w => {
@@ -65,47 +64,21 @@ async function sendOtp(email: string, otp: string) {
   try {
     const response = await fetch("/api/send-otp", {
       method: "POST",
-
-      headers: {
-        "Content-Type": "application/json",
-      },
-
-      body: JSON.stringify({
-        email,
-        otp,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, otp }),
     });
 
-
     let data = null;
-
-    try {
-      data = await response.json();
-    } catch {}
-
+    try { data = await response.json(); } catch {}
 
     if (!response.ok) {
-      console.error(
-        "OTP SERVER ERROR:",
-        data
-      );
-
-      throw new Error(
-        data?.error ||
-        "Failed to send OTP"
-      );
+      console.error("OTP SERVER ERROR:", data);
+      throw new Error(data?.error || "Failed to send OTP");
     }
 
-
     return true;
-
   } catch (error) {
-
-    console.error(
-      "SEND OTP FAILED:",
-      error
-    );
-
+    console.error("SEND OTP FAILED:", error);
     throw error;
   }
 }
@@ -187,138 +160,66 @@ export default function Signup() {
 
   async function handleSignIn() {
     setSiEmailErr(""); setSiPassErr(""); setPwResetOk(false);
-    if(!siEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(siEmail)) { setSiEmailErr("Enter a valid email."); return; }
+    const email = siEmail.toLowerCase().trim();
+    if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setSiEmailErr("Enter a valid email."); return; }
     if(!siPass) { setSiPassErr("Enter your password."); return; }
     setSiLoading(true);
     try {
       const auth = getAuth_(); if(!auth) throw new Error("Firebase not ready");
       forcedOutRef.current = false;
-      const cred = await signInWithEmailAndPassword(auth, siEmail, siPass);
-      try { const t = await writeSession(cred.user.uid); startSessionWatcher(cred.user.uid, t); } catch {}
+      const cred = await signInWithEmailAndPassword(auth, email, siPass);
+      try { const t = await writeSession(cred.user.uid); startSessionWatcher(cred.user.uid, t); } catch (sessionError) { console.error("Session write failed:", sessionError); }
       router.push("/home");
     } catch(err: any) {
       const c = err?.code||"";
       if(c==="auth/user-not-found") setSiEmailErr("Account doesn't exist.");
       else if(["auth/wrong-password","auth/invalid-login-credentials","auth/invalid-credential"].includes(c)) setSiPassErr("Invalid password.");
       else if(c==="auth/too-many-requests") setSiPassErr("Too many attempts. Try again later.");
-      else setSiPassErr(`Error: ${err?.code||err?.message}`);
+      else if(c==="auth/network-request-failed") setSiPassErr("Network error. Check your internet connection and try again.");
+      else setSiPassErr(`Error: ${err?.code||err?.message||"Unknown error"}`);
     } finally { setSiLoading(false); }
   }
 
   async function handleSendOtp() {
     setCaEmailErr("");
     setCaPassErr("");
-  
+
     const cleanEmail = caEmail.toLowerCase().trim();
-  
-    if (
-      !cleanEmail ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)
-    ) {
+
+    if(!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       setCaEmailErr("Enter a valid email.");
       return;
     }
-  
-    if (caPass.length < 6) {
-      setCaPassErr(
-        "Password must be at least 6 characters."
-      );
+
+    if(caPass.length < 6) {
+      setCaPassErr("Password must be at least 6 characters.");
       return;
     }
-  
-    if (caPass !== caPass2) {
-      setCaPassErr(
-        "Passwords don't match."
-      );
+
+    if(caPass !== caPass2) {
+      setCaPassErr("Passwords don't match.");
       return;
     }
-  
-  
+
     setCaLoading(true);
-  
-  
+
     try {
-  
-      const db = getDb_();
-  
-  
-      // Check existing TraceX users first
-      const existingUser = await getDocs(
-        query(
-          collection(db, "users"),
-          where(
-            "email",
-            "==",
-            cleanEmail
-          )
-        )
-      );
-  
-  
-      if (!existingUser.empty) {
-  
-        setCaEmailErr(
-          "Account already exists. Please sign in."
-        );
-  
-        return;
-  
-      }
-  
-  
-  
-      // only new accounts get OTP
-  
+      // Do not query Firestore to decide whether an auth account exists.
+      // Firebase Authentication is the source of truth. The Firestore users
+      // document is only the TraceX profile created after Auth signup succeeds.
       const otp = genOtp();
-  
-  
-      const sent = await sendOtp(
-        cleanEmail,
-        otp
-      );
-  
-  
-      if (!sent) {
-  
-        setCaEmailErr(
-          "Unable to send OTP. Please try again."
-        );
-  
-        return;
-      }
-  
-  
-  
+      await sendOtp(cleanEmail, otp);
+
       setCaEmail(cleanEmail);
-  
       setGeneratedOtp(otp);
-  
       setEnteredOtp("");
-  
       setOtpErr("");
-  
       setStep("create_otp");
-  
-  
-    } catch (err:any) {
-
-
-      console.error(
-        "Signup OTP error:",
-        err
-      );
-    
-    
-      setCaEmailErr(
-        err?.message ||
-        "Unable to send OTP. Try again."
-      );
-    
-    
+    } catch(err: any) {
+      console.error("Signup OTP error:", err);
+      setCaEmailErr(err?.message || "Unable to send OTP. Please try again.");
     } finally {
-  
       setCaLoading(false);
-  
     }
   }
 
@@ -326,53 +227,89 @@ export default function Signup() {
     setOtpErr("");
     if(enteredOtp.length < 6) { setOtpErr("Enter the 6-digit OTP."); return; }
     if(enteredOtp !== generatedOtp) { setOtpErr("Incorrect OTP."); return; }
+
     setOtpLoading(true);
+
     try {
-      const auth = getAuth_(); if(!auth) throw new Error("Firebase not ready");
+      const auth = getAuth_();
+      if(!auth) throw new Error("Firebase authentication is not initialized.");
+
       forcedOutRef.current = false;
-      const cred = await createUserWithEmailAndPassword(auth, caEmail, caPass);
+      const email = caEmail.toLowerCase().trim();
+      const cred = await createUserWithEmailAndPassword(auth, email, caPass);
 
-      // ✅ Create Firestore document immediately — even if user closes browser after this
+      // Create the profile only after Firebase Auth account creation succeeds.
+      await setDoc(doc(getDb_(), "users", cred.user.uid), {
+        name: "",
+        studyType: "",
+        email,
+        tracexId: "",
+        createdAt: Date.now(),
+      });
+
       try {
-        await setDoc(doc(getDb_(), "users", cred.user.uid), {
-          name: "",
-          studyType: "",
-          email: caEmail.toLowerCase().trim(),
-          tracexId: "",
-          createdAt: Date.now(),
-        });
-      } catch {}
-
-      // Session write is non-critical
-      try { const t = await writeSession(cred.user.uid); startSessionWatcher(cred.user.uid, t); } catch {}
+        const t = await writeSession(cred.user.uid);
+        startSessionWatcher(cred.user.uid, t);
+      } catch (sessionError) {
+        console.error("Session write failed:", sessionError);
+      }
 
       setStep("profile");
     } catch(err: any) {
-      if(err?.code === "auth/email-already-in-use") { setStep("signin"); setSiEmail(caEmail); setSiEmailErr("Account already exists. Please sign in."); }
-      else setOtpErr("Something went wrong. Please try again.");
-    } finally { setOtpLoading(false); }
+      console.error("CREATE ACCOUNT FAILED:", err);
+      const code = err?.code || "";
+
+      if(code === "auth/email-already-in-use") {
+        setStep("signin");
+        setSiEmail(caEmail);
+        setSiPass("");
+        setSiEmailErr("An account with this email already exists. Please sign in.");
+      } else if(code === "auth/weak-password") {
+        setOtpErr("Password must be at least 6 characters.");
+      } else if(code === "auth/invalid-email") {
+        setOtpErr("Invalid email address.");
+      } else if(code === "auth/operation-not-allowed") {
+        setOtpErr("Email/password sign-in is not enabled in Firebase Authentication.");
+      } else if(code === "auth/network-request-failed") {
+        setOtpErr("Network error. Check your internet connection and try again.");
+      } else if(code === "permission-denied" || code === "firestore/permission-denied") {
+        setOtpErr("Account was created, but the TraceX profile could not be saved. Check Firestore rules.");
+      } else {
+        setOtpErr(`Account creation failed: ${code || err?.message || "Unknown error"}`);
+      }
+    } finally {
+      setOtpLoading(false);
+    }
   }
 
   async function handleResendOtp() {
-    const otp = genOtp(); setGeneratedOtp(otp); setEnteredOtp(""); setOtpErr(""); setCanResend(false); setOtpTimer(60);
-    await sendOtp(step === "forgot_otp" ? fpEmail : caEmail, otp);
+    try {
+      const otp = genOtp();
+      const email = step === "forgot_otp" ? fpEmail : caEmail;
+      await sendOtp(email, otp);
+      setGeneratedOtp(otp);
+      setEnteredOtp("");
+      setOtpErr("");
+      setCanResend(false);
+      setOtpTimer(60);
+    } catch(err: any) {
+      setOtpErr(err?.message || "Unable to resend OTP. Please try again.");
+    }
   }
 
   async function saveProfile() {
     setNameErr("");
     if(!name.trim()) { setNameErr("Enter your name."); return; }
     if(hasAbuse(name)) { setNameErr("Please use a respectful name."); return; }
-    const auth = getAuth_(); const user = auth?.currentUser; if(!user) return;
+    const auth = getAuth_(); const user = auth?.currentUser; if(!user) { setNameErr("Your session expired. Please sign in again."); return; }
     const db = getDb_();
 
-    // Generate unique TraceX ID
     let tracexId = genTracexId(); let unique = false;
     while(!unique) {
       const snap = await getDocs(query(collection(db,"users"), where("tracexId","==",tracexId)));
       if(snap.empty) unique = true; else tracexId = genTracexId();
     }
 
-    // ✅ updateDoc — document already exists from handleVerifyOtp
     await updateDoc(doc(db,"users",user.uid), { name, studyType, tracexId, updatedAt: Date.now() });
     localStorage.setItem(`tracex:onboarding:${user.uid}`, JSON.stringify({name, studyType, tracexId}));
     setStep("safety");
@@ -380,12 +317,16 @@ export default function Signup() {
 
   async function handleForgotSendOtp() {
     setFpEmailErr("");
-    if(!fpEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fpEmail)) { setFpEmailErr("Enter a valid email."); return; }
+    const email = fpEmail.toLowerCase().trim();
+    if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setFpEmailErr("Enter a valid email."); return; }
     setFpLoading(true);
     try {
       const otp = genOtp(); setGeneratedOtp(otp);
-      if(!await sendOtp(fpEmail, otp)) { setFpEmailErr("Unable to send OTP. Please try again."); return; }
+      await sendOtp(email, otp);
+      setFpEmail(email);
       setEnteredOtp(""); setOtpErr(""); setStep("forgot_otp");
+    } catch(err: any) {
+      setFpEmailErr(err?.message || "Unable to send OTP. Please try again.");
     } finally { setFpLoading(false); }
   }
 
@@ -412,7 +353,6 @@ export default function Signup() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white px-4">
       <div className="w-full max-w-lg">
-
         {step === "start" && (
           <div style={{backgroundColor:"#1e2433",borderRadius:"16px",padding:"40px 32px",maxWidth:"440px",margin:"0 auto",boxShadow:"0 8px 32px rgba(0,0,0,0.4)"}}>
             <h1 className="text-center text-3xl font-black mb-2">Welcome to <span style={{color:"#00d8ff"}}>TraceX</span></h1>
@@ -421,10 +361,7 @@ export default function Signup() {
             <p className="text-center text-slate-400 text-sm mb-6">Sign in or create a new account to continue.</p>
             <div className="flex flex-col items-center gap-4 w-full max-w-sm mx-auto">
               <Button onClick={() => { setStep("signin"); setSiEmailErr(""); setSiPassErr(""); setSiEmail(""); setSiPass(""); setPwResetOk(false); }}>Continue with Email</Button>
-              <p className="text-center mt-2 cursor-pointer text-slate-500 hover:text-slate-300 transition text-sm underline"
-                onClick={() => { setStep("create_form"); setCaEmailErr(""); setCaPassErr(""); setCaEmail(""); setCaPass(""); setCaPass2(""); }}>
-                Create a full TraceX account
-              </p>
+              <p className="text-center mt-2 cursor-pointer text-slate-500 hover:text-slate-300 transition text-sm underline" onClick={() => { setStep("create_form"); setCaEmailErr(""); setCaPassErr(""); setCaEmail(""); setCaPass(""); setCaPass2(""); }}>Create a full TraceX account</p>
             </div>
           </div>
         )}
@@ -533,7 +470,6 @@ export default function Signup() {
             </div>
           </SectionCard>
         )}
-
       </div>
     </div>
   );
