@@ -122,7 +122,7 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
     };
   }, [onComplete, reducedMotion]);
 
-  const traceOpacity = phase === "intro" ? 0 : 1;
+  const traceOpacity = phase === "intro" || phase === "lock" || phase === "exit" ? 0 : 1;
   const movingOpacity = phase === "intro" || phase === "lock" || phase === "exit" ? 0 : 1;
   const movingScale = phase === "impact" ? 1.06 : 1;
   const finalWordmarkOpacity = phase === "lock" || phase === "exit" ? 1 : 0;
@@ -279,7 +279,7 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           font-weight: 850;
           color: #f7faff;
           white-space: nowrap;
-          transition: opacity 420ms ease;
+          transition: opacity 180ms ease;
         }
 
         .moving-x {
@@ -313,7 +313,7 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           letter-spacing: -.068em;
           font-weight: 850;
           color: #f7faff;
-          transition: opacity 260ms ease;
+          transition: opacity 220ms ease;
         }
 
         .final-wordmark-x {
