@@ -212,12 +212,11 @@ select:focus-visible {
 
 /* ==================================================
    TRACE X INTRO DOCK SPACING
-   Keep the flight untouched; add the clearance to
-   the hidden final wordmark anchor that defines the
-   endpoint of the path.
+   Keep the flight and final wordmark using the
+   exact same measured X spacing.
 ================================================== */
 body .tracex-intro .wordmark-anchor-x {
-  margin-left: .24em !important;
+  margin-left: .10em !important;
 }
 
 /* ==================================================
