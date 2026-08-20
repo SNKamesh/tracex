@@ -212,8 +212,8 @@ select:focus-visible {
 
 /* ==================================================
    TRACE X INTRO — FINAL WORDMARK RULES
-   One visible Trace + one capital X. The X keeps the
-   same visual size throughout the complete flight.
+   Keep the final measured X aligned, while letting
+   the component's intro phase control visibility.
 ================================================== */
 body .tracex-intro .wordmark-anchor-x {
   font-size: 1em !important;
@@ -221,12 +221,7 @@ body .tracex-intro .wordmark-anchor-x {
   transform: translateY(0) !important;
 }
 
-body .tracex-intro .trace {
-  opacity: 1 !important;
-}
-
 body .tracex-intro .moving-x {
-  opacity: 1 !important;
   margin-left: clamp(12px, 1.2vw, 20px) !important;
   transform: translate(-50%, -50%) !important;
 }
