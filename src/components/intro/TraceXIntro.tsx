@@ -39,22 +39,29 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
   const [xPoint, setXPoint] = useState<Point>(targetRef.current);
 
   // Measure the real final wordmark so the path terminates at the exact
-  // center of the final, smaller X on every screen size.
+  // center of the final X on every screen size.
   useLayoutEffect(() => {
     let cancelled = false;
 
     const measure = () => {
       const stage = stageRef.current;
-      const trace = traceRef.current;
       const finalX = finalXRef.current;
-      if (!stage || !trace || !finalX) return;
+      if (!stage || !finalX) return;
 
       const stageRect = stage.getBoundingClientRect();
       const xRect = finalX.getBoundingClientRect();
 
       const next = {
-        x: clamp(((xRect.left + xRect.width / 2 - stageRect.left) / stageRect.width) * 100, 0, 100),
-        y: clamp(((xRect.top + xRect.height / 2 - stageRect.top) / stageRect.height) * 100, 0, 100),
+        x: clamp(
+          ((xRect.left + xRect.width / 2 - stageRect.left) / stageRect.width) * 100,
+          0,
+          100,
+        ),
+        y: clamp(
+          ((xRect.top + xRect.height / 2 - stageRect.top) / stageRect.height) * 100,
+          0,
+          100,
+        ),
       };
 
       if (!cancelled) {
@@ -85,8 +92,8 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
       return () => window.clearTimeout(timer);
     }
 
-    // Animation starts immediately. The 1.5s hold after the finished logo
-    // is handled by the entry page before it routes to Signup/Home.
+    // The parent entry page holds this finished lock state for 1.5s
+    // before routing to Signup/Home.
     const startedAt = performance.now();
     const total = 3000;
 
@@ -96,8 +103,7 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
       if (t < 0.16) setPhase("intro");
       else if (t < 0.80) setPhase("fly");
       else if (t < 0.88) setPhase("impact");
-      else if (t < 0.94) setPhase("lock");
-      else setPhase("exit");
+      else setPhase("lock");
 
       if (t >= 0.14 && t < 0.82) {
         const p = easeInOutCubic(clamp((t - 0.14) / 0.68, 0, 1));
@@ -111,6 +117,7 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
         rafRef.current = requestAnimationFrame(tick);
       } else if (!completedRef.current) {
         completedRef.current = true;
+        setPhase("lock");
         onComplete();
       }
     };
@@ -122,11 +129,11 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
     };
   }, [onComplete, reducedMotion]);
 
-  const traceOpacity = phase === "intro" || phase === "lock" || phase === "exit" ? 0 : 1;
-  const movingOpacity = phase === "intro" || phase === "lock" || phase === "exit" ? 0 : 1;
-  const movingScale = phase === "impact" ? 1.06 : 1;
-  const finalWordmarkOpacity = phase === "lock" || phase === "exit" ? 1 : 0;
-  const backgroundOpacity = phase === "exit" ? 0.78 : 1;
+  const traceOpacity = phase === "intro" ? 0 : 1;
+  const movingOpacity = phase === "intro" || phase === "lock" ? 0 : 1;
+  const movingScale = 1;
+  const finalWordmarkOpacity = phase === "lock" ? 1 : 0;
+  const backgroundOpacity = 1;
 
   return (
     <main className="tracex-intro" aria-label="TraceX intro">
@@ -149,7 +156,6 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           position: absolute;
           inset: 0;
           opacity: ${backgroundOpacity};
-          transition: opacity 650ms ease;
           pointer-events: none;
         }
 
@@ -295,8 +301,7 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           font-weight: 850;
           letter-spacing: -.068em;
           text-shadow: 0 0 11px rgba(0,216,255,.30), 0 0 28px rgba(0,216,255,.12);
-          will-change: left, top, transform;
-          transition: opacity 180ms ease, transform 180ms cubic-bezier(.17,.89,.32,1.18);
+          will-change: left, top;
         }
 
         .final-wordmark {
@@ -313,17 +318,17 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           letter-spacing: -.068em;
           font-weight: 850;
           color: #f7faff;
-          transition: opacity 220ms ease;
+          transition: opacity 180ms ease;
         }
 
         .final-wordmark-x {
           display: inline-block;
           color: #00d8ff;
-          font-size: .82em;
+          font-size: 1em;
           line-height: .9;
-          transform: translateY(.015em);
+          transform: translateY(0);
           transform-origin: center bottom;
-          margin-left: .10em;
+          margin-left: .24em;
           text-shadow: 0 0 11px rgba(0,216,255,.22), 0 0 22px rgba(0,216,255,.08);
         }
 
@@ -333,10 +338,9 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           top: ${target.y}%;
           width: 72px;
           height: 1px;
-          transform: translate(-50%, -50%) scaleX(${phase === "impact" ? 1 : 0.4});
-          opacity: ${phase === "impact" ? .58 : 0};
-          background: linear-gradient(90deg, transparent, rgba(0,216,255,.7), transparent);
-          transition: opacity 160ms ease, transform 200ms cubic-bezier(.16,1,.3,1);
+          transform: translate(-50%, -50%);
+          opacity: 0;
+          pointer-events: none;
         }
 
         .caption {
@@ -344,7 +348,7 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
           left: 50%;
           top: calc(51.5% + 84px);
           transform: translateX(-50%);
-          opacity: ${phase === "lock" || phase === "exit" ? .42 : 0};
+          opacity: ${phase === "lock" ? .42 : 0};
           color: rgba(219,230,241,.40);
           font-size: 11px;
           letter-spacing: .15em;
