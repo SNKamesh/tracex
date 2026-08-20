@@ -211,12 +211,15 @@ select:focus-visible {
 }
 
 /* ==================================================
-   TRACE X INTRO DOCK SPACING
-   Keep the flight and final wordmark using the
-   exact same measured X spacing.
+   TRACE X INTRO — measured wordmark only
+   The component owns animation state. Global CSS only
+   keeps the measured X geometry consistent.
 ================================================== */
-body .tracex-intro .wordmark-anchor-x {
-  margin-left: .10em !important;
+body .tracex-intro .wordmark-anchor-x,
+body .tracex-intro .final-wordmark-x {
+  font-size: 1em !important;
+  margin-left: .24em !important;
+  transform: translateY(0) !important;
 }
 
 /* ==================================================
