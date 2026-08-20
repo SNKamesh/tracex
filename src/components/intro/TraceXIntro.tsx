@@ -79,12 +79,26 @@ export default function TraceXIntro({ onComplete }: TraceXIntroProps) {
       return () => window.clearTimeout(timer);
     }
 
+    // Give the finished TraceX environment a quiet 1.5s hold before motion begins.
+    const introDelay = 1500;
+    const animationDuration = 3000;
     const startedAt = performance.now();
-    const total = 3000;
 
     const tick = (now: number) => {
       const elapsed = now - startedAt;
-      const t = clamp(elapsed / total, 0, 1);
+
+      if (elapsed < introDelay) {
+        setPhase("boot");
+        if (animationRef.current === null) {
+          animationRef.current = requestAnimationFrame(tick);
+        } else {
+          animationRef.current = requestAnimationFrame(tick);
+        }
+        return;
+      }
+
+      const animationElapsed = elapsed - introDelay;
+      const t = clamp(animationElapsed / animationDuration, 0, 1);
 
       if (t < 0.15) setPhase("boot");
       else if (t < 0.29) setPhase("trace");
