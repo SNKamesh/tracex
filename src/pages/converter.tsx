@@ -203,14 +203,28 @@ export default function Converter() {
   const [files, setFiles] = useState<File[]>([])
   const [status, setStatus] = useState<Status>("idle")
   const [message, setMessage] = useState("")
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [progressPhase, setProgressPhase] = useState("")
+  const requestRef = useRef<XMLHttpRequest | null>(null)
+  const requestIdRef = useRef(0)
 
   const detected = files[0] ? extensionOf(files[0].name) : ""
+
+  const cancelActiveRequest = () => {
+    requestIdRef.current += 1
+    if (requestRef.current) {
+      requestRef.current.abort()
+      requestRef.current = null
+    }
+  }
 
   const setFilesAndDetect = (next: File[]) => {
     const shouldDetect = files.length === 0 && next.length > 0
     setFiles(next)
     setStatus("idle")
     setMessage("")
+    setUploadProgress(0)
+    setProgressPhase("")
     if (shouldDetect) {
       const ext = extensionOf(next[0]?.name || "")
       if (ext && FORMATS.some((f) => f.ext === ext)) {
@@ -223,49 +237,91 @@ export default function Converter() {
   }
 
   const selectFrom = (format: Format) => {
+    cancelActiveRequest()
     setFrom(format)
     const compatible = files.filter((file) => matchesSource(file, format.ext))
     setFiles(compatible)
     setStatus("idle")
+    setUploadProgress(0)
+    setProgressPhase("")
     setMessage(compatible.length === files.length ? "" : compatible.length ? `Removed files that were not ${format.ext.toUpperCase()} input files.` : files.length ? `Select ${format.ext.toUpperCase()} files to continue.` : "")
     const preferred = HINTS[format.ext]?.[0]
     if (preferred) setTo(formatOf(preferred))
     setPicker(null)
   }
 
+  const selectTo = (format: Format) => {
+    cancelActiveRequest()
+    setTo(format)
+    setStatus("idle")
+    setUploadProgress(0)
+    setProgressPhase("")
+    setMessage("")
+    setPicker(null)
+  }
+
   const swap = () => {
+    cancelActiveRequest()
     const current = from
     setFrom(to)
     setTo(current)
     const compatible = files.filter((file) => matchesSource(file, to.ext))
     setFiles(compatible)
     setStatus("idle")
+    setUploadProgress(0)
+    setProgressPhase("")
     setMessage(compatible.length === files.length ? "" : compatible.length ? `Removed files that do not match ${to.ext.toUpperCase()}.` : files.length ? `Select ${to.ext.toUpperCase()} files to continue.` : "")
   }
 
-  async function convert() {
+  function convert() {
     if (!files.length || status === "running") return
+
+    cancelActiveRequest()
+    const requestId = requestIdRef.current
     setStatus("running")
+    setUploadProgress(0)
+    setProgressPhase("Uploading to TraceX…")
     setMessage(`Uploading ${files.length} file${files.length > 1 ? "s" : ""} to TraceX…`)
 
-    try {
-      const form = new FormData()
-      form.append("from", from.ext)
-      form.append("to", to.ext)
-      files.forEach((file) => form.append("files", file))
+    const form = new FormData()
+    form.append("from", from.ext)
+    form.append("to", to.ext)
+    files.forEach((file) => form.append("files", file))
 
-      const response = await fetch(`${API_URL}/api/convert`, { method: "POST", body: form })
-      if (!response.ok) {
+    const xhr = new XMLHttpRequest()
+    requestRef.current = xhr
+    xhr.open("POST", `${API_URL}/api/convert`)
+    xhr.responseType = "blob"
+
+    xhr.upload.onprogress = (event) => {
+      if (requestId !== requestIdRef.current || !event.lengthComputable) return
+      const percent = Math.round((event.loaded / event.total) * 100)
+      setUploadProgress(percent)
+      if (percent >= 100) {
+        setProgressPhase("Upload complete · converting on server…")
+        setMessage("Upload complete. TraceX is converting your files on the server…")
+      }
+    }
+
+    xhr.onload = async () => {
+      if (requestId !== requestIdRef.current) return
+      requestRef.current = null
+
+      if (xhr.status < 200 || xhr.status >= 300) {
         let errorMessage = "Conversion failed."
         try {
-          const data = await response.json()
+          const text = await xhr.response.text()
+          const data = JSON.parse(text)
           errorMessage = data.error || errorMessage
         } catch {}
-        throw new Error(errorMessage)
+        setStatus("error")
+        setProgressPhase("")
+        setMessage(errorMessage)
+        return
       }
 
-      const blob = await response.blob()
-      const header = response.headers.get("Content-Disposition") || ""
+      const blob = xhr.response as Blob
+      const header = xhr.getResponseHeader("Content-Disposition") || ""
       const match = header.match(/filename="?([^";]+)"?/) 
       const fallback = files.length > 1 ? `${files[0].name.replace(/\.[^.]+$/, "")}-${to.ext}-files.zip` : files[0].name.replace(/\.[^.]+$/, `.${to.ext}`)
       const filename = match?.[1] || fallback
@@ -277,12 +333,30 @@ export default function Converter() {
       link.click()
       link.remove()
       setTimeout(() => URL.revokeObjectURL(url), 3000)
+      setUploadProgress(100)
+      setProgressPhase("")
       setStatus("done")
       setMessage(`${files.length} file${files.length > 1 ? "s" : ""} converted successfully.`)
-    } catch (error) {
-      setStatus("error")
-      setMessage(error instanceof Error ? error.message : "Conversion failed.")
     }
+
+    xhr.onerror = () => {
+      if (requestId !== requestIdRef.current) return
+      requestRef.current = null
+      setStatus("error")
+      setProgressPhase("")
+      setMessage("Could not reach the TraceX conversion server. Please try again.")
+    }
+
+    xhr.onabort = () => {
+      if (requestId !== requestIdRef.current) return
+      requestRef.current = null
+      setStatus("idle")
+      setUploadProgress(0)
+      setProgressPhase("")
+      setMessage("")
+    }
+
+    xhr.send(form)
   }
 
   return (
@@ -317,7 +391,7 @@ export default function Converter() {
           <aside className="rounded-[28px] border border-white/10 bg-[#0b0f14] p-5 sm:p-6">
             <div className="flex items-center gap-2"><Zap className="h-4 w-4 text-cyan-300" /><h2 className="text-sm font-semibold text-white">Quick formats</h2></div>
             <p className="mt-2 text-xs leading-5 text-slate-600">Popular destinations for the selected file type.</p>
-            <div className="mt-4 grid grid-cols-2 gap-2">{(HINTS[from.ext] || POPULAR).slice(0, 10).map((ext) => <button key={ext} onClick={() => setTo(formatOf(ext))} className={`rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition ${to.ext === ext ? "border-cyan-400/25 bg-cyan-400/[0.05] text-cyan-200" : "border-white/8 bg-white/[0.025] text-slate-300 hover:border-white/15"}`}>{ext.toUpperCase()}</button>)}</div>
+            <div className="mt-4 grid grid-cols-2 gap-2">{(HINTS[from.ext] || POPULAR).slice(0, 10).map((ext) => <button key={ext} onClick={() => selectTo(formatOf(ext))} className={`rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition ${to.ext === ext ? "border-cyan-400/25 bg-cyan-400/[0.05] text-cyan-200" : "border-white/8 bg-white/[0.025] text-slate-300 hover:border-white/15"}`}>{ext.toUpperCase()}</button>)}</div>
           </aside>
         </div>
 
@@ -329,18 +403,25 @@ export default function Converter() {
               <div className="mt-1 text-xs text-slate-600">{files.length ? `${files.length} file${files.length > 1 ? "s" : ""} selected` : `Add a ${from.ext.toUpperCase()} file to continue`}</div>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => { setFiles([]); setFrom(formatOf("pdf")); setTo(formatOf("docx")); setStatus("idle"); setMessage("") }} className="rounded-xl border border-white/10 px-3 py-2.5 text-xs font-medium text-slate-500 hover:bg-white/5 hover:text-slate-300"><RotateCcw className="mr-2 inline h-3.5 w-3.5" />Reset</button>
+              <button onClick={() => { cancelActiveRequest(); setFiles([]); setFrom(formatOf("pdf")); setTo(formatOf("docx")); setStatus("idle"); setMessage(""); setUploadProgress(0); setProgressPhase("") }} className="rounded-xl border border-white/10 px-3 py-2.5 text-xs font-medium text-slate-500 hover:bg-white/5 hover:text-slate-300"><RotateCcw className="mr-2 inline h-3.5 w-3.5" />Reset</button>
               <button disabled={!files.length || status === "running"} onClick={convert} className="rounded-xl bg-white px-5 py-2.5 text-xs font-semibold text-black transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-slate-600">{status === "running" ? "Converting…" : "Convert"}</button>
             </div>
           </div>
 
-          {status !== "idle" && <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${status === "done" ? "border-emerald-400/15 bg-emerald-400/[0.04] text-emerald-300" : status === "error" ? "border-rose-400/15 bg-rose-400/[0.04] text-rose-300" : "border-cyan-400/15 bg-cyan-400/[0.04] text-cyan-200"}`}>{status === "done" && <Check className="mr-2 inline h-4 w-4" />}{message}</div>}
+          {status !== "idle" && <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${status === "done" ? "border-emerald-400/15 bg-emerald-400/[0.04] text-emerald-300" : status === "error" ? "border-rose-400/15 bg-rose-400/[0.04] text-rose-300" : "border-cyan-400/15 bg-cyan-400/[0.04] text-cyan-200"}`}>
+            {status === "done" && <Check className="mr-2 inline h-4 w-4" />}
+            <div>{message}</div>
+            {status === "running" && <div className="mt-3">
+              <div className="flex items-center justify-between text-[11px] text-slate-500"><span>{progressPhase}</span><span>{uploadProgress}%</span></div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/8"><div className="h-full rounded-full bg-cyan-400 transition-[width] duration-150" style={{ width: `${uploadProgress}%` }} /></div>
+            </div>}
+          </div>}
         </section>
 
         <div className="mt-6 pb-8 text-center text-[11px] text-slate-700">Render conversion engine • Batch-ready • Context-aware format selection</div>
       </div>
       {picker === "from" && <FormatPicker side="from" value={from} onClose={() => setPicker(null)} onSelect={selectFrom} />}
-      {picker === "to" && <FormatPicker side="to" value={to} onClose={() => setPicker(null)} onSelect={(format) => { setTo(format); setPicker(null) }} />}
+      {picker === "to" && <FormatPicker side="to" value={to} onClose={() => setPicker(null)} onSelect={selectTo} />}
     </AppShell>
   )
 }
