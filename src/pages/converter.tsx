@@ -174,15 +174,18 @@ export default function Converter() {
   const detected = files[0] ? extensionOf(files[0].name) : ""
 
   const setFilesAndDetect = (next: File[]) => {
+    const shouldDetect = files.length === 0 && next.length > 0
     setFiles(next)
     setStatus("idle")
     setMessage("")
-    const ext = next[0] ? extensionOf(next[0].name) : ""
-    if (ext && FORMATS.some((f) => f.ext === ext)) {
-      const detectedFormat = formatOf(ext)
-      setFrom(detectedFormat)
-      const preferred = HINTS[ext]?.[0]
-      if (preferred) setTo(formatOf(preferred))
+    if (shouldDetect) {
+      const ext = extensionOf(next[0]?.name || "")
+      if (ext && FORMATS.some((f) => f.ext === ext)) {
+        const detectedFormat = formatOf(ext)
+        setFrom(detectedFormat)
+        const preferred = HINTS[ext]?.[0]
+        if (preferred) setTo(formatOf(preferred))
+      }
     }
   }
 
