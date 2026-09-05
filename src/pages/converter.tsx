@@ -2,426 +2,89 @@
 
 import { useRef, useState } from "react"
 import AppShell from "@/components/AppShell"
-import {
-  ArrowLeftRight,
-  Check,
-  ChevronDown,
-  FileArchive,
-  FileAudio2,
-  FileCode2,
-  FileImage,
-  FileSpreadsheet,
-  FileText,
-  FileType2,
-  FileVideo2,
-  RotateCcw,
-  Search,
-  Upload,
-  X,
-  Zap,
-} from "lucide-react"
+import { ArrowLeftRight, Check, ChevronDown, FileAudio2, FileImage, FileSpreadsheet, FileText, FileType2, FileVideo2, RotateCcw, Search, Upload, X, Zap } from "lucide-react"
 
 type Format = { ext: string; name: string; group: string }
 type PickerSide = "from" | "to" | null
 type Status = "idle" | "running" | "done" | "error"
 
 const FORMAT_GROUPS = [
-  { key: "Documents", icon: FileText, formats: [["pdf", "PDF"], ["doc", "Word 97–2003"], ["docx", "Word"], ["docm", "Word Macro"], ["rtf", "Rich Text"], ["odt", "OpenDocument"], ["txt", "Plain Text"], ["html", "HTML"], ["htm", "HTML"], ["md", "Markdown"], ["epub", "EPUB"], ["mobi", "MOBI"], ["azw3", "AZW3"]] },
-  { key: "Presentations", icon: FileType2, formats: [["ppt", "PowerPoint 97–2003"], ["pptx", "PowerPoint"], ["pptm", "PowerPoint Macro"], ["odp", "OpenDocument"], ["ppsx", "PowerPoint Show"]] },
-  { key: "Spreadsheets", icon: FileSpreadsheet, formats: [["xls", "Excel 97–2003"], ["xlsx", "Excel"], ["xlsm", "Excel Macro"], ["csv", "CSV"], ["tsv", "TSV"], ["ods", "OpenDocument"], ["numbers", "Apple Numbers"]] },
-  { key: "Images", icon: FileImage, formats: [["jpg", "JPEG"], ["jpeg", "JPEG"], ["png", "PNG"], ["webp", "WebP"], ["avif", "AVIF"], ["gif", "GIF"], ["bmp", "Bitmap"], ["tif", "TIFF"], ["tiff", "TIFF"], ["svg", "SVG"], ["heic", "HEIC"], ["heif", "HEIF"]] },
-  { key: "Audio", icon: FileAudio2, formats: [["mp3", "MP3"], ["wav", "WAV"], ["flac", "FLAC"], ["aac", "AAC"], ["m4a", "M4A"], ["ogg", "Ogg"], ["opus", "Opus"], ["wma", "WMA"], ["aiff", "AIFF"], ["amr", "AMR"]] },
-  { key: "Video", icon: FileVideo2, formats: [["mp4", "MP4"], ["mov", "QuickTime MOV"], ["mkv", "Matroska"], ["avi", "AVI"], ["webm", "WebM"], ["mpeg", "MPEG"], ["mpg", "MPEG"], ["flv", "FLV"], ["ogv", "Ogg Video"], ["wmv", "Windows Media Video"], ["3gp", "3GP"]] },
-  { key: "Archives", icon: FileArchive, formats: [["zip", "ZIP"], ["7z", "7-Zip"], ["tar", "TAR"], ["gz", "GZip"], ["bz2", "BZip2"], ["xz", "XZ"], ["rar", "RAR"]] },
-  { key: "Data & Code", icon: FileCode2, formats: [["json", "JSON"], ["xml", "XML"], ["yaml", "YAML"], ["yml", "YAML"], ["sql", "SQL"], ["log", "Log"], ["ini", "INI"], ["toml", "TOML"]] },
+  { key: "Documents", icon: FileText, formats: [["pdf", "PDF"], ["docx", "Word"], ["txt", "Plain Text"], ["html", "HTML"]] },
+  { key: "Presentations", icon: FileType2, formats: [["pptx", "PowerPoint"]] },
+  { key: "Spreadsheets", icon: FileSpreadsheet, formats: [["xlsx", "Excel"], ["csv", "CSV"], ["tsv", "TSV"]] },
+  { key: "Images", icon: FileImage, formats: [["jpg", "JPEG"], ["png", "PNG"], ["webp", "WebP"], ["avif", "AVIF"]] },
+  { key: "Audio", icon: FileAudio2, formats: [["mp3", "MP3"], ["wav", "WAV"], ["m4a", "M4A"], ["flac", "FLAC"], ["aac", "AAC"]] },
+  { key: "Video", icon: FileVideo2, formats: [["mp4", "MP4"], ["mov", "QuickTime MOV"], ["mkv", "Matroska"], ["webm", "WebM"]] },
 ] as const
 
-const FORMATS: Format[] = FORMAT_GROUPS.flatMap((group) => group.formats.map(([ext, name]) => ({ ext, name, group: group.key }))).filter((f, i, a) => a.findIndex((x) => x.ext === f.ext) === i)
-const POPULAR = ["pdf", "docx", "xlsx", "pptx", "jpg", "png", "webp", "mp4", "mp3", "zip"]
-const HINTS: Record<string, string[]> = {
-  pdf: ["docx", "txt", "png", "jpg", "html"],
+const FORMATS: Format[] = FORMAT_GROUPS.flatMap((group) => group.formats.map(([ext, name]) => ({ ext, name, group: group.key })))
+const TARGETS: Record<string, string[]> = {
+  pdf: ["docx", "txt", "html", "png", "jpg"],
   docx: ["pdf", "txt", "html"],
+  txt: ["pdf", "docx", "html"],
+  html: ["pdf", "docx", "txt"],
+  pptx: ["pdf"],
   xlsx: ["pdf", "csv", "tsv"],
-  pptx: ["pdf", "jpg", "png"],
-  jpg: ["png", "webp", "pdf"],
-  png: ["jpg", "webp", "pdf"],
-  webp: ["jpg", "png", "pdf"],
-  mp4: ["mp3", "wav", "mov", "webm"],
-  mp3: ["wav", "flac", "m4a"],
-  csv: ["json", "tsv", "xlsx"],
-  json: ["csv", "tsv"],
+  csv: ["pdf", "xlsx", "tsv"],
+  tsv: ["pdf", "xlsx", "csv"],
+  jpg: ["png", "webp", "avif"],
+  png: ["jpg", "webp", "avif"],
+  webp: ["jpg", "png", "avif"],
+  avif: ["jpg", "png", "webp"],
+  mp3: ["wav", "m4a", "flac", "aac"],
+  wav: ["mp3", "m4a", "flac", "aac"],
+  m4a: ["mp3", "wav", "flac", "aac"],
+  flac: ["mp3", "wav", "m4a", "aac"],
+  aac: ["mp3", "wav", "m4a", "flac"],
+  mp4: ["mov", "mkv", "webm", "mp3", "wav", "m4a", "flac", "aac"],
+  mov: ["mp4", "mkv", "webm", "mp3", "wav", "m4a", "flac", "aac"],
+  mkv: ["mp4", "mov", "webm", "mp3", "wav", "m4a", "flac", "aac"],
+  webm: ["mp4", "mov", "mkv", "mp3", "wav", "m4a", "flac", "aac"],
 }
-
+const POPULAR = ["pdf", "docx", "xlsx", "pptx", "jpg", "png", "mp4", "mp3"]
+const HINTS = TARGETS
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
 function formatOf(ext: string): Format {
   return FORMATS.find((f) => f.ext === ext) || { ext, name: ext.toUpperCase(), group: "Other" }
 }
-
-function extensionOf(name: string) {
-  return name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] || ""
-}
-
-function matchesSource(file: File, source: string) {
-  const ext = extensionOf(file.name)
-  if (source === "jpg") return ext === "jpg" || ext === "jpeg"
-  if (source === "tif") return ext === "tif" || ext === "tiff"
-  return ext === source
-}
-
+function extensionOf(name: string) { return name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] || "" }
+function matchesSource(file: File, source: string) { const ext = extensionOf(file.name); return source === "jpg" ? ext === "jpg" || ext === "jpeg" : ext === source }
+function canConvert(from: string, to: string) { return from !== to && (TARGETS[from] || []).includes(to) }
 function acceptFor(source: string) {
-  const aliases: Record<string, string> = {
-    jpg: ".jpg,.jpeg,image/jpeg",
-    jpeg: ".jpg,.jpeg,image/jpeg",
-    tif: ".tif,.tiff,image/tiff",
-    tiff: ".tif,.tiff,image/tiff",
-    pdf: ".pdf,application/pdf",
-    png: ".png,image/png",
-    webp: ".webp,image/webp",
-    gif: ".gif,image/gif",
-    avif: ".avif,image/avif",
-    mp3: ".mp3,audio/mpeg",
-    wav: ".wav,audio/wav",
-    flac: ".flac,audio/flac",
-    m4a: ".m4a,audio/mp4",
-    mp4: ".mp4,video/mp4",
-    mov: ".mov,video/quicktime",
-    mkv: ".mkv,video/x-matroska",
-    webm: ".webm,video/webm",
-  }
+  const aliases: Record<string, string> = { jpg: ".jpg,.jpeg,image/jpeg", pdf: ".pdf,application/pdf", png: ".png,image/png", webp: ".webp,image/webp", avif: ".avif,image/avif", mp3: ".mp3,audio/mpeg", wav: ".wav,audio/wav", m4a: ".m4a,audio/mp4", flac: ".flac,audio/flac", aac: ".aac,audio/aac", mp4: ".mp4,video/mp4", mov: ".mov,video/quicktime", mkv: ".mkv,video/x-matroska", webm: ".webm,video/webm" }
   return aliases[source] || `.${source}`
 }
 
 function Selector({ label, value, onClick }: { label: string; value: Format; onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} className="group w-full rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3.5 text-left transition hover:border-white/20 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-cyan-400/40">
-      <div className="mb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">{label}</div>
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate text-[15px] font-semibold text-white">{value.ext.toUpperCase()}</div>
-          <div className="truncate text-xs text-slate-500">{value.name}</div>
-        </div>
-        <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" />
-      </div>
-    </button>
-  )
+  return <button type="button" onClick={onClick} className="group w-full rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3.5 text-left transition hover:border-white/20 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-cyan-400/40"><div className="mb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">{label}</div><div className="flex items-center justify-between gap-3"><div className="min-w-0"><div className="truncate text-[15px] font-semibold text-white">{value.ext.toUpperCase()}</div><div className="truncate text-xs text-slate-500">{value.name}</div></div><ChevronDown className="h-4 w-4 shrink-0 text-slate-500" /></div></button>
 }
 
 function FormatPicker({ side, value, onClose, onSelect }: { side: "from" | "to"; value: Format; onClose: () => void; onSelect: (format: Format) => void }) {
   const [query, setQuery] = useState("")
+  const available = side === "to" ? new Set(TARGETS[value.ext] || []) : null
+  const pool = available ? FORMATS.filter((f) => available.has(f.ext)) : FORMATS
   const lower = query.trim().toLowerCase()
-  const filtered = lower ? FORMATS.filter((f) => `${f.ext} ${f.name} ${f.group}`.toLowerCase().includes(lower)) : FORMATS
-  const hints = side === "to" ? HINTS[value.ext] || [] : []
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 px-4 py-10 backdrop-blur-sm">
-      <button aria-label="Close" className="absolute inset-0" onClick={onClose} />
-      <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-white/10 bg-[#0b0f14] shadow-2xl">
-        <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
-          <Search className="h-4 w-4 text-slate-500" />
-          <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder={side === "from" ? "Search an input format" : "Search a destination format"} className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-600" />
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-500 hover:bg-white/5 hover:text-white"><X className="h-4 w-4" /></button>
-        </div>
-        <div className="max-h-[72vh] overflow-y-auto px-5 py-5">
-          {!lower && (
-            <div className="mb-6">
-              <div className="mb-3 text-xs font-medium uppercase tracking-[0.15em] text-slate-500">Popular</div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                {POPULAR.map((ext) => {
-                  const f = formatOf(ext)
-                  return <button key={ext} onClick={() => onSelect(f)} className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2.5 text-left hover:border-cyan-400/30"><div className="text-xs font-semibold text-white">{ext.toUpperCase()}</div><div className="mt-0.5 text-[11px] text-slate-600">{f.group}</div></button>
-                })}
-              </div>
-              {side === "to" && hints.length > 0 && (
-                <div className="mt-5 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.035] p-4">
-                  <div className="text-xs font-medium text-cyan-300">Common destinations for {value.ext.toUpperCase()}</div>
-                  <div className="mt-2 flex flex-wrap gap-2">{hints.map((ext) => <button key={ext} onClick={() => onSelect(formatOf(ext))} className="rounded-lg border border-cyan-400/15 px-2.5 py-1.5 text-xs font-medium text-slate-200">{ext.toUpperCase()}</button>)}</div>
-                </div>
-              )}
-            </div>
-          )}
-          <div className="space-y-6">
-            {(lower ? [{ key: "Matches", icon: Search, formats: filtered.map((f) => [f.ext, f.name] as [string, string]) }] : FORMAT_GROUPS).map((group) => {
-              const Icon = group.icon
-              const entries = group.formats as readonly [string, string][]
-              return (
-                <section key={group.key}>
-                  <div className="mb-3 flex items-center gap-2"><Icon className="h-4 w-4 text-slate-500" /><h3 className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">{group.key}</h3></div>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {entries.map(([ext, name]) => <button key={ext} onClick={() => onSelect(formatOf(ext))} className={`rounded-xl border px-3 py-2.5 text-left transition ${value.ext === ext ? "border-cyan-400/30 bg-cyan-400/[0.06]" : "border-white/8 bg-white/[0.025] hover:border-white/15"}`}><div className="text-xs font-semibold text-white">{ext.toUpperCase()}</div><div className="mt-0.5 truncate text-[11px] text-slate-600">{name}</div></button>)}
-                  </div>
-                </section>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+  const filtered = lower ? pool.filter((f) => `${f.ext} ${f.name} ${f.group}`.toLowerCase().includes(lower)) : pool
+  return <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 px-4 py-10 backdrop-blur-sm"><button aria-label="Close" className="absolute inset-0" onClick={onClose} /><div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-white/10 bg-[#0b0f14] shadow-2xl"><div className="flex items-center gap-3 border-b border-white/10 px-5 py-4"><Search className="h-4 w-4 text-slate-500" /><input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder={side === "from" ? "Search an input format" : "Search a meaningful destination"} className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-600" /><button onClick={onClose} className="rounded-lg p-1.5 text-slate-500 hover:bg-white/5 hover:text-white"><X className="h-4 w-4" /></button></div><div className="max-h-[72vh] overflow-y-auto px-5 py-5">{!lower && side === "to" && <div className="mb-6 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.035] p-4"><div className="text-xs font-medium text-cyan-300">Useful destinations for {value.ext.toUpperCase()}</div><div className="mt-2 flex flex-wrap gap-2">{(TARGETS[value.ext] || []).map((ext) => <button key={ext} onClick={() => onSelect(formatOf(ext))} className="rounded-lg border border-cyan-400/15 px-2.5 py-1.5 text-xs font-medium text-slate-200">{ext.toUpperCase()}</button>)}</div></div>}<div className="space-y-6">{(lower ? [{ key: "Matches", icon: Search, formats: filtered.map((f) => [f.ext, f.name] as [string, string]) }] : FORMAT_GROUPS.map((g) => ({ ...g, formats: g.formats.filter(([ext]) => !available || available.has(ext)) }))).filter((g) => g.formats.length).map((group) => { const Icon = group.icon; return <section key={group.key}><div className="mb-3 flex items-center gap-2"><Icon className="h-4 w-4 text-slate-500" /><h3 className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">{group.key}</h3></div><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{group.formats.map(([ext, name]) => <button key={ext} onClick={() => onSelect(formatOf(ext))} className={`rounded-xl border px-3 py-2.5 text-left transition ${value.ext === ext ? "border-cyan-400/30 bg-cyan-400/[0.06]" : "border-white/8 bg-white/[0.025] hover:border-white/15"}`}><div className="text-xs font-semibold text-white">{ext.toUpperCase()}</div><div className="mt-0.5 truncate text-[11px] text-slate-600">{name}</div></button>)}</div></section>})}</div></div></div></div>
 }
 
 function DropZone({ files, sourceFormat, onFiles, onRemove }: { files: File[]; sourceFormat: string; onFiles: (files: File[]) => void; onRemove: (name: string) => void }) {
-  const input = useRef<HTMLInputElement>(null)
-  const accept = acceptFor(sourceFormat)
-  const addFiles = (items: FileList | File[]) => {
-    const accepted = Array.from(items).filter((file) => matchesSource(file, sourceFormat))
-    if (accepted.length) onFiles([...files, ...accepted])
-  }
-
-  if (!files.length) {
-    return (
-      <div>
-        <input ref={input} type="file" accept={accept} multiple className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.currentTarget.value = "" }} />
-        <button type="button" onClick={() => input.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files) }} className="group flex min-h-[210px] w-full flex-col items-center justify-center rounded-3xl border border-dashed border-white/12 bg-white/[0.018] px-6 text-center transition hover:border-cyan-400/25">
-          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 group-hover:text-cyan-300"><Upload className="h-5 w-5" /></div>
-          <div className="text-sm font-semibold text-slate-200">Drop {sourceFormat.toUpperCase()} files here</div>
-          <div className="mt-1 text-xs text-slate-600">or click to browse compatible files</div>
-          <div className="mt-4 text-[11px] text-slate-700">Only {sourceFormat.toUpperCase()} input files are accepted</div>
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-4">
-      <div className="flex items-center justify-between gap-4">
-        <div><div className="text-sm font-semibold text-white">{files.length} file{files.length > 1 ? "s" : ""} ready</div><div className="mt-0.5 text-xs text-slate-600">Only {sourceFormat.toUpperCase()} files can be added to this conversion.</div></div>
-        <button onClick={() => input.current?.click()} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-white/5">Add files</button>
-      </div>
-      <input ref={input} type="file" accept={accept} multiple className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.currentTarget.value = "" }} />
-      <div className="mt-4 divide-y divide-white/6 rounded-2xl border border-white/8 bg-black/10">
-        {files.map((file) => <div key={`${file.name}-${file.size}`} className="flex items-center gap-3 px-4 py-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/8 bg-white/[0.035] text-[10px] font-semibold text-slate-400">{extensionOf(file.name).slice(0, 4).toUpperCase() || "FILE"}</div><div className="min-w-0 flex-1"><div className="truncate text-sm font-medium text-slate-200">{file.name}</div><div className="text-[11px] text-slate-600">{(file.size / 1024 / 1024).toFixed(2)} MB</div></div><button onClick={() => onRemove(file.name)} className="rounded-lg p-2 text-slate-600 hover:bg-white/5 hover:text-slate-200"><X className="h-4 w-4" /></button></div>)}
-      </div>
-    </div>
-  )
+  const input = useRef<HTMLInputElement>(null); const accept = acceptFor(sourceFormat)
+  const addFiles = (items: FileList | File[]) => { const accepted = Array.from(items).filter((file) => matchesSource(file, sourceFormat)); if (accepted.length) onFiles([...files, ...accepted]) }
+  if (!files.length) return <div><input ref={input} type="file" accept={accept} multiple className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.currentTarget.value = "" }} /><button type="button" onClick={() => input.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files) }} className="group flex min-h-[210px] w-full flex-col items-center justify-center rounded-3xl border border-dashed border-white/12 bg-white/[0.018] px-6 text-center transition hover:border-cyan-400/25"><div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 group-hover:text-cyan-300"><Upload className="h-5 w-5" /></div><div className="text-sm font-semibold text-slate-200">Drop {sourceFormat.toUpperCase()} files here</div><div className="mt-1 text-xs text-slate-600">or click to browse compatible files</div><div className="mt-4 text-[11px] text-slate-700">Only {sourceFormat.toUpperCase()} input files are accepted</div></button></div>
+  return <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-4"><div className="flex items-center justify-between gap-4"><div><div className="text-sm font-semibold text-white">{files.length} file{files.length > 1 ? "s" : ""} ready</div><div className="mt-0.5 text-xs text-slate-600">Only {sourceFormat.toUpperCase()} files can be added to this conversion.</div></div><button onClick={() => input.current?.click()} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-white/5">Add files</button></div><input ref={input} type="file" accept={accept} multiple className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.currentTarget.value = "" }} /><div className="mt-4 divide-y divide-white/6 rounded-2xl border border-white/8 bg-black/10">{files.map((file) => <div key={`${file.name}-${file.size}`} className="flex items-center gap-3 px-4 py-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/8 bg-white/[0.035] text-[10px] font-semibold text-slate-400">{extensionOf(file.name).slice(0, 4).toUpperCase()}</div><div className="min-w-0 flex-1"><div className="truncate text-sm font-medium text-slate-200">{file.name}</div><div className="text-[11px] text-slate-600">{(file.size / 1024 / 1024).toFixed(2)} MB</div></div><button onClick={() => onRemove(file.name)} className="rounded-lg p-2 text-slate-600 hover:bg-white/5 hover:text-slate-200"><X className="h-4 w-4" /></button></div>)}</div></div>
 }
 
 export default function Converter() {
-  const [from, setFrom] = useState(formatOf("pdf"))
-  const [to, setTo] = useState(formatOf("docx"))
-  const [picker, setPicker] = useState<PickerSide>(null)
-  const [files, setFiles] = useState<File[]>([])
-  const [status, setStatus] = useState<Status>("idle")
-  const [message, setMessage] = useState("")
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [progressPhase, setProgressPhase] = useState("")
-  const requestRef = useRef<XMLHttpRequest | null>(null)
-  const requestIdRef = useRef(0)
-
+  const [from, setFrom] = useState(formatOf("pdf")); const [to, setTo] = useState(formatOf("docx")); const [picker, setPicker] = useState<PickerSide>(null); const [files, setFiles] = useState<File[]>([]); const [status, setStatus] = useState<Status>("idle"); const [message, setMessage] = useState(""); const [uploadProgress, setUploadProgress] = useState(0); const [progressPhase, setProgressPhase] = useState(""); const requestRef = useRef<XMLHttpRequest | null>(null); const requestIdRef = useRef(0)
   const detected = files[0] ? extensionOf(files[0].name) : ""
-
-  const cancelActiveRequest = () => {
-    requestIdRef.current += 1
-    if (requestRef.current) {
-      requestRef.current.abort()
-      requestRef.current = null
-    }
-  }
-
-  const setFilesAndDetect = (next: File[]) => {
-    const shouldDetect = files.length === 0 && next.length > 0
-    setFiles(next)
-    setStatus("idle")
-    setMessage("")
-    setUploadProgress(0)
-    setProgressPhase("")
-    if (shouldDetect) {
-      const ext = extensionOf(next[0]?.name || "")
-      if (ext && FORMATS.some((f) => f.ext === ext)) {
-        const detectedFormat = formatOf(ext)
-        setFrom(detectedFormat)
-        const preferred = HINTS[ext]?.[0]
-        if (preferred) setTo(formatOf(preferred))
-      }
-    }
-  }
-
-  const selectFrom = (format: Format) => {
-    cancelActiveRequest()
-    setFrom(format)
-    const compatible = files.filter((file) => matchesSource(file, format.ext))
-    setFiles(compatible)
-    setStatus("idle")
-    setUploadProgress(0)
-    setProgressPhase("")
-    setMessage(compatible.length === files.length ? "" : compatible.length ? `Removed files that were not ${format.ext.toUpperCase()} input files.` : files.length ? `Select ${format.ext.toUpperCase()} files to continue.` : "")
-    const preferred = HINTS[format.ext]?.[0]
-    if (preferred) setTo(formatOf(preferred))
-    setPicker(null)
-  }
-
-  const selectTo = (format: Format) => {
-    cancelActiveRequest()
-    setTo(format)
-    setStatus("idle")
-    setUploadProgress(0)
-    setProgressPhase("")
-    setMessage("")
-    setPicker(null)
-  }
-
-  const swap = () => {
-    cancelActiveRequest()
-    const current = from
-    setFrom(to)
-    setTo(current)
-    const compatible = files.filter((file) => matchesSource(file, to.ext))
-    setFiles(compatible)
-    setStatus("idle")
-    setUploadProgress(0)
-    setProgressPhase("")
-    setMessage(compatible.length === files.length ? "" : compatible.length ? `Removed files that do not match ${to.ext.toUpperCase()}.` : files.length ? `Select ${to.ext.toUpperCase()} files to continue.` : "")
-  }
-
-  function convert() {
-    if (!files.length || status === "running") return
-
-    cancelActiveRequest()
-    const requestId = requestIdRef.current
-    setStatus("running")
-    setUploadProgress(0)
-    setProgressPhase("Uploading to TraceX…")
-    setMessage(`Uploading ${files.length} file${files.length > 1 ? "s" : ""} to TraceX…`)
-
-    const form = new FormData()
-    form.append("from", from.ext)
-    form.append("to", to.ext)
-    files.forEach((file) => form.append("files", file))
-
-    const xhr = new XMLHttpRequest()
-    requestRef.current = xhr
-    xhr.open("POST", `${API_URL}/api/convert`)
-    xhr.responseType = "blob"
-
-    xhr.upload.onprogress = (event) => {
-      if (requestId !== requestIdRef.current || !event.lengthComputable) return
-      const percent = Math.round((event.loaded / event.total) * 100)
-      setUploadProgress(percent)
-      if (percent >= 100) {
-        setProgressPhase("Upload complete · converting on server…")
-        setMessage("Upload complete. TraceX is converting your files on the server…")
-      }
-    }
-
-    xhr.onload = async () => {
-      if (requestId !== requestIdRef.current) return
-      requestRef.current = null
-
-      if (xhr.status < 200 || xhr.status >= 300) {
-        let errorMessage = "Conversion failed."
-        try {
-          const text = await xhr.response.text()
-          const data = JSON.parse(text)
-          errorMessage = data.error || errorMessage
-        } catch {}
-        setStatus("error")
-        setProgressPhase("")
-        setMessage(errorMessage)
-        return
-      }
-
-      const blob = xhr.response as Blob
-      const header = xhr.getResponseHeader("Content-Disposition") || ""
-      const match = header.match(/filename="?([^";]+)"?/) 
-      const fallback = files.length > 1 ? `${files[0].name.replace(/\.[^.]+$/, "")}-${to.ext}-files.zip` : files[0].name.replace(/\.[^.]+$/, `.${to.ext}`)
-      const filename = match?.[1] || fallback
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      setTimeout(() => URL.revokeObjectURL(url), 3000)
-      setUploadProgress(100)
-      setProgressPhase("")
-      setStatus("done")
-      setMessage(`${files.length} file${files.length > 1 ? "s" : ""} converted successfully.`)
-    }
-
-    xhr.onerror = () => {
-      if (requestId !== requestIdRef.current) return
-      requestRef.current = null
-      setStatus("error")
-      setProgressPhase("")
-      setMessage("Could not reach the TraceX conversion server. Please try again.")
-    }
-
-    xhr.onabort = () => {
-      if (requestId !== requestIdRef.current) return
-      requestRef.current = null
-      setStatus("idle")
-      setUploadProgress(0)
-      setProgressPhase("")
-      setMessage("")
-    }
-
-    xhr.send(form)
-  }
-
-  return (
-    <AppShell>
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-cyan-300/70">TraceX File Converter</div>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-white sm:text-4xl">Change format</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Choose an input and an output format, add your files, and convert without leaving the page.</p>
-          </div>
-          <div className="hidden rounded-full border border-emerald-400/20 bg-emerald-400/[0.04] px-3 py-1.5 text-[11px] text-emerald-300 sm:block">Server conversion</div>
-        </div>
-
-        <div className="mt-8 rounded-[28px] border border-white/10 bg-[#0b0f14] p-4 shadow-2xl shadow-black/20 sm:p-6">
-          <div className="grid gap-3 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
-            <Selector label="From" value={from} onClick={() => setPicker("from")} />
-            <button onClick={swap} aria-label="Swap formats" className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-500 hover:border-cyan-400/20 hover:text-cyan-300 lg:mt-4"><ArrowLeftRight className="h-4 w-4" /></button>
-            <Selector label="To" value={to} onClick={() => setPicker("to")} />
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_340px]">
-          <section className="rounded-[28px] border border-white/10 bg-[#0b0f14] p-4 sm:p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div><h2 className="text-sm font-semibold text-white">Files</h2><p className="mt-1 text-xs text-slate-600">Add files matching the selected input format.</p></div>
-              {detected && <div className="rounded-xl border border-cyan-400/15 bg-cyan-400/[0.035] px-3 py-2 text-xs text-cyan-200">Detected {detected.toUpperCase()}</div>}
-            </div>
-            <div className="mt-5"><DropZone files={files} sourceFormat={from.ext} onFiles={setFilesAndDetect} onRemove={(name) => setFilesAndDetect(files.filter((f) => f.name !== name))} /></div>
-          </section>
-
-          <aside className="rounded-[28px] border border-white/10 bg-[#0b0f14] p-5 sm:p-6">
-            <div className="flex items-center gap-2"><Zap className="h-4 w-4 text-cyan-300" /><h2 className="text-sm font-semibold text-white">Quick formats</h2></div>
-            <p className="mt-2 text-xs leading-5 text-slate-600">Popular destinations for the selected file type.</p>
-            <div className="mt-4 grid grid-cols-2 gap-2">{(HINTS[from.ext] || POPULAR).slice(0, 10).map((ext) => <button key={ext} onClick={() => selectTo(formatOf(ext))} className={`rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition ${to.ext === ext ? "border-cyan-400/25 bg-cyan-400/[0.05] text-cyan-200" : "border-white/8 bg-white/[0.025] text-slate-300 hover:border-white/15"}`}>{ext.toUpperCase()}</button>)}</div>
-          </aside>
-        </div>
-
-        <section className="mt-6 rounded-[28px] border border-white/10 bg-[#0b0f14] p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-600">Current selection</div>
-              <div className="mt-2 flex items-center gap-2 text-base font-semibold text-white"><span>{from.ext.toUpperCase()}</span><ArrowLeftRight className="h-4 w-4 text-slate-600" /><span>{to.ext.toUpperCase()}</span></div>
-              <div className="mt-1 text-xs text-slate-600">{files.length ? `${files.length} file${files.length > 1 ? "s" : ""} selected` : `Add a ${from.ext.toUpperCase()} file to continue`}</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => { cancelActiveRequest(); setFiles([]); setFrom(formatOf("pdf")); setTo(formatOf("docx")); setStatus("idle"); setMessage(""); setUploadProgress(0); setProgressPhase("") }} className="rounded-xl border border-white/10 px-3 py-2.5 text-xs font-medium text-slate-500 hover:bg-white/5 hover:text-slate-300"><RotateCcw className="mr-2 inline h-3.5 w-3.5" />Reset</button>
-              <button disabled={!files.length || status === "running"} onClick={convert} className="rounded-xl bg-white px-5 py-2.5 text-xs font-semibold text-black transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-slate-600">{status === "running" ? "Converting…" : "Convert"}</button>
-            </div>
-          </div>
-
-          {status !== "idle" && <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${status === "done" ? "border-emerald-400/15 bg-emerald-400/[0.04] text-emerald-300" : status === "error" ? "border-rose-400/15 bg-rose-400/[0.04] text-rose-300" : "border-cyan-400/15 bg-cyan-400/[0.04] text-cyan-200"}`}>
-            {status === "done" && <Check className="mr-2 inline h-4 w-4" />}
-            <div>{message}</div>
-            {status === "running" && <div className="mt-3">
-              <div className="flex items-center justify-between text-[11px] text-slate-500"><span>{progressPhase}</span><span>{uploadProgress}%</span></div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/8"><div className="h-full rounded-full bg-cyan-400 transition-[width] duration-150" style={{ width: `${uploadProgress}%` }} /></div>
-            </div>}
-          </div>}
-        </section>
-
-        <div className="mt-6 pb-8 text-center text-[11px] text-slate-700">Render conversion engine • Batch-ready • Context-aware format selection</div>
-      </div>
-      {picker === "from" && <FormatPicker side="from" value={from} onClose={() => setPicker(null)} onSelect={selectFrom} />}
-      {picker === "to" && <FormatPicker side="to" value={to} onClose={() => setPicker(null)} onSelect={selectTo} />}
-    </AppShell>
-  )
+  const cancelActiveRequest = () => { requestIdRef.current += 1; if (requestRef.current) { requestRef.current.abort(); requestRef.current = null } }
+  const setFilesAndDetect = (next: File[]) => { const shouldDetect = files.length === 0 && next.length > 0; setFiles(next); setStatus("idle"); setMessage(""); setUploadProgress(0); setProgressPhase(""); if (shouldDetect) { const ext = extensionOf(next[0]?.name || ""); if (ext && FORMATS.some((f) => f.ext === ext || (ext === "jpeg" && f.ext === "jpg"))) { const detectedFormat = formatOf(ext === "jpeg" ? "jpg" : ext); setFrom(detectedFormat); const preferred = TARGETS[detectedFormat.ext]?.[0]; if (preferred) setTo(formatOf(preferred)) } } }
+  const selectFrom = (format: Format) => { cancelActiveRequest(); setFrom(format); const compatible = files.filter((file) => matchesSource(file, format.ext)); setFiles(compatible); setStatus("idle"); setUploadProgress(0); setProgressPhase(""); setMessage(compatible.length === files.length ? "" : compatible.length ? `Removed files that were not ${format.ext.toUpperCase()} input files.` : files.length ? `Select ${format.ext.toUpperCase()} files to continue.` : ""); const preferred = TARGETS[format.ext]?.[0]; setTo(preferred ? formatOf(preferred) : formatOf("pdf")); setPicker(null) }
+  const selectTo = (format: Format) => { if (!canConvert(from.ext, format.ext)) return; cancelActiveRequest(); setTo(format); setStatus("idle"); setUploadProgress(0); setProgressPhase(""); setMessage(""); setPicker(null) }
+  const swap = () => { if (!canConvert(to.ext, from.ext)) return; cancelActiveRequest(); const current = from; setFrom(to); setTo(current); setFiles(files.filter((file) => matchesSource(file, to.ext))); setStatus("idle"); setUploadProgress(0); setProgressPhase(""); setMessage("") }
+  function convert() { if (!files.length || status === "running" || !canConvert(from.ext, to.ext)) return; cancelActiveRequest(); const requestId = requestIdRef.current; setStatus("running"); setUploadProgress(0); setProgressPhase("Uploading to TraceX…"); setMessage(`Uploading ${files.length} file${files.length > 1 ? "s" : ""} to TraceX…`); const form = new FormData(); form.append("from", from.ext); form.append("to", to.ext); files.forEach((file) => form.append("files", file)); const xhr = new XMLHttpRequest(); requestRef.current = xhr; xhr.open("POST", `${API_URL}/api/convert`); xhr.responseType = "blob"; xhr.upload.onprogress = (event) => { if (requestId !== requestIdRef.current || !event.lengthComputable) return; const percent = Math.round((event.loaded / event.total) * 100); setUploadProgress(percent); if (percent >= 100) { setProgressPhase("Upload complete · converting on server…"); setMessage("Upload complete. TraceX is converting your files on the server…") } }; xhr.onload = async () => { if (requestId !== requestIdRef.current) return; requestRef.current = null; if (xhr.status < 200 || xhr.status >= 300) { let errorMessage = "Conversion failed."; try { const data = JSON.parse(await xhr.response.text()); errorMessage = data.error || errorMessage } catch {} setStatus("error"); setProgressPhase(""); setMessage(errorMessage); return } const blob = xhr.response as Blob; const header = xhr.getResponseHeader("Content-Disposition") || ""; const match = header.match(/filename="?([^";]+)"?/); const fallback = files.length > 1 ? `${files[0].name.replace(/\.[^.]+$/, "")}-${to.ext}-files.zip` : files[0].name.replace(/\.[^.]+$/, `.${to.ext}`); const filename = match?.[1] || fallback; const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 3000); setUploadProgress(100); setStatus("done"); setMessage(`${files.length} file${files.length > 1 ? "s" : ""} converted successfully.`) }; xhr.onerror = () => { if (requestId !== requestIdRef.current) return; requestRef.current = null; setStatus("error"); setMessage("Could not reach the TraceX conversion server. Please try again.") }; xhr.onabort = () => { if (requestId !== requestIdRef.current) return; requestRef.current = null; setStatus("idle"); setUploadProgress(0); setProgressPhase(""); setMessage("") }; xhr.send(form) }
+  const swapAllowed = canConvert(to.ext, from.ext)
+  return <AppShell><div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8"><div className="flex items-end justify-between gap-4"><div><div className="text-[11px] font-medium uppercase tracking-[0.18em] text-cyan-300/70">TraceX File Converter</div><h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-white sm:text-4xl">Change format</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Choose an input and a meaningful output format, add your files, and convert without leaving the page.</p></div><div className="hidden rounded-full border border-emerald-400/20 bg-emerald-400/[0.04] px-3 py-1.5 text-[11px] text-emerald-300 sm:block">Server conversion</div></div><div className="mt-8 rounded-[28px] border border-white/10 bg-[#0b0f14] p-4 shadow-2xl shadow-black/20 sm:p-6"><div className="grid gap-3 lg:grid-cols-[1fr_auto_1fr] lg:items-center"><Selector label="From" value={from} onClick={() => setPicker("from")} /><button disabled={!swapAllowed} onClick={swap} aria-label="Swap formats" className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-500 hover:border-cyan-400/20 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-30 lg:mt-4"><ArrowLeftRight className="h-4 w-4" /></button><Selector label="To" value={to} onClick={() => setPicker("to")} /></div></div><div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_340px]"><section className="rounded-[28px] border border-white/10 bg-[#0b0f14] p-4 sm:p-6"><div className="flex items-center justify-between gap-4"><div><h2 className="text-sm font-semibold text-white">Files</h2><p className="mt-1 text-xs text-slate-600">Add files matching the selected input format.</p></div>{detected && <div className="rounded-xl border border-cyan-400/15 bg-cyan-400/[0.035] px-3 py-2 text-xs text-cyan-200">Detected {detected.toUpperCase()}</div>}</div><div className="mt-5"><DropZone files={files} sourceFormat={from.ext} onFiles={setFilesAndDetect} onRemove={(name) => setFilesAndDetect(files.filter((f) => f.name !== name))} /></div></section><aside className="rounded-[28px] border border-white/10 bg-[#0b0f14] p-5 sm:p-6"><div className="flex items-center gap-2"><Zap className="h-4 w-4 text-cyan-300" /><h2 className="text-sm font-semibold text-white">Quick formats</h2></div><p className="mt-2 text-xs leading-5 text-slate-600">Useful destinations for the selected file type.</p><div className="mt-4 grid grid-cols-2 gap-2">{(HINTS[from.ext] || []).slice(0, 10).map((ext) => <button key={ext} onClick={() => selectTo(formatOf(ext))} className={`rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition ${to.ext === ext ? "border-cyan-400/25 bg-cyan-400/[0.05] text-cyan-200" : "border-white/8 bg-white/[0.025] text-slate-300 hover:border-white/15"}`}>{ext.toUpperCase()}</button>)}</div></aside></div><section className="mt-6 rounded-[28px] border border-white/10 bg-[#0b0f14] p-5 sm:p-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-600">Current selection</div><div className="mt-2 flex items-center gap-2 text-base font-semibold text-white"><span>{from.ext.toUpperCase()}</span><ArrowLeftRight className="h-4 w-4 text-slate-600" /><span>{to.ext.toUpperCase()}</span></div><div className="mt-1 text-xs text-slate-600">{files.length ? `${files.length} file${files.length > 1 ? "s" : ""} selected` : `Add a ${from.ext.toUpperCase()} file to continue`}</div></div><div className="flex items-center gap-2"><button onClick={() => { cancelActiveRequest(); setFiles([]); setFrom(formatOf("pdf")); setTo(formatOf("docx")); setStatus("idle"); setMessage(""); setUploadProgress(0); setProgressPhase("") }} className="rounded-xl border border-white/10 px-3 py-2.5 text-xs font-medium text-slate-500 hover:bg-white/5 hover:text-slate-300"><RotateCcw className="mr-2 inline h-3.5 w-3.5" />Reset</button><button disabled={!files.length || status === "running" || !canConvert(from.ext, to.ext)} onClick={convert} className="rounded-xl bg-white px-5 py-2.5 text-xs font-semibold text-black transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-slate-600">{status === "running" ? "Converting…" : "Convert"}</button></div></div>{status !== "idle" && <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${status === "done" ? "border-emerald-400/15 bg-emerald-400/[0.04] text-emerald-300" : status === "error" ? "border-rose-400/15 bg-rose-400/[0.04] text-rose-300" : "border-cyan-400/15 bg-cyan-400/[0.04] text-cyan-200"}`}>{status === "done" && <Check className="mr-2 inline h-4 w-4" />}<div>{message}</div>{status === "running" && <div className="mt-3"><div className="flex items-center justify-between text-[11px] text-slate-500"><span>{progressPhase}</span><span>{uploadProgress}%</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/8"><div className="h-full rounded-full bg-cyan-400 transition-[width] duration-150" style={{ width: `${uploadProgress}%` }} /></div></div>}</div>}</section><div className="mt-6 pb-8 text-center text-[11px] text-slate-700">Render conversion engine • Batch-ready • Meaningful format selection</div></div>{picker === "from" && <FormatPicker side="from" value={from} onClose={() => setPicker(null)} onSelect={selectFrom} />}{picker === "to" && <FormatPicker side="to" value={to} onClose={() => setPicker(null)} onSelect={selectTo} />}</AppShell>
 }
