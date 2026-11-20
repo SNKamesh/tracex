@@ -134,6 +134,10 @@ export default function ClassroomPage() {
   const [model, setModel] = useState("qwen2.5:3b");
   const [provider, setProvider] = useState<"ollama" | "chrome-ai">("ollama");
   const [chromeAIStatus, setChromeAIStatus] = useState("unknown");
+  const [deviceProfile, setDeviceProfile] = useState<{ ram?: number; cores?: number; gpu?: string; browser: string }>({ browser: "Detecting…" });
+  const [recommendation, setRecommendation] = useState<"ollama" | "chrome-ai" | "cloud" | "checking">("checking");
+  const [advisorDetails, setAdvisorDetails] = useState("Checking this device's local AI options…");
+
   const [models, setModels] = useState<string[]>([]);
   const [connection, setConnection] = useState<"unknown" | "connected" | "offline">("unknown");
   const [status, setStatus] = useState("");
@@ -190,6 +194,51 @@ export default function ClassroomPage() {
       }
     }
     void detectLocalOllama();
+    return () => { cancelled = true; };
+  }, []);
+
+
+  // Smart AI Advisor: browser APIs expose estimates, not a complete hardware inventory.
+  useEffect(() => {
+    let cancelled = false;
+    async function inspectDevice() {
+      const nav = navigator as Navigator & { deviceMemory?: number; userAgentData?: { brands?: { brand: string; version: string }[] } };
+      const ua = navigator.userAgent;
+      const browser = /Edg\//.test(ua) ? "Microsoft Edge" : /Chrome\//.test(ua) ? "Google Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "Unknown browser";
+      let gpu = "Not exposed by browser";
+      try {
+        const canvas = document.createElement("canvas");
+        const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl") as WebGLRenderingContext | null;
+        if (gl && "getParameter" in gl) {
+          const debug = gl.getExtension("WEBGL_debug_renderer_info");
+          if (debug) gpu = String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)).slice(0, 100);
+        }
+      } catch { /* GPU details are optional and may be privacy-restricted. */ }
+      const profile = { ram: nav.deviceMemory, cores: navigator.hardwareConcurrency, gpu, browser };
+      if (!cancelled) setDeviceProfile(profile);
+      const [ollama, chrome] = await Promise.allSettled([listLocalModels(), checkChromeAIAvailability()]);
+      if (cancelled) return;
+      if (ollama.status === "fulfilled" && ollama.value.length) {
+        setModels(ollama.value);
+        setConnection("connected");
+        if (!ollama.value.includes(model)) setModel(ollama.value[0]);
+        setRecommendation("ollama");
+        setAdvisorDetails("Ollama is installed and reachable on this device. Recommended because it offers selectable models.");
+        setStatus("Connected to Ollama. " + ollama.value.length + " local model(s) found.");
+      } else {
+        setConnection("offline");
+        const chromeReady = chrome.status === "fulfilled" && (chrome.value === "available" || chrome.value === "downloadable");
+        setChromeAIStatus(chrome.status === "fulfilled" ? chrome.value : "unsupported");
+        if (chromeReady) {
+          setRecommendation("chrome-ai");
+          setAdvisorDetails(chrome.value === "available" ? "Chrome on-device AI is available. Ollama was not detected." : "Chrome on-device AI can be downloaded on this device. First use may require a model download.");
+        } else {
+          setRecommendation("cloud");
+          setAdvisorDetails("Neither local engine is currently ready. An optional cloud provider would be needed; TraceX will not send data to a paid API automatically.");
+        }
+      }
+    }
+    void inspectDevice();
     return () => { cancelled = true; };
   }, []);
 
@@ -433,6 +482,28 @@ export default function ClassroomPage() {
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-emerald-500/10 p-3 text-emerald-600"><BrainCircuit size={23}/></div>
               <div><h2 className="text-lg font-bold">2. Connect your local AI</h2><p className="text-xs opacity-60">Classroom does not call Groq or OpenAI.</p></div>
+            </div>
+
+            <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 font-bold text-sm"><Sparkles size={17}/> Smart AI Advisor</div>
+                <span className="rounded-full bg-slate-500/10 px-2 py-1 text-[10px] font-bold uppercase">{recommendation === "checking" ? "Scanning" : "Analysis ready"}</span>
+              </div>
+              <p className="text-xs leading-5 opacity-75">{advisorDetails}</p>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="rounded-lg bg-slate-500/5 p-2"><span className="opacity-60">Memory estimate</span><p className="font-semibold">{deviceProfile.ram ? deviceProfile.ram + " GB (approx.)" : "Not exposed"}</p></div>
+                <div className="rounded-lg bg-slate-500/5 p-2"><span className="opacity-60">Logical CPU cores</span><p className="font-semibold">{deviceProfile.cores ?? "Not exposed"}</p></div>
+                <div className="rounded-lg bg-slate-500/5 p-2"><span className="opacity-60">Browser</span><p className="font-semibold">{deviceProfile.browser}</p></div>
+                <div className="rounded-lg bg-slate-500/5 p-2"><span className="opacity-60">Graphics (if exposed)</span><p className="font-semibold truncate" title={deviceProfile.gpu}>{deviceProfile.gpu}</p></div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold">Suggested:</span>
+                <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600">{recommendation === "checking" ? "Checking…" : recommendation === "ollama" ? "Local Ollama" : recommendation === "chrome-ai" ? "Chrome on-device AI" : "No local AI ready"}</span>
+                {recommendation === "ollama" && <button onClick={() => setProvider("ollama")} className="text-xs font-bold text-blue-600 underline">Use recommendation</button>}
+                {recommendation === "chrome-ai" && <button onClick={() => { setProvider("chrome-ai"); void testChromeAI(); }} className="text-xs font-bold text-blue-600 underline">Use recommendation</button>}
+                {recommendation === "cloud" && <span className="text-[10px] opacity-60">Cloud fallback is not configured.</span>}
+              </div>
+              <p className="text-[10px] leading-4 opacity-50">Hardware values are browser estimates. Exact RAM, VRAM, GPU capacity and model speed cannot reliably be determined by a website. Manual provider selection remains available.</p>
             </div>
             <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-500/5 p-1">
               <button onClick={() => setProvider("ollama")} className={"rounded-lg px-3 py-2 text-xs font-bold " + (provider === "ollama" ? "bg-blue-600 text-white" : "opacity-70")}>Local Ollama</button>
