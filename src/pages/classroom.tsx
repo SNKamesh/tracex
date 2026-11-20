@@ -364,7 +364,7 @@ export default function ClassroomPage() {
             </div>
             <div className="space-y-3 border-t border-white/10 p-4">
               <div className="flex flex-wrap items-center gap-2">
-                <button onClick={() => setVoiceEnabled((value) => !value)} className="rounded-lg border border-white/15 p-2 text-slate-200" title={voiceEnabled ? "Mute voice" : "Enable voice"}>{voiceEnabled ? <Volume2 size={17}/> : <VolumeX size={17}/>}</button>
+                <button onClick={() => setVoiceEnabled((value) => { if (value) stopVoice(); return !value; })} className="rounded-lg border border-white/15 p-2 text-slate-200" title={voiceEnabled ? "Mute voice" : "Enable voice"}>{voiceEnabled ? <Volume2 size={17}/> : <VolumeX size={17}/>}</button>
                 <button onClick={() => speakStep(stepIndex)} disabled={!voiceEnabled} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-bold disabled:opacity-50"><Play size={15}/> Teach this step</button>
                 <button onClick={stopVoice} className="rounded-lg border border-white/15 p-2 text-slate-200" title="Stop voice"><Pause size={17}/></button>
               </div>
