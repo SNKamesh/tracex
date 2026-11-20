@@ -268,7 +268,8 @@ export default function ClassroomPage() {
     setAnswer("");
     const asked = question.trim();
     try {
-      const waveformSteps = createWaveformDoubtSteps(material, asked);
+      const doubtNumber = plan ? plan.steps.filter((step) => step.title.startsWith("Doubt ")).length + 1 : 1;
+      const waveformSteps = createWaveformDoubtSteps(material, asked, doubtNumber);
       if (waveformSteps) {
         setPlan((existing) => existing ? { ...existing, steps: [...existing.steps, ...waveformSteps] } : existing);
         setStepIndex(plan ? plan.steps.length : 0);
@@ -276,12 +277,18 @@ export default function ClassroomPage() {
         setQuestion("");
       } else {
         const explanation = await answerLocalQuestion(model, material, currentStep, asked, provider);
-        const doubtStep: LessonStep = {
-          title: "Doubt — " + asked.slice(0, 100),
-          explanation,
-          boardPoints: ["This explanation was added as a new page. Your earlier lesson pages have been preserved."]
+        const doubtNumber = plan ? plan.steps.filter((step) => step.title.startsWith("Doubt ")).length + 1 : 1;
+        const doubtIntro: LessonStep = {
+          title: "Doubt " + String(doubtNumber).padStart(2, "0") + " — " + asked.slice(0, 80),
+          explanation: "Your question has been added to the lesson. The following page contains the teacher's answer.",
+          boardPoints: ["Question: " + asked, "Original lesson pages remain unchanged."]
         };
-        setPlan((existing) => existing ? { ...existing, steps: [...existing.steps, doubtStep] } : existing);
+        const doubtAnswer: LessonStep = {
+          title: "Answer " + String(doubtNumber).padStart(2, "0") + " — Explanation",
+          explanation,
+          boardPoints: ["This answer was appended as a new page. Your earlier lesson pages have been preserved."]
+        };
+        setPlan((existing) => existing ? { ...existing, steps: [...existing.steps, doubtIntro, doubtAnswer] } : existing);
         setStepIndex(plan ? plan.steps.length : 0);
         setAnswer("Added your doubt and its explanation as a new lesson-board page.");
         setQuestion("");
