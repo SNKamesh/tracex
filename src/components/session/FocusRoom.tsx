@@ -718,135 +718,15 @@ className="space-y-5"
 
 
 
-<section
-
-
-className="
-
-rounded-3xl
-
-border
-
-p-5
-
-"
-
-
-style={{
-
-
-
-background:
-
-"var(--surface)",
-
-
-
-borderColor:
-
-"var(--border)"
-
-
-
-}}
-
-
->
-
-
-
-
-
-
-
-<Users />
-
-
-
-
-
-<h3
-
-className="font-bold mt-3"
-
->
-
-
-Live Focus Room
-
-
-</h3>
-
-
-
-
-
-
-
-
-<p
-
-className="
-
-text-4xl
-
-font-black
-
-mt-3
-
-"
-
->
-
-
-{world?.online ?? 0}
-
-
-</p>
-
-
-
-
-
-
-
-
-<p
-
-className="text-sm mt-2"
-
-style={{
-
-color:"var(--muted)"
-
-}}
-
->
-
-
-students focusing with you
-
-
-</p>
-
-
-
-
-
-
-
+<section className="rounded-3xl border p-5" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+  <Focus size={19} style={{ color: "var(--primary)" }} />
+  <h3 className="mt-3 font-semibold">Room mode</h3>
+  <p className="mt-2 text-[12px] leading-relaxed" style={{ color: "var(--muted)" }}>
+    A personal focus environment with an independent session timer. Public attendance and shared-room presence are not connected yet.
+  </p>
 </section>
 
-
-
-
-
-
-
-
-
-
-<AmbientEngine />
+        <AmbientEngine />
 
 
 
