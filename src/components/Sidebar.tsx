@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
-  Home, LayoutDashboard, Timer, CalendarCheck, Users, FileStack, Bot,
+  Home, LayoutDashboard, Timer, CalendarCheck, Users, FileStack,
   GraduationCap, ShieldOff, Palette, Settings, MoreHorizontal, X, ArrowUpRight
 } from "lucide-react";
 
@@ -14,7 +14,6 @@ const navItems = [
   { name: "Study Sessions", href: "/sessions", icon: Timer, group: "Workspace" },
   { name: "Study Plans", href: "/study-plans", icon: CalendarCheck, group: "Workspace" },
   { name: "Friends", href: "/friends", icon: Users, group: "Workspace" },
-  { name: "NoteX", href: "/notex", icon: Bot, group: "Tools" },
   { name: "Classroom", href: "/classroom", icon: GraduationCap, group: "Tools" },
   { name: "File Converter", href: "/converter", icon: FileStack, group: "Tools" },
   { name: "Blocker", href: "/blocker", icon: ShieldOff, group: "Tools" },
@@ -22,7 +21,7 @@ const navItems = [
   { name: "Settings", href: "/settings", icon: Settings, group: "Manage" },
 ];
 
-const primaryMobile = ["/home", "/sessions", "/study-plans", "/notex"];
+const primaryMobile = ["/home", "/sessions", "/study-plans", "/classroom"];
 
 export default function Sidebar() {
   const router = useRouter();
