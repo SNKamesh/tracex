@@ -1,761 +1,94 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-import { Pause, Play, Square, Timer, Focus } from "lucide-react";
-
-
+import { Pause, Play, Square, Timer, EyeOff } from "lucide-react";
 import CameraEngine from "./CameraEngine";
-
 import MicroStrictTracker from "./MicroStrictTracker";
-
 import AmbientEngine from "./AmbientEngine";
-
 import ImmersiveVirtualRoom from "./ImmersiveVirtualRoom";
-
 import SessionSummary from "./SessionSummary";
 
-
-
-
-
-
 interface Props {
-
   world?: { id: string; name: string; description: string };
-
 }
 
-
-
-
-
-
-
-function formatTime(seconds:number){
-
-
-const h =
-Math.floor(seconds / 3600);
-
-
-const m =
-Math.floor((seconds % 3600) / 60);
-
-
-const s =
-seconds % 60;
-
-
-
-return (
-
-`${String(h).padStart(2,"0")}`
-
-+
-
-":"
-
-+
-
-`${String(m).padStart(2,"0")}`
-
-+
-
-":"
-
-+
-
-`${String(s).padStart(2,"0")}`
-
-);
-
-
+function formatTime(seconds: number) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainder = seconds % 60;
+  return [hours, minutes, remainder].map((value) => String(value).padStart(2, "0")).join(":");
 }
 
-
-
-
-
-
-
-
-
-
-export default function FocusRoom({
-
-world
-
-}:Props){
-
-
-
-
-
-
-const [running,setRunning] =
-useState(false);
-
-
-
-
-const [seconds,setSeconds] =
-useState(0);
-
-
-
-
-const [finished,setFinished] =
-useState(false);
-
-
-
-
-
-
-
-
-
-/* TIMER ENGINE */
-
-
-useEffect(()=>{
-
-
-if(!running)
-
-return;
-
-
-
-
-const timer =
-
-setInterval(()=>{
-
-
-setSeconds(
-
-v=>v+1
-
-);
-
-
-},1000);
-
-
-
-
-
-return()=>clearInterval(timer);
-
-
-
-},[running]);
-
-
-
-
-
-
-
-
-
-
-function endSession(){
-
-
-setRunning(false);
-
-
-setFinished(true);
-
-
-}
-
-
-
-
-
-
-
-
-
-function restartSession(){
-
-
-
-setSeconds(0);
-
-
-setRunning(false);
-
-
-setFinished(false);
-
-
-
-}
-
-
-
-
-
-
-
-
-
-
-if(finished){
-
-
-
-return(
-
-<SessionSummary
-
-
-seconds={seconds}
-
-
-onRestart={restartSession}
-
-
-/>
-
-);
-
-
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-return(
-
-<div className="space-y-6">
-
-
-
-
-
-
-
-{/* IMMERSIVE WORLD */}
-
-
-
-<ImmersiveVirtualRoom
-
-world={world}
-
-/>
-
-
-
-
-
-
-
-
-
-
-
-{/* MAIN GRID */}
-
-
-<div
-
-
-className="
-
-grid
-
-grid-cols-1
-
-xl:grid-cols-[1fr_380px]
-
-gap-6
-
-"
-
->
-
-
-
-
-
-
-
-
-
-{/* LEFT */}
-
-
-
-<div
-
-className="space-y-6"
-
->
-
-
-
-
-
-
-
-
-<CameraEngine />
-
-
-
-
-
-
-
-
-
-{/* TIMER CARD */}
-
-
-
-<section
-
-
-className="
-
-rounded-[32px]
-
-border
-
-p-8
-
-text-center
-
-"
-
-style={{
-
-
-background:
-
-"var(--surface)",
-
-
-
-borderColor:
-
-"var(--border)"
-
-
-}}
-
->
-
-
-
-
-
-
-
-
-<div
-
-
-className="
-
-inline-flex
-
-items-center
-
-gap-2
-
-rounded-full
-
-border
-
-px-5
-
-py-2
-
-text-sm
-
-mb-6
-
-"
-
->
-
-
-
-<Timer size={15}/>
-
-
-Focus Session
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-<h1
-
-
-className="
-
-text-7xl
-
-font-black
-
-tracking-tight
-
-"
-
->
-
-
-{formatTime(seconds)}
-
-
-</h1>
-
-
-
-
-
-
-
-
-
-<p
-
-className="mt-3 text-sm"
-
-style={{
-
-color:"var(--muted)"
-
-}}
-
->
-
-
-Stay locked in. TraceX is tracking your focus.
-
-
-</p>
-
-
-
-
-
-
-
-
-
-
-<div
-
-
-className="
-
-mt-10
-
-flex
-
-justify-center
-
-gap-4
-
-"
-
->
-
-
-
-
-
-
-
-
-
-<button
-
-
-
-onClick={()=>
-
-
-setRunning(!running)
-
-
-}
-
-
-
-className="
-
-flex
-
-items-center
-
-gap-2
-
-rounded-xl
-
-px-8
-
-py-3
-
-font-bold
-
-transition
-
-hover:scale-105
-
-"
-
-
-
-style={{
-
-
-
-background:
-
-"linear-gradient(135deg,#2563eb,#06b6d4)",
-
-
-
-color:
-
-"white"
-
-
-
-}}
-
-
-
->
-
-
-
-
-
-
-
-{
-
-running
-
-?
-
-<Pause size={18}/>
-
-:
-
-<Play size={18}/>
-
-}
-
-
-
-
-
-{
-
-
-running
-
-?
-
-"Pause"
-
-:
-
-"Start"
-
-
-}
-
-
-
-
-
-</button>
-
-
-
-
-
-
-
-
-
-
-<button
-
-
-
-onClick={endSession}
-
-
-
-className="
-
-flex
-
-items-center
-
-gap-2
-
-rounded-xl
-
-border
-
-px-6
-
-transition
-
-hover:scale-105
-
-"
-
-
-
->
-
-
-
-<Square size={17}/>
-
-
-End
-
-
-
-</button>
-
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-</section>
-
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-{/* RIGHT */}
-
-
-
-<div
-
-className="space-y-5"
-
->
-
-
-
-
-
-
-
-
-
-<MicroStrictTracker />
-
-
-
-
-
-
-
-
-
-<section className="rounded-3xl border p-5" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-  <Focus size={19} style={{ color: "var(--primary)" }} />
-  <h3 className="mt-3 font-semibold">Room mode</h3>
-  <p className="mt-2 text-[12px] leading-relaxed" style={{ color: "var(--muted)" }}>
-    A personal focus environment with an independent session timer. Public attendance and shared-room presence are not connected yet.
-  </p>
-</section>
-
-        <AmbientEngine />
-
-
-
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-</div>
-
-
-);
-
-
+export default function FocusRoom({ world }: Props) {
+  const [running, setRunning] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+  const [interruptions, setInterruptions] = useState(0);
+  const [finished, setFinished] = useState(false);
+
+  useEffect(() => {
+    if (!running) return;
+    const timer = window.setInterval(() => setSeconds((value) => value + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [running]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (running && document.visibilityState === "hidden") {
+        setInterruptions((value) => value + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [running]);
+
+  function endSession() {
+    setRunning(false);
+    setFinished(true);
+  }
+
+  function restartSession() {
+    setSeconds(0);
+    setInterruptions(0);
+    setRunning(false);
+    setFinished(false);
+  }
+
+  if (finished) {
+    return <SessionSummary seconds={seconds} interruptions={interruptions} worldId={world?.id} worldName={world?.name} onRestart={restartSession} />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <ImmersiveVirtualRoom world={world} />
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="space-y-5">
+          <CameraEngine />
+          <section className="tx-card p-6 text-center sm:p-8">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs" style={{ borderColor: "var(--border)", color: "var(--muted)" }}>
+              <Timer size={15} /> Personal focus timer
+            </div>
+            <h1 className="text-5xl font-semibold tracking-tight tabular-nums sm:text-7xl">{formatTime(seconds)}</h1>
+            <p className="mx-auto mt-3 max-w-md text-xs leading-relaxed sm:text-sm" style={{ color: "var(--muted)" }}>
+              Active time counts only while the timer is running. TraceX records tab-away events while this session is active.
+            </p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              <button type="button" onClick={() => setRunning((value) => !value)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-7 text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ background: "var(--primary)" }}>
+                {running ? <Pause size={17} /> : <Play size={17} />}{running ? "Pause timer" : seconds > 0 ? "Resume timer" : "Start timer"}
+              </button>
+              <button type="button" onClick={endSession} disabled={seconds === 0} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border px-6 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40" style={{ borderColor: "var(--border)" }}>
+                <Square size={16} /> End session
+              </button>
+            </div>
+            <div className="mt-6 flex items-center justify-center gap-2 text-xs" style={{ color: "var(--muted)" }}>
+              <EyeOff size={14} /> {interruptions} tab-away {interruptions === 1 ? "interruption" : "interruptions"} detected
+            </div>
+          </section>
+        </div>
+        <div className="space-y-5">
+          <MicroStrictTracker />
+          <AmbientEngine />
+        </div>
+      </div>
+    </div>
+  );
 }
