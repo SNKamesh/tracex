@@ -2,161 +2,22 @@
 
 import React from "react";
 
-
-interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-
-  variant?:
-    | "primary"
-    | "secondary"
-    | "ghost";
-
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "ghost";
 }
 
-
-export default function Button({
-  variant = "primary",
-  className = "",
-  disabled,
-  ...props
-}: ButtonProps) {
-
-
-  const base = `
-    inline-flex
-    items-center
-    justify-center
-
-    px-5
-    py-2.5
-
-    rounded-[var(--radius-md)]
-
-    font-semibold
-    text-sm
-
-    transition-all
-    duration-200
-
-    select-none
-
-    active:scale-[0.96]
-
-    disabled:opacity-50
-    disabled:pointer-events-none
-
-    focus:outline-none
-  `;
-
-
-
+export default function Button({ variant = "primary", className = "", disabled, ...props }: ButtonProps) {
+  const common = "inline-flex min-h-10 items-center justify-center gap-2 rounded-[11px] px-4 py-2.5 text-[13px] font-semibold transition-all duration-200 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none";
   const styles = {
-
-
-    primary: `
-
-      text-white
-
-      shadow-lg
-
-      hover:-translate-y-0.5
-
-    `,
-
-
-    secondary: `
-
-      border
-
-      hover:-translate-y-0.5
-
-    `,
-
-
-    ghost: `
-
-      border
-
-      hover:-translate-y-0.5
-
-    `,
-
-
+    primary: "border border-transparent text-white hover:brightness-105",
+    secondary: "border hover:bg-[var(--surface-hover)]",
+    ghost: "border border-transparent hover:bg-[var(--surface-hover)]",
   };
+  const style: React.CSSProperties = variant === "primary"
+    ? { background: "var(--primary)", color: "#fff", boxShadow: "var(--shadow-sm)" }
+    : variant === "secondary"
+      ? { background: "var(--surface)", color: "var(--text)", borderColor: "var(--border)" }
+      : { background: "transparent", color: "var(--text)" };
 
-
-
-  const inlineStyles = {
-
-
-    primary: {
-
-      background:
-        "var(--gradient-primary)",
-
-      boxShadow:
-        "var(--shadow-sm)",
-
-    },
-
-
-    secondary: {
-
-      background:
-        "var(--surface)",
-
-      color:
-        "var(--text)",
-
-      borderColor:
-        "var(--border)",
-
-    },
-
-
-    ghost: {
-
-      background:
-        "transparent",
-
-      color:
-        "var(--text)",
-
-      borderColor:
-        "var(--border)",
-
-    },
-
-
-  };
-
-
-
-  return (
-
-    <button
-
-      {...props}
-
-      disabled={
-        disabled
-      }
-
-      style={
-        inlineStyles[
-          variant
-        ]
-      }
-
-      className={`
-        ${base}
-        ${styles[variant]}
-        ${className}
-      `}
-
-    />
-
-  );
-
-
+  return <button {...props} disabled={disabled} style={{ ...style, ...props.style }} className={\`\${common} \${styles[variant]} \${className}\`} />;
 }

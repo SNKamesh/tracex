@@ -2,118 +2,16 @@
 
 import React from "react";
 
+interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {}
 
-interface SelectProps
-  extends React.SelectHTMLAttributes<HTMLSelectElement> {}
-
-
-
-export default function Select({
-
-  className = "",
-
-  children,
-
-  ...props
-
-}: SelectProps) {
-
-
-
+export default function Select({ className = "", children, ...props }: SelectProps) {
   return (
-
-
     <select
-
-
       {...props}
-
-
-
-      style={{
-
-
-        background:
-          "var(--surface-solid)",
-
-
-        color:
-          "var(--text)",
-
-
-        borderColor:
-          "var(--border)",
-
-
-      }}
-
-
-
-      className={`
-
-
-        w-full
-
-
-        rounded-[var(--radius-md)]
-
-
-        border
-
-
-        px-4
-
-        py-2.5
-
-
-
-        text-sm
-
-
-        outline-none
-
-
-        cursor-pointer
-
-
-
-        transition-all
-
-        duration-200
-
-
-
-        hover:shadow-sm
-
-
-
-        focus:border-indigo-400
-
-
-        focus:ring-2
-
-        focus:ring-indigo-500/30
-
-
-
-        ${className}
-
-
-      `}
-
-
+      style={{ background: "var(--surface-solid)", color: "var(--text)", borderColor: "var(--border)", ...props.style }}
+      className={\`w-full cursor-pointer rounded-[11px] border px-3.5 py-2.5 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/20 \${className}\`}
     >
-
-
-
       {children}
-
-
-
     </select>
-
-
   );
-
-
 }
