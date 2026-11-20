@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bell, BellOff, Clock, Flag, GripVertical, Plus, Trash2 } from "lucide-react";
+import { Bell, BellOff, Check, Clock, Flag, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
 import { DndContext, closestCenter, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -48,10 +48,22 @@ function SortableTask({
   task,
   remove,
   toggle,
+  editing,
+  editValue,
+  onEdit,
+  onEditValue,
+  onSaveEdit,
+  onCancelEdit,
 }: {
   task: Task;
   remove: (id: string) => void;
   toggle: (task: Task) => void;
+  editing: boolean;
+  editValue: string;
+  onEdit: (task: Task) => void;
+  onEditValue: (value: string) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
 
@@ -84,17 +96,38 @@ function SortableTask({
           aria-label={"Mark " + task.text + (task.completed ? " incomplete" : " complete")}
           className="h-4 w-4 shrink-0 accent-[var(--primary)]"
         />
-        <div className="min-w-0">
-          <p className={task.completed ? "break-words text-sm line-through opacity-50" : "break-words text-sm font-semibold"}>
-            {task.text}
-          </p>
-          <small className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--muted)" }}>
-            <span className="inline-flex items-center gap-1"><Flag size={11} />{task.priority || "medium"} priority</span>
-            <span aria-hidden="true">·</span>
-            <span>{task.displayTime || "No reminder"}</span>
-          </small>
+        <div className="min-w-0 flex-1">
+          {editing ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                autoFocus
+                value={editValue}
+                onChange={(event) => onEditValue(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") onSaveEdit(); if (event.key === "Escape") onCancelEdit(); }}
+                aria-label={"Edit " + task.text}
+                className="h-9 min-w-[140px] flex-1 rounded-lg border px-3 text-sm outline-none"
+                style={{ background: "var(--surface-solid)", color: "var(--text)", borderColor: "var(--border)" }}
+              />
+              <button type="button" onClick={onSaveEdit} aria-label="Save task" className="rounded-lg p-2" style={{ color: "var(--success)" }}><Check size={15} /></button>
+              <button type="button" onClick={onCancelEdit} aria-label="Cancel editing" className="rounded-lg p-2" style={{ color: "var(--muted)" }}><X size={15} /></button>
+            </div>
+          ) : (
+            <>
+              <p className={task.completed ? "break-words text-sm line-through opacity-50" : "break-words text-sm font-semibold"}>{task.text}</p>
+              <small className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--muted)" }}>
+                <span className="inline-flex items-center gap-1"><Flag size={11} />{task.priority || "medium"} priority</span>
+                <span aria-hidden="true">·</span>
+                <span>{task.displayTime || "No reminder"}</span>
+              </small>
+            </>
+          )}
         </div>
       </div>
+      {!editing && (
+        <button type="button" onClick={() => onEdit(task)} aria-label={"Edit " + task.text} className="shrink-0 rounded-lg p-2 transition-colors hover:bg-[var(--surface-hover)]" style={{ color: "var(--muted)" }}>
+          <Pencil size={15} />
+        </button>
+      )}
       <button
         type="button"
         onClick={() => remove(task.id)}
@@ -122,6 +155,8 @@ export default function StudyPlanList() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
   const notifiedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -316,6 +351,36 @@ export default function StudyPlanList() {
     }
   }
 
+  function startEditing(taskToEdit: Task) {
+    setEditingId(taskToEdit.id);
+    setEditingText(taskToEdit.text);
+    setError("");
+    setNotice("");
+  }
+
+  function cancelEditing() {
+    setEditingId(null);
+    setEditingText("");
+  }
+
+  async function saveEditing() {
+    if (!uid || !editingId) return;
+    const trimmed = editingText.trim();
+    if (!trimmed) {
+      setError("A task name cannot be empty.");
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "users", uid, "studyPlans", editingId), { text: trimmed });
+      setNotice("Task updated.");
+      setError("");
+      cancelEditing();
+    } catch (writeError) {
+      console.error("Could not edit study task", writeError);
+      setError("Could not update this task. Please try again.");
+    }
+  }
+
   async function toggle(taskToToggle: Task) {
     if (!uid) return;
     try {
@@ -476,7 +541,7 @@ export default function StudyPlanList() {
         <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-3">
             {items.map((item) => (
-              <SortableTask key={item.id} task={item} remove={remove} toggle={toggle} />
+              <SortableTask key={item.id} task={item} remove={remove} toggle={toggle} editing={editingId === item.id} editValue={editingText} onEdit={startEditing} onEditValue={setEditingText} onSaveEdit={() => void saveEditing()} onCancelEdit={cancelEditing} />
             ))}
             {authReady && uid && items.length === 0 && (
               <div className="rounded-xl border px-4 py-8 text-center" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
