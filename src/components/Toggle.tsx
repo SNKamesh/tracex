@@ -17,7 +17,7 @@ export default function Toggle({ checked, onChange, label, description }: Toggle
         {description && <span className="mt-1 block text-[11px] leading-relaxed" style={{ color: "var(--muted)" }}>{description}</span>}
       </span>
       <span className="relative flex h-[23px] w-10 shrink-0 items-center rounded-full border p-[2px] transition-colors" style={{ background: checked ? "var(--primary)" : "var(--surface-solid)", borderColor: checked ? "var(--primary)" : "var(--border)" }}>
-        <span className={\`h-[17px] w-[17px] rounded-full bg-white shadow-sm transition-transform duration-200 \${checked ? "translate-x-[17px]" : "translate-x-0"}\`} />
+        <span className={`h-[17px] w-[17px] rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? "translate-x-[17px]" : "translate-x-0"}`} />
       </span>
     </button>
   );

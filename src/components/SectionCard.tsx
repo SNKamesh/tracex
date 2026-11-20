@@ -11,7 +11,7 @@ type SectionCardProps = {
 
 export default function SectionCard({ title, description, children, className = "" }: SectionCardProps) {
   return (
-    <section className={\`tx-card mt-4 w-full p-4 sm:p-5 lg:p-6 \${className}\`}>
+    <section className={`tx-card mt-4 w-full p-4 sm:p-5 lg:p-6 ${className}`}>
       {(title || description) && (
         <div className="mb-5">
           {title && <h2 className="text-[16px] font-semibold tracking-[-.02em] sm:text-[17px]">{title}</h2>}
