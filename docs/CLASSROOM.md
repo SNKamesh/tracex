@@ -4,6 +4,8 @@
 - Protected /classroom page in the existing Next.js Pages Router application.
 - Browser-side PDF, PPTX, DOCX, TXT, Markdown and CSV text extraction (20 MB maximum).
 - Local Ollama integration at http://127.0.0.1:11434.
+- Optional Chrome on-device Prompt API provider for compatible desktop Chrome installations.
+- Optional Chrome on-device Prompt API provider on eligible desktop Chrome installations; no cloud inference endpoint.
 - Local-AI lesson plan generation, lesson navigation, concept-flow diagrams and optional equations.
 - Full-screen whiteboard with four writing-style choices.
 - Browser SpeechSynthesis narration, voice/speed selection, stop and auto-advance.
@@ -15,7 +17,7 @@
 2. Run: ollama pull qwen2.5:3b
 3. Ensure Ollama is running.
 4. Allow exact browser origins in Ollama's OLLAMA_ORIGINS environment variable. For local development include http://localhost:3000. For the deployed TraceX site include https://tracex-gdbl.vercel.app. Restart Ollama after changing the environment.
-5. Open /classroom and press Test to list installed models.
+5. Open /classroom, select Local Ollama and press Test Ollama to list installed models. Or select Chrome on-device AI and use Check Chrome AI.
 
 Do not set OLLAMA_ORIGINS=* on a public or shared computer. Allow only origins you control. A deployed TraceX page calls the Ollama process on the student's own computer, not a remote cloud model. Browser mixed-content/CORS/security policies may block this connection on some devices.
 
@@ -33,6 +35,8 @@ Do not set OLLAMA_ORIGINS=* on a public or shared computer. Allow only origins y
 - Do not expose Ollama's port to the public internet.
 - The page is protected by the existing global ProtectedRoute.
 - Classroom does not use the existing TraceX/Groq AI endpoint.
+- Chrome on-device AI is available only on supported desktop Chrome versions and eligible devices. Chrome currently documents a minimum 16 GB RAM / 4+ CPU cores or GPU with more than 4 GB VRAM, and approximately 22 GB free space for the model download. It is not currently supported on Chrome for Android or iOS. See https://developer.chrome.com/docs/ai/prompt-api for current availability.
+- Chrome on-device AI runs through Chrome's built-in on-device model when supported. Chrome documents desktop-only availability and hardware/storage requirements; check its current developer documentation before relying on this provider: https://developer.chrome.com/docs/ai/prompt-api
 
 ## Next steps
 - OCR for scanned PDFs and image understanding for slides.

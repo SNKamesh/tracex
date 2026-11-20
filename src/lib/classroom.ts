@@ -7,7 +7,7 @@ export type LessonStep = {
   example?: string;
   checkQuestion?: string;
 };
-export type LessonPlan = { title: string; subject: string; steps: LessonStep[]; source: "local-ai" | "outline" };
+export type LessonPlan = { title: string; subject: string; steps: LessonStep[]; source: "ollama" | "chrome-ai" };
 export type ExtractedMaterial = { name: string; kind: string; text: string; pagesOrSlides: number };
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -157,11 +157,52 @@ function parsePlan(raw: string, material: ExtractedMaterial): LessonPlan | null 
       checkQuestion: typeof step.checkQuestion === "string" ? step.checkQuestion.slice(0, 500) : undefined
     })).filter((step: LessonStep) => step.explanation.trim().length > 0);
     if (!steps.length) return null;
-    return { title: String(parsed.title || material.name).slice(0, 120), subject: String(parsed.subject || "From your uploaded material").slice(0, 100), steps, source: "local-ai" };
+    return { title: String(parsed.title || material.name).slice(0, 120), subject: String(parsed.subject || "From your uploaded material").slice(0, 100), steps, source: "ollama" };
   } catch { return null; }
 }
 
-export async function createLessonPlan(model: string, material: ExtractedMaterial): Promise<LessonPlan> {
+export async function checkChromeAIAvailability(): Promise<string> {
+  const languageModel = (window as any).LanguageModel;
+  if (!languageModel || typeof languageModel.availability !== "function") return "unsupported";
+  try {
+    return await languageModel.availability({
+      expectedInputs: [{ type: "text", languages: ["en"] }],
+      expectedOutputs: [{ type: "text", languages: ["en"] }]
+    });
+  } catch {
+    return "unsupported";
+  }
+}
+
+async function askChromeAI(prompt: string): Promise<string> {
+  const languageModel = (window as any).LanguageModel;
+  if (!languageModel || typeof languageModel.create !== "function") {
+    throw new Error("Chrome on-device AI is not available in this browser.");
+  }
+  const availability = await checkChromeAIAvailability();
+  if (availability === "unavailable" || availability === "unsupported") {
+    throw new Error("Chrome on-device AI is not available on this device. Use a supported desktop Chrome version and check its on-device AI requirements.");
+  }
+  const session = await languageModel.create({
+    expectedInputs: [{ type: "text", languages: ["en"] }],
+    expectedOutputs: [{ type: "text", languages: ["en"] }],
+    temperature: 0.35
+  });
+  try {
+    const result = await session.prompt(prompt);
+    if (typeof result !== "string" || !result.trim()) throw new Error("Chrome on-device AI returned an empty response.");
+    return result.trim();
+  } finally {
+    if (typeof session.destroy === "function") session.destroy();
+  }
+}
+
+async function askSelectedModel(model: string, prompt: string, json: boolean, provider: "ollama" | "chrome-ai"): Promise<string> {
+  if (provider === "chrome-ai") return askChromeAI(prompt);
+  return askLocalModel(model, prompt, json);
+}
+
+export async function createLessonPlan(model: string, material: ExtractedMaterial, provider: "ollama" | "chrome-ai" = "ollama"): Promise<LessonPlan> {
   const prompt = [
     "You are TraceX Classroom, a careful teacher. Create a faithful teaching plan using ONLY the supplied material.",
     "Do not invent facts, formulas, values, or source claims. Keep original terminology. Make 4 to 8 logical teaching steps where the material allows.",
@@ -169,26 +210,28 @@ export async function createLessonPlan(model: string, material: ExtractedMateria
     "Use clear language but do not omit important concepts. Include equations only when supported by the material. State when the source is incomplete.",
     "SOURCE MATERIAL (" + material.kind + "):\n" + material.text.slice(0, 22_000)
   ].join("\n\n");
-  const raw = await askLocalModel(model, prompt, true);
+  const raw = await askSelectedModel(model, prompt, true, provider);
   const plan = parsePlan(raw, material);
   if (!plan) throw new Error("The model replied, but its lesson plan was not valid JSON. Try again or choose another local model.");
-  return plan;
+  return { ...plan, source: provider };
 }
 
-export async function answerLocalQuestion(model: string, material: ExtractedMaterial, step: LessonStep, question: string): Promise<string> {
-  return askLocalModel(model, [
+export async function answerLocalQuestion(model: string, material: ExtractedMaterial, step: LessonStep, question: string, provider: "ollama" | "chrome-ai" = "ollama"): Promise<string> {
+  const prompt = [
     "You are the TraceX teacher. Answer accurately using the provided source and current step. Distinguish source facts from general explanation. If the source is insufficient, say so.",
     "Current step: " + step.title + "\n" + step.explanation,
     "Student question: " + question,
     "Relevant uploaded material:\n" + material.text.slice(0, 12_000)
-  ].join("\n\n"));
+  ].join("\n\n");
+  return askSelectedModel(model, prompt, false, provider);
 }
 
-export async function evaluateLocalAnswer(model: string, material: ExtractedMaterial, step: LessonStep, question: string, answer: string): Promise<string> {
-  return askLocalModel(model, [
+export async function evaluateLocalAnswer(model: string, material: ExtractedMaterial, step: LessonStep, question: string, answer: string, provider: "ollama" | "chrome-ai" = "ollama"): Promise<string> {
+  const prompt = [
     "Evaluate a student's answer as a supportive but rigorous teacher. Identify what is correct, incorrect or missing, then explain the correction. Different wording alone is not an error. State uncertainty when the source is insufficient.",
     "Lesson: " + step.title + "\nTeaching explanation: " + step.explanation,
     "Question: " + question + "\nStudent answer: " + answer,
     "Relevant source:\n" + material.text.slice(0, 10_000)
-  ].join("\n\n"));
+  ].join("\n\n");
+  return askSelectedModel(model, prompt, false, provider);
 }

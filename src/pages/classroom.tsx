@@ -8,7 +8,7 @@ import {
   VolumeX, Wifi, WifiOff, X
 } from "lucide-react";
 import {
-  answerLocalQuestion, createLessonPlan, evaluateLocalAnswer, extractMaterial,
+  answerLocalQuestion, checkChromeAIAvailability, createLessonPlan, evaluateLocalAnswer, extractMaterial,
   listLocalModels
 } from "@/lib/classroom";
 import type { ExtractedMaterial, LessonPlan, LessonStep } from "@/lib/classroom";
@@ -90,6 +90,8 @@ export default function ClassroomPage() {
   const [plan, setPlan] = useState<LessonPlan | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [model, setModel] = useState("qwen2.5:3b");
+  const [provider, setProvider] = useState<"ollama" | "chrome-ai">("ollama");
+  const [chromeAIStatus, setChromeAIStatus] = useState("unknown");
   const [models, setModels] = useState<string[]>([]);
   const [connection, setConnection] = useState<"unknown" | "connected" | "offline">("unknown");
   const [status, setStatus] = useState("");
@@ -129,6 +131,14 @@ export default function ClassroomPage() {
     () => voices.find((voice) => voice.name === voiceName) || voices.find((voice) => voice.lang.toLowerCase().startsWith("en")) || voices[0],
     [voices, voiceName]
   );
+
+  async function testChromeAI() {
+    setBusy(true);
+    const result = await checkChromeAIAvailability().catch(() => "unsupported");
+    setChromeAIStatus(result);
+    setStatus(result === "available" ? "Chrome on-device AI is ready." : result === "downloadable" ? "Chrome on-device AI can be downloaded on this device. Choose it and create a lesson to start the download." : result === "downloading" ? "Chrome on-device AI is currently downloading." : "Chrome on-device AI is not supported or is unavailable on this device.");
+    setBusy(false);
+  }
 
   async function connectLocalAI() {
     setBusy(true);
@@ -176,14 +186,14 @@ export default function ClassroomPage() {
     setStatus("Asking your local model to prepare the lesson…");
     setFeedback("");
     try {
-      const newPlan = await createLessonPlan(model, material);
+      const newPlan = await createLessonPlan(model, material, provider);
       setPlan(newPlan);
       setStepIndex(0);
       setBoardOpen(true);
-      setStatus("Lesson prepared by your local AI using the extracted upload.");
-      setConnection("connected");
+      setStatus(provider === "ollama" ? "Lesson prepared by local Ollama using the extracted upload." : "Lesson prepared by Chrome on-device AI.");
+      if (provider === "ollama") setConnection("connected");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Lesson generation failed. Check the local model connection.");
+      setStatus(error instanceof Error ? error.message : "Lesson generation failed. Check the selected on-device AI provider.");
     } finally { setBusy(false); }
   }
 
@@ -214,7 +224,7 @@ export default function ClassroomPage() {
     if (!material || !currentStep || !question.trim()) return;
     setBusy(true);
     setAnswer("");
-    try { setAnswer(await answerLocalQuestion(model, material, currentStep, question.trim())); }
+    try { setAnswer(await answerLocalQuestion(model, material, currentStep, question.trim(), provider)); }
     catch (error) { setAnswer("Local AI is unavailable: " + (error instanceof Error ? error.message : "connection failed")); }
     finally { setBusy(false); }
   }
@@ -224,7 +234,7 @@ export default function ClassroomPage() {
     const prompt = currentStep.checkQuestion || "Explain the main idea in this lesson step.";
     setBusy(true);
     setFeedback("");
-    try { setFeedback(await evaluateLocalAnswer(model, material, currentStep, prompt, studentAnswer.trim())); }
+    try { setFeedback(await evaluateLocalAnswer(model, material, currentStep, prompt, studentAnswer.trim(), provider)); }
     catch (error) { setFeedback("Could not evaluate the answer locally: " + (error instanceof Error ? error.message : "connection failed")); }
     finally { setBusy(false); }
   }
@@ -266,7 +276,7 @@ export default function ClassroomPage() {
           </div>
           <div className={"flex items-center gap-2 self-start rounded-full border px-3 py-2 text-xs font-semibold " + (connection === "connected" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" : "border-amber-500/30 bg-amber-500/10 text-amber-600")}>
             {connection === "connected" ? <Wifi size={14}/> : <WifiOff size={14}/>}
-            {connection === "connected" ? "Local AI connected" : "Local AI not connected"}
+            {provider === "ollama" ? (connection === "connected" ? "Ollama connected" : "Ollama not connected") : (chromeAIStatus === "available" || chromeAIStatus === "downloadable" ? "Chrome AI available" : "Chrome AI not checked") }
           </div>
         </header>
 
@@ -301,14 +311,20 @@ export default function ClassroomPage() {
               <div className="rounded-2xl bg-emerald-500/10 p-3 text-emerald-600"><BrainCircuit size={23}/></div>
               <div><h2 className="text-lg font-bold">2. Connect your local AI</h2><p className="text-xs opacity-60">Classroom does not call Groq or OpenAI.</p></div>
             </div>
-            <label className="block text-xs font-semibold opacity-70">Ollama model</label>
-            <div className="flex gap-2">
-              {models.length ? <select className="min-w-0 flex-1 rounded-xl px-3 py-3 text-sm" value={model} onChange={(event) => setModel(event.target.value)}>{models.map((name) => <option key={name} value={name}>{name}</option>)}</select> : <input className="min-w-0 flex-1 rounded-xl px-3 py-3 text-sm" value={model} onChange={(event) => setModel(event.target.value)} placeholder="qwen2.5:3b"/>}
-              <button onClick={() => void connectLocalAI()} disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-50 dark:bg-white dark:text-slate-900">
-                {busy ? <Loader2 className="animate-spin" size={16}/> : <RefreshCw size={16}/>} Test
-              </button>
+            <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-500/5 p-1">
+              <button onClick={() => setProvider("ollama")} className={"rounded-lg px-3 py-2 text-xs font-bold " + (provider === "ollama" ? "bg-blue-600 text-white" : "opacity-70")}>Local Ollama</button>
+              <button onClick={() => setProvider("chrome-ai")} className={"rounded-lg px-3 py-2 text-xs font-bold " + (provider === "chrome-ai" ? "bg-blue-600 text-white" : "opacity-70")}>Chrome on-device AI</button>
             </div>
-            <div className="rounded-xl border p-4 text-xs leading-6" style={{ borderColor: "var(--border)" }}>
+            {provider === "ollama" && <>
+              <label className="block text-xs font-semibold opacity-70">Ollama model</label>
+              <div className="flex gap-2">
+                {models.length ? <select className="min-w-0 flex-1 rounded-xl px-3 py-3 text-sm" value={model} onChange={(event) => setModel(event.target.value)}>{models.map((name) => <option key={name} value={name}>{name}</option>)}</select> : <input className="min-w-0 flex-1 rounded-xl px-3 py-3 text-sm" value={model} onChange={(event) => setModel(event.target.value)} placeholder="qwen2.5:3b"/>}
+                <button onClick={() => void connectLocalAI()} disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-50 dark:bg-white dark:text-slate-900">
+                  {busy ? <Loader2 className="animate-spin" size={16}/> : <RefreshCw size={16}/>} Test Ollama
+                </button>
+              </div>
+            </>}
+            {provider === "ollama" ? <div className="rounded-xl border p-4 text-xs leading-6" style={{ borderColor: "var(--border)" }}>
               <p className="mb-2 font-bold">First-time setup on Windows</p>
               <ol className="list-decimal space-y-1 pl-4 opacity-75">
                 <li>Install Ollama from ollama.com and open it.</li>
@@ -317,8 +333,12 @@ export default function ClassroomPage() {
                 <li>Return here and press Test.</li>
               </ol>
               <p className="mt-2 opacity-60">For local development allow http://localhost:3000. For the deployed app allow https://tracex-gdbl.vercel.app. Do not use wildcard origins on a public computer.</p>
-            </div>
-            <button onClick={() => void generateLesson()} disabled={!material || busy || !model.trim()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50">
+            </div> : <div className="rounded-xl border p-4 text-xs leading-6" style={{ borderColor: "var(--border)" }}>
+              <p className="mb-2 font-bold">Chrome built-in AI requirements</p>
+              <p className="opacity-75">Available only on supported desktop Chrome versions and eligible devices. Chrome documents 16 GB RAM or more with 4+ CPU cores, or a GPU with more than 4 GB VRAM, plus about 22 GB free profile-drive space for its model download. First use may download the model.</p>
+              <button onClick={() => void testChromeAI()} disabled={busy} className="mt-3 rounded-lg border border-blue-500/30 px-3 py-2 font-bold text-blue-600 disabled:opacity-50">Check Chrome AI · {chromeAIStatus}</button>
+            </div>}
+            <button onClick={() => void generateLesson()} disabled={!material || busy || (provider === "ollama" && !model.trim())} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50">
               {busy ? <Loader2 className="animate-spin" size={17}/> : <Sparkles size={17}/>} Create lesson with local AI
             </button>
             {status && <p role="status" className="rounded-xl bg-slate-500/5 p-3 text-xs leading-5 opacity-75">{status}</p>}
@@ -328,7 +348,7 @@ export default function ClassroomPage() {
 
         {plan && <section className="rounded-3xl border p-5 sm:p-7" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-            <div><div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-600"><CheckCircle2 size={15}/> Lesson ready · {plan.source === "local-ai" ? "Generated by local AI" : "Source outline"}</div><h2 className="text-xl font-black">{plan.title}</h2><p className="mt-1 text-sm opacity-60">{plan.subject} · {plan.steps.length} teaching steps</p></div>
+            <div><div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-600"><CheckCircle2 size={15}/> Lesson ready · {plan.source === "ollama" ? "Generated by local Ollama" : "Generated by Chrome on-device AI"}</div><h2 className="text-xl font-black">{plan.title}</h2><p className="mt-1 text-sm opacity-60">{plan.subject} · {plan.steps.length} teaching steps</p></div>
             <button onClick={() => setBoardOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white"><Maximize2 size={16}/> Open full-screen board</button>
           </div>
           <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
