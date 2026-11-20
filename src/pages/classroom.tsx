@@ -183,7 +183,7 @@ export default function ClassroomPage() {
   async function generateLesson() {
     if (!material) return;
     setBusy(true);
-    setStatus("Asking your local model to prepare the lesson…");
+    setStatus(provider === "ollama" ? "Asking local Ollama to prepare the lesson…" : "Asking Chrome on-device AI to prepare the lesson…");
     setFeedback("");
     try {
       const newPlan = await createLessonPlan(model, material, provider);
