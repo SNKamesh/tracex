@@ -26,7 +26,7 @@ const ThemeContext =
 
 
 const STORAGE_KEY =
-  "tracex-theme";
+  "tracex:theme";
 
 
 const themes: Theme[] = [

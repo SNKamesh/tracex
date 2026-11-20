@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import {
-  Pause,
-  Play,
-  Square,
-  Users,
-  Timer,
-} from "lucide-react";
+import { Pause, Play, Square, Timer, Focus } from "lucide-react";
 
 
 import CameraEngine from "./CameraEngine";
@@ -28,19 +22,7 @@ import SessionSummary from "./SessionSummary";
 
 interface Props {
 
-  world?: {
-
-    id:string;
-
-    name:string;
-
-    icon:string;
-
-    description:string;
-
-    online:number;
-
-  };
+  world?: { id: string; name: string; description: string };
 
 }
 
