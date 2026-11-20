@@ -181,7 +181,7 @@ export default function ClassroomPage() {
         setConnection("connected");
         if (found.length && !found.includes(model)) setModel(found[0]);
         setStatus(found.length
-          ? "Connected to Ollama. " + found.length + " local model(s)) found."
+          ? "Connected to Ollama. " + found.length + " local model(s) found."
           : "Ollama is running, but no models are installed. Run: ollama pull qwen2.5:3b");
       } catch (error) {
         if (cancelled) return;
