@@ -169,6 +169,30 @@ export default function ClassroomPage() {
     };
   }, []);
 
+  // Automatically detect this device's local Ollama service whenever Classroom opens.
+  // Each student's browser checks its own localhost; it never routes requests through the founder's PC.
+  useEffect(() => {
+    let cancelled = false;
+    async function detectLocalOllama() {
+      try {
+        const found = await listLocalModels();
+        if (cancelled) return;
+        setModels(found);
+        setConnection("connected");
+        if (found.length && !found.includes(model)) setModel(found[0]);
+        setStatus(found.length
+          ? "Connected to Ollama. " + found.length + " local model(s)) found."
+          : "Ollama is running, but no models are installed. Run: ollama pull qwen2.5:3b");
+      } catch (error) {
+        if (cancelled) return;
+        setConnection("offline");
+        setStatus("Ollama is not running or this TraceX origin is not allowed. Start Ollama and check OLLAMA_ORIGINS. " + (error instanceof Error ? error.message : ""));
+      }
+    }
+    void detectLocalOllama();
+    return () => { cancelled = true; };
+  }, []);
+
   const selectedVoice = useMemo(
     () => voices.find((voice) => voice.name === voiceName) || voices.find((voice) => voice.lang.toLowerCase().startsWith("en")) || voices[0],
     [voices, voiceName]
