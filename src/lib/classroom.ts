@@ -273,7 +273,7 @@ function buildLineCodeWaveforms(bits: number[]): WaveformSpec[] {
   return result;
 }
 
-export function createWaveformDoubtSteps(material: ExtractedMaterial, question: string): LessonStep[] | null {
+export function createWaveformDoubtSteps(material: ExtractedMaterial, question: string, doubtNumber = 1): LessonStep[] | null {
   const lower = material.text.toLowerCase();
   if (!/draw|graph|waveform|plot|sketch/.test(question.toLowerCase()) || !/line coding|unipolar nrz|bipolar|manchester|mlt.?3|pseudoternary/.test(lower)) return null;
   const bits = extractBinarySequence(material.text);
@@ -284,8 +284,8 @@ export function createWaveformDoubtSteps(material: ExtractedMaterial, question: 
   }];
   const sequence = bits.join(" ");
   const steps: LessonStep[] = [{
-    title: "Doubt — Prepare the input sequence",
-    explanation: "We will draw the requested line-code waveforms one scheme at a time. First, preserve the bit order exactly as it appears in the uploaded numerical question.",
+    title: "Doubt " + String(doubtNumber).padStart(2, "0") + " — " + question.slice(0, 72),
+    explanation: "You asked: " + question + ". We will draw the requested line-code waveforms one scheme at a time. First, preserve the bit order exactly as it appears in the uploaded numerical question.",
     boardPoints: ["Input bit sequence: " + sequence, "Number of bits: " + bits.length, "Each following page applies one encoding rule to this same sequence."],
     equation: "b = (" + sequence + ")",
     checkQuestion: "Why must the input bit order remain unchanged for every encoding?"
@@ -296,7 +296,7 @@ export function createWaveformDoubtSteps(material: ExtractedMaterial, question: 
       return "Bit " + (bitIndex + 1) + " (" + bit + ") → " + values.join(" then ");
     });
     steps.push({
-      title: "Doubt — " + (index + 1) + ". " + scheme.name,
+      title: "Answer " + String(doubtNumber).padStart(2, "0") + "." + (index + 1) + " — " + scheme.name,
       explanation: scheme.rule + " Apply this rule to each bit from left to right. The waveform is drawn from the resulting voltage levels; it is not guessed by the language model.",
       boardPoints: [scheme.convention, ...mapping.slice(0, 6), ...(mapping.length > 6 ? ["Continue the same rule for the remaining " + (mapping.length - 6) + " bits."] : [])],
       waveform: { sequence: bits, levels: scheme.levels, samplesPerBit: scheme.samplesPerBit, label: scheme.name, convention: scheme.convention },
