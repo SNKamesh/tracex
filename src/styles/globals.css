@@ -249,3 +249,19 @@ body .tracex-intro .impact-line {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* TraceX Classroom board entrance */
+@keyframes classroom-write {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.classroom-write {
+  animation: classroom-write .48s ease-out both;
+}
+.classroom-board .classroom-write:nth-child(2) {
+  animation-delay: .12s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .classroom-write { animation: none; }
+}
