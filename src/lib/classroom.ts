@@ -266,9 +266,9 @@ function buildLineCodeWaveforms(bits: number[]): WaveformSpec[] {
   const differential: number[] = [];
   bits.forEach((bit) => { if (bit === 0) previous *= -1; differential.push(previous, -previous); previous *= -1; });
   result.push({ name: "Differential Manchester", levels: differential, samplesPerBit: 2, convention: "Initial level is +V; 0 = transition at the start; 1 = no transition at the start; always transition mid-bit.", rule: "Every bit has a mid-bit transition. A 0 also has a transition at the beginning; a 1 does not. The initial level is assumed to be +V." });
-  let mlt = 0;
+  let mltIndex = 0;
   const cycle = [0, 1, 0, -1];
-  const mltLevels = bits.map((bit) => { if (bit) mlt = cycle[(cycle.indexOf(mlt) + 1) % cycle.length]; return mlt; });
+  const mltLevels = bits.map((bit) => { if (bit) mltIndex = (mltIndex + 1) % cycle.length; return cycle[mltIndex]; });
   result.push({ name: "MLT-3", levels: mltLevels, samplesPerBit: 1, convention: "Initial level 0 V; a 1 advances 0 → +V → 0 → −V → 0; a 0 holds the current level.", rule: "A 1 causes the signal to move to the next level in the cycle 0, +V, 0, −V, 0. A 0 causes no transition." });
   return result;
 }
