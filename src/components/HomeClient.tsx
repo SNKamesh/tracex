@@ -70,7 +70,7 @@ export default function HomeClient() {
           let data: any = {};
           if (snap.exists()) data = snap.data();
           else {
-            const stored = localStorage.getItem(\`tracex:onboarding:\${user.uid}\`);
+            const stored = localStorage.getItem(`tracex:onboarding:${user.uid}`);
             if (stored) data = JSON.parse(stored);
           }
 
@@ -85,7 +85,7 @@ export default function HomeClient() {
             if (snap.exists()) await updateDoc(userRef, { tracexId });
             else await setDoc(userRef, { name: data.name || "", studyType: data.studyType || "", email: user.email ?? "", tracexId, createdAt: Date.now() });
             data.tracexId = tracexId;
-            localStorage.setItem(\`tracex:onboarding:\${user.uid}\`, JSON.stringify(data));
+            localStorage.setItem(`tracex:onboarding:${user.uid}`, JSON.stringify(data));
           }
 
           if (!cancelled) {
@@ -108,7 +108,7 @@ export default function HomeClient() {
   }, []);
 
   const greeting = useMemo(() => greetingByHour(new Date().getHours()), []);
-  const title = loaded ? \`\${greeting}, \${onboarding.name || "there"}\` : greeting;
+  const title = loaded ? `${greeting}, ${onboarding.name || "there"}` : greeting;
 
   async function handleCopyId() {
     if (!onboarding.tracexId) {
@@ -127,7 +127,7 @@ export default function HomeClient() {
 
   return (
     <AppShell>
-      <PageHeader title={title} subtitle={onboarding.studyType ? \`\${onboarding.studyType} · Your personal study workspace\` : "Your personal space for focused learning."} />
+      <PageHeader title={title} subtitle={onboarding.studyType ? `${onboarding.studyType} · Your personal study workspace` : "Your personal space for focused learning."} />
 
       <section className="relative mb-6 overflow-hidden rounded-[20px] border p-5 sm:p-7 lg:p-9" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
         <div className="grid items-center gap-6 lg:grid-cols-[1.15fr_.85fr]">

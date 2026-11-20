@@ -20,7 +20,7 @@ function applyTheme(themeKey: string) {
   document.documentElement.dataset.theme = themeKey;
   document.documentElement.style.colorScheme = themeKey === "light" ? "light" : "dark";
   document.body.classList.remove("tracex-theme-amoled", "tracex-theme-dark", "tracex-theme-light");
-  document.body.classList.add(\`tracex-theme-\${themeKey}\`);
+  document.body.classList.add(`tracex-theme-${themeKey}`);
   window.dispatchEvent(new CustomEvent("tracex-theme-change", { detail: themeKey }));
 }
 

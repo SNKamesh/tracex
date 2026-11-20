@@ -19,5 +19,5 @@ export default function Button({ variant = "primary", className = "", disabled, 
       ? { background: "var(--surface)", color: "var(--text)", borderColor: "var(--border)" }
       : { background: "transparent", color: "var(--text)" };
 
-  return <button {...props} disabled={disabled} style={{ ...style, ...props.style }} className={\`\${common} \${styles[variant]} \${className}\`} />;
+  return <button {...props} disabled={disabled} style={{ ...style, ...props.style }} className={`${common} ${styles[variant]} ${className}`} />;
 }

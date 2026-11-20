@@ -30,7 +30,7 @@ export default function NoteX() {
     if (!note.trim() || loading || cooldown > 0) return;
     setLoading(true);
     try {
-      const result = await askNoteXAI({ message: \`Run \${mode} on this note\`, context: note, mode });
+      const result = await askNoteXAI({ message: `Run ${mode} on this note`, context: note, mode });
       if (result.success) {
         setAnswer(result.data);
       } else {
@@ -39,12 +39,12 @@ export default function NoteX() {
         if (match) {
           const seconds = Math.ceil(parseFloat(match[1]));
           setCooldown(seconds);
-          setAnswer(\`The free AI service has reached its request limit. Please retry in about \${seconds} seconds.\`);
+          setAnswer(`The free AI service has reached its request limit. Please retry in about ${seconds} seconds.`);
         } else if (errStr.toLowerCase().includes("rate limit") || errStr.includes("429")) {
           setCooldown(60);
           setAnswer("The free AI service is temporarily rate-limited. Please wait about 60 seconds before trying again.");
         } else {
-          setAnswer(\`Unable to complete this request: \${errStr}\`);
+          setAnswer(`Unable to complete this request: ${errStr}`);
         }
       }
     } catch {
@@ -87,7 +87,7 @@ export default function NoteX() {
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,.85fr)]">
         <SectionCard title="Your material" description="Write, paste, or import text to work with.">
           <div className="mb-3 flex items-center justify-between gap-3 text-[11px]" style={{ color: "var(--muted)" }}>
-            <span>{note.trim() ? \`\${note.trim().split(/\\s+/).length} words\` : "No text added yet"}</span>
+            <span>{note.trim() ? `${note.trim().split(/\\s+/).length} words` : "No text added yet"}</span>
             <span>TXT · Markdown</span>
           </div>
           <textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Start with a paragraph, lecture notes, or a concept you want to understand..." className="min-h-[340px] w-full resize-y rounded-xl border p-4 text-[13px] leading-7 outline-none sm:min-h-[470px]" style={{ background: "var(--background-soft)", color: "var(--text)", borderColor: "var(--border)" }} />
@@ -107,7 +107,7 @@ export default function NoteX() {
               })}
             </div>
             <Button className="mt-4 w-full" onClick={generate} disabled={loading || cooldown > 0 || !note.trim()}>
-              {loading ? <><Sparkles size={15} /> Working…</> : cooldown > 0 ? \`Retry in \${cooldown}s\` : <><Brain size={15} /> Generate response <ArrowRight size={15} /></>}
+              {loading ? <><Sparkles size={15} /> Working…</> : cooldown > 0 ? `Retry in ${cooldown}s` : <><Brain size={15} /> Generate response <ArrowRight size={15} /></>}
             </Button>
           </SectionCard>
 
@@ -117,7 +117,7 @@ export default function NoteX() {
             </div>
             {answer && <div className="mt-3 flex flex-wrap gap-2">
               <Button variant="secondary" onClick={copyAnswer}>{copyDone ? <Check size={15} /> : <Clipboard size={15} />}{copyDone ? "Copied" : "Copy response"}</Button>
-              <Button variant="secondary" onClick={() => setNote((current) => current ? \`\${current}\\n\\n\${answer}\` : answer)}>Insert into notes</Button>
+              <Button variant="secondary" onClick={() => setNote((current) => current ? `${current}\\n\\n${answer}` : answer)}>Insert into notes</Button>
             </div>}
           </SectionCard>
         </div>

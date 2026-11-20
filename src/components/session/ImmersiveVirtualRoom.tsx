@@ -26,7 +26,7 @@ function RoomScene({ id }: { id?: string }) {
       {scene === "rain" ? <>
         <rect x="255" y="40" width="390" height="220" rx="12" fill="none" stroke={accent} strokeOpacity=".5" strokeWidth="2" />
         <path d="M450 40V260M255 150H645" stroke={accent} strokeOpacity=".35" strokeWidth="2" />
-        {Array.from({ length: 14 }, (_, i) => <path key={i} d={\`M\${280 + i * 24} 62l-8 18m\${26 + i * 24} 66l-8 18m\${10 + i * 24} 100l-8 18\`} stroke={accent} strokeOpacity=".5" strokeWidth="2" strokeLinecap="round" />)}
+        {Array.from({ length: 14 }, (_, i) => <path key={i} d={`M${280 + i * 24} 62l-8 18m${26 + i * 24} 66l-8 18m${10 + i * 24} 100l-8 18`} stroke={accent} strokeOpacity=".5" strokeWidth="2" strokeLinecap="round" />)}
       </> : scene === "zen" ? <>
         <path d="M100 280C230 240 310 320 450 280S690 250 800 282" fill="none" stroke={accent} strokeOpacity=".55" strokeWidth="3" />
         <path d="M450 275V115M450 188C380 95 320 120 345 182C382 213 417 210 450 188ZM450 210C516 110 576 134 551 194C516 225 481 230 450 210Z" fill={accent} fillOpacity=".22" stroke={accent} strokeOpacity=".6" strokeWidth="2" />
