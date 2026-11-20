@@ -6,6 +6,7 @@ export type LessonStep = {
   diagramNodes?: string[];
   example?: string;
   checkQuestion?: string;
+  waveform?: { sequence: number[]; levels: number[]; samplesPerBit: 1 | 2; label: string; convention: string };
 };
 export type LessonPlan = { title: string; subject: string; steps: LessonStep[]; source: "ollama" | "chrome-ai" };
 export type ExtractedMaterial = { name: string; kind: string; text: string; pagesOrSlides: number };
@@ -230,6 +231,79 @@ export async function answerLocalQuestion(model: string, material: ExtractedMate
     "Relevant uploaded material:\n" + material.text.slice(0, 12_000)
   ].join("\n\n");
   return askSelectedModel(model, prompt, false, provider);
+}
+
+
+function extractBinarySequence(text: string): number[] | null {
+  const patterns = [
+    /sequence\s*[:=]\s*[(\[{]?\s*([01](?:[\s,]+[01]){3,31})/i,
+    /binary\s+(?:data\s+)?sequence\s*[:=]?\s*[(\[{]?\s*([01](?:[\s,]+[01]){3,31})/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) {
+      const bits = match[1].trim().split(/[\s,]+/).map(Number);
+      if (bits.length >= 4 && bits.length <= 32 && bits.every((bit) => bit === 0 || bit === 1)) return bits;
+    }
+  }
+  return null;
+}
+
+type WaveformSpec = { name: string; levels: number[]; samplesPerBit: 1 | 2; convention: string; rule: string };
+
+function buildLineCodeWaveforms(bits: number[]): WaveformSpec[] {
+  const result: WaveformSpec[] = [];
+  result.push({ name: "Unipolar NRZ", levels: bits.map((bit) => bit ? 1 : 0), samplesPerBit: 1, convention: "1 = +V; 0 = 0 V; level is held for the full bit interval.", rule: "A binary 1 is represented by +V and a binary 0 by 0 V. The level does not return to zero halfway through a 1 bit." });
+  result.push({ name: "Unipolar RZ", levels: bits.flatMap((bit) => bit ? [1, 0] : [0, 0]), samplesPerBit: 2, convention: "1 = +V then 0 V; 0 = 0 V for the whole bit.", rule: "A binary 1 uses +V during the first half and returns to 0 V during the second half. A binary 0 remains at 0 V." });
+  result.push({ name: "Polar NRZ-L", levels: bits.map((bit) => bit ? 1 : -1), samplesPerBit: 1, convention: "This drawing uses 1 = +V and 0 = −V.", rule: "Each bit occupies one constant level: 1 is +V and 0 is −V. Check the polarity convention used by your lecturer if the source diagram defines the reverse mapping." });
+  result.push({ name: "Polar RZ", levels: bits.flatMap((bit) => bit ? [1, 0] : [-1, 0]), samplesPerBit: 2, convention: "This drawing uses 1 = +V then 0 V; 0 = −V then 0 V.", rule: "Each bit returns to zero in the second half. A 1 starts at +V; a 0 starts at −V." });
+  let ami = 1;
+  result.push({ name: "Bipolar AMI", levels: bits.map((bit) => { if (!bit) return 0; const level = ami; ami *= -1; return level; }), samplesPerBit: 1, convention: "Each successive 1 alternates +V, −V; every 0 is 0 V. First mark is +V.", rule: "A 0 is transmitted at 0 V. Each 1 is a pulse whose polarity alternates with the previous 1." });
+  let pseudo = 1;
+  result.push({ name: "Bipolar pseudoternary", levels: bits.map((bit) => { if (bit) return 0; const level = pseudo; pseudo *= -1; return level; }), samplesPerBit: 1, convention: "Each successive 0 alternates +V, −V; every 1 is 0 V. First zero mark is +V.", rule: "A 1 is transmitted at 0 V. Each 0 is a pulse whose polarity alternates with the previous 0." });
+  result.push({ name: "Manchester", levels: bits.flatMap((bit) => bit ? [-1, 1] : [1, -1]), samplesPerBit: 2, convention: "IEEE-style convention used here: 1 = low-to-high; 0 = high-to-low.", rule: "There is always a transition in the middle of every bit. A 1 goes low-to-high; a 0 goes high-to-low. Some textbooks use the opposite polarity convention." });
+  let previous = 1;
+  const differential: number[] = [];
+  bits.forEach((bit) => { if (bit === 0) previous *= -1; differential.push(previous, -previous); previous *= -1; });
+  result.push({ name: "Differential Manchester", levels: differential, samplesPerBit: 2, convention: "Initial level is +V; 0 = transition at the start; 1 = no transition at the start; always transition mid-bit.", rule: "Every bit has a mid-bit transition. A 0 also has a transition at the beginning; a 1 does not. The initial level is assumed to be +V." });
+  let mlt = 0;
+  const cycle = [0, 1, 0, -1];
+  const mltLevels = bits.map((bit) => { if (bit) mlt = cycle[(cycle.indexOf(mlt) + 1) % cycle.length]; return mlt; });
+  result.push({ name: "MLT-3", levels: mltLevels, samplesPerBit: 1, convention: "Initial level 0 V; a 1 advances 0 → +V → 0 → −V → 0; a 0 holds the current level.", rule: "A 1 causes the signal to move to the next level in the cycle 0, +V, 0, −V, 0. A 0 causes no transition." });
+  return result;
+}
+
+export function createWaveformDoubtSteps(material: ExtractedMaterial, question: string): LessonStep[] | null {
+  const lower = material.text.toLowerCase();
+  if (!/draw|graph|waveform|plot|sketch/.test(question.toLowerCase()) || !/line coding|unipolar nrz|bipolar|manchester|mlt.?3|pseudoternary/.test(lower)) return null;
+  const bits = extractBinarySequence(material.text);
+  if (!bits) return [{
+    title: "Doubt — Find the input bit sequence",
+    explanation: "I identified line-coding topics in the uploaded material, but its extracted text did not contain a clearly readable binary sequence. Please type the sequence from the numerical question so I can draw the waveforms accurately.",
+    boardPoints: ["The PDF's selectable text may not include text embedded inside a slide image.", "No bit sequence has been assumed or invented."]
+  }];
+  const sequence = bits.join(" ");
+  const steps: LessonStep[] = [{
+    title: "Doubt — Prepare the input sequence",
+    explanation: "We will draw the requested line-code waveforms one scheme at a time. First, preserve the bit order exactly as it appears in the uploaded numerical question.",
+    boardPoints: ["Input bit sequence: " + sequence, "Number of bits: " + bits.length, "Each following page applies one encoding rule to this same sequence."],
+    equation: "b = (" + sequence + ")",
+    checkQuestion: "Why must the input bit order remain unchanged for every encoding?"
+  }];
+  buildLineCodeWaveforms(bits).forEach((scheme, index) => {
+    const mapping = bits.map((bit, bitIndex) => {
+      const values = scheme.levels.slice(bitIndex * scheme.samplesPerBit, (bitIndex + 1) * scheme.samplesPerBit).map((level) => level === 1 ? "+V" : level === -1 ? "−V" : "0 V");
+      return "Bit " + (bitIndex + 1) + " (" + bit + ") → " + values.join(" then ");
+    });
+    steps.push({
+      title: "Doubt — " + (index + 1) + ". " + scheme.name,
+      explanation: scheme.rule + " Apply this rule to each bit from left to right. The waveform is drawn from the resulting voltage levels; it is not guessed by the language model.",
+      boardPoints: [scheme.convention, ...mapping.slice(0, 6), ...(mapping.length > 6 ? ["Continue the same rule for the remaining " + (mapping.length - 6) + " bits."] : [])],
+      waveform: { sequence: bits, levels: scheme.levels, samplesPerBit: scheme.samplesPerBit, label: scheme.name, convention: scheme.convention },
+      checkQuestion: "Explain how the encoding rule determines the signal level for each bit in " + scheme.name + "."
+    });
+  });
+  return steps;
 }
 
 export async function evaluateLocalAnswer(model: string, material: ExtractedMaterial, step: LessonStep, question: string, answer: string, provider: "ollama" | "chrome-ai" = "ollama"): Promise<string> {
