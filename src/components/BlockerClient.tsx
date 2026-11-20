@@ -111,7 +111,19 @@ export default function BlockerClient() {
     }
 
     window.addEventListener("message", handleExtensionMessage);
-    return () => window.removeEventListener("message", handleExtensionMessage);
+    // The content script may run before the React page is hydrated, so retry the handshake briefly.
+    window.postMessage({ source: "tracex-web", type: "GET_BLOCKER_STATE" }, window.location.origin);
+    const handshake = window.setInterval(() => {
+      if (extensionConnectedRef.current) {
+        window.clearInterval(handshake);
+        return;
+      }
+      window.postMessage({ source: "tracex-web", type: "GET_BLOCKER_STATE" }, window.location.origin);
+    }, 1500);
+    return () => {
+      window.clearInterval(handshake);
+      window.removeEventListener("message", handleExtensionMessage);
+    };
   }, []);
 
   async function persistSites(nextSites: string[]) {
