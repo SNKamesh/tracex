@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import { ArrowRight, BookOpen, CalendarDays, Clock3, Copy, Focus, GraduationCap, NotebookPen } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Clock3, Copy, Focus, GraduationCap, FileStack } from "lucide-react";
 import AppShell from "./AppShell";
 import Button from "./Button";
 import PageHeader from "./PageHeader";
@@ -160,7 +160,7 @@ export default function HomeClient() {
               {[
                 { label: "Focus sessions", detail: "A timer and a quieter workspace", href: "/sessions", icon: Clock3 },
                 { label: "Your study plans", detail: "Tasks, priorities and reminders", href: "/study-plans", icon: CalendarDays },
-                { label: "NoteX", detail: "Work with your notes", href: "/notex", icon: NotebookPen },
+                { label: "File Converter", detail: "Convert documents and images", href: "/converter", icon: FileStack },
                 { label: "Classroom", detail: "Learn from your material", href: "/classroom", icon: BookOpen },
               ].map(({ label, detail, href, icon: Icon }) => (
                 <button key={href} type="button" onClick={() => router.push(href)} className="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors hover:bg-[var(--surface-hover)]" style={{ borderColor: "var(--border)" }}>
