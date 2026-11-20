@@ -8,7 +8,7 @@ import {
   VolumeX, Wifi, WifiOff, X
 } from "lucide-react";
 import {
-  answerLocalQuestion, checkChromeAIAvailability, createLessonPlan, evaluateLocalAnswer, extractMaterial,
+  answerLocalQuestion, checkChromeAIAvailability, createLessonPlan, createWaveformDoubtSteps, evaluateLocalAnswer, extractMaterial,
   listLocalModels
 } from "@/lib/classroom";
 import type { ExtractedMaterial, LessonPlan, LessonStep } from "@/lib/classroom";
@@ -54,6 +54,47 @@ function Diagram({ nodes }: { nodes: string[] }) {
   );
 }
 
+
+function WaveformDiagram({ waveform }: { waveform: NonNullable<LessonStep["waveform"]> }) {
+  const { sequence, levels, samplesPerBit, label, convention } = waveform;
+  const left = 42, right = 18, bitWidth = 48;
+  const halfWidth = bitWidth / samplesPerBit;
+  const width = left + right + sequence.length * bitWidth;
+  const height = 188;
+  const y = (level: number) => level === 1 ? 45 : level === 0 ? 92 : 139;
+  const path = levels.reduce((d, level, index) => {
+    const x0 = left + index * halfWidth;
+    const x1 = x0 + halfWidth;
+    return index === 0 ? "M " + x0 + " " + y(level) + " H " + x1 : d + " V " + y(level) + " H " + x1;
+  }, "");
+  const pathLength = levels.length * halfWidth * 1.5;
+  return (
+    <div className="my-6 rounded-xl border border-blue-200 bg-white p-3 sm:p-5">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <strong className="text-sm text-slate-800">{label} waveform</strong>
+        <span className="text-xs text-slate-500">Input: {sequence.join(" ")}</span>
+      </div>
+      <svg viewBox={"0 0 " + width + " " + height} role="img" aria-label={label + " waveform for bits " + sequence.join("")} className="w-full overflow-visible">
+        {[45,92,139].map((yy,index)=><g key={yy}>
+          <line x1={left} y1={yy} x2={width-right} y2={yy} stroke="#cbd5e1" strokeDasharray="4 4"/>
+          <text x={left-8} y={yy+4} fontSize="11" fill="#475569" textAnchor="end">{["+V","0","−V"][index]}</text>
+        </g>)}
+        {sequence.map((bit,index)=><g key={index}>
+          <rect x={left+index*bitWidth} y="15" width={bitWidth} height="143" fill={index%2===0?"#eff6ff":"#f8fafc"}/>
+          <line x1={left+index*bitWidth} y1="15" x2={left+index*bitWidth} y2="158" stroke="#cbd5e1" strokeDasharray="3 4"/>
+          <text x={left+index*bitWidth+bitWidth/2} y="11" fontSize="10" fill="#1e3a8a" textAnchor="middle">{bit}</text>
+        </g>)}
+        <line x1={width-right} y1="15" x2={width-right} y2="158" stroke="#cbd5e1" strokeDasharray="3 4"/>
+        <path d={path} fill="none" stroke="#2563eb" strokeWidth="3.2" strokeLinejoin="round" strokeLinecap="round" strokeDasharray={pathLength} strokeDashoffset={pathLength}>
+          <animate attributeName="stroke-dashoffset" from={pathLength} to="0" dur="2.4s" fill="freeze"/>
+        </path>
+        <text x={left} y="178" fontSize="10" fill="#64748b">Time →</text>
+      </svg>
+      <p className="mt-2 text-xs leading-5 text-slate-600">{convention}</p>
+    </div>
+  );
+}
+
 function StepBoard({ step, styleId }: { step: LessonStep; styleId: string }) {
   const style = WRITING_STYLES.find((item) => item.id === styleId) || WRITING_STYLES[0];
   return (
@@ -68,7 +109,7 @@ function StepBoard({ step, styleId }: { step: LessonStep; styleId: string }) {
         {step.boardPoints.length > 0 && <div className="my-7 space-y-3">
           {step.boardPoints.map((point, index) => <div className="classroom-write flex gap-3 text-lg leading-8" key={index}><span className="font-bold text-blue-700">✦</span><span>{point}</span></div>)}
         </div>}
-        {step.equation && <div className="my-7 rounded-xl border border-blue-200 bg-blue-50/70 px-5 py-6 text-center">
+        {step.waveform && <WaveformDiagram waveform={step.waveform}/>}\n        {step.equation && <div className="my-7 rounded-xl border border-blue-200 bg-blue-50/70 px-5 py-6 text-center">
           <div className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Key equation</div>
           <div className="break-words font-mono text-xl font-semibold text-blue-950 sm:text-2xl">{step.equation}</div>
         </div>}
@@ -224,8 +265,27 @@ export default function ClassroomPage() {
     if (!material || !currentStep || !question.trim()) return;
     setBusy(true);
     setAnswer("");
-    try { setAnswer(await answerLocalQuestion(model, material, currentStep, question.trim(), provider)); }
-    catch (error) { setAnswer("Local AI is unavailable: " + (error instanceof Error ? error.message : "connection failed")); }
+    const asked = question.trim();
+    try {
+      const waveformSteps = createWaveformDoubtSteps(material, asked);
+      if (waveformSteps) {
+        setPlan((existing) => existing ? { ...existing, steps: [...existing.steps, ...waveformSteps] } : existing);
+        setStepIndex(plan ? plan.steps.length : 0);
+        setAnswer("Added a new doubt section to the lesson board: " + asked);
+        setQuestion("");
+      } else {
+        const explanation = await answerLocalQuestion(model, material, currentStep, asked, provider);
+        const doubtStep: LessonStep = {
+          title: "Doubt — " + asked.slice(0, 100),
+          explanation,
+          boardPoints: ["This explanation was added as a new page. Your earlier lesson pages have been preserved."]
+        };
+        setPlan((existing) => existing ? { ...existing, steps: [...existing.steps, doubtStep] } : existing);
+        setStepIndex(plan ? plan.steps.length : 0);
+        setAnswer("Added your doubt and its explanation as a new lesson-board page.");
+        setQuestion("");
+      }
+    } catch (error) { setAnswer("Local AI is unavailable: " + (error instanceof Error ? error.message : "connection failed")); }
     finally { setBusy(false); }
   }
 
@@ -400,7 +460,7 @@ export default function ClassroomPage() {
                 <button onClick={startVoiceInput} className="rounded-lg border border-white/15 p-2 text-slate-200" title="Speak your doubt"><Mic size={15}/></button>
                 <button onClick={() => void askTeacher()} disabled={busy || !question.trim()} className="rounded-lg bg-blue-600 p-2 text-white disabled:opacity-40"><Send size={15}/></button>
               </div>
-              {answer && <div className="mt-3 whitespace-pre-wrap rounded-lg bg-white/5 p-3 text-xs leading-5 text-slate-200">{answer}</div>}
+              {answer && <div role="status" className="mt-3 whitespace-pre-wrap rounded-lg bg-emerald-400/10 p-3 text-xs leading-5 text-emerald-100">{answer}</div>}
               <div className="mt-5 border-t border-white/10 pt-4">
                 <p className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Check understanding</p>
                 <p className="mb-2 text-xs leading-5 text-slate-300">{currentStep.checkQuestion || "Explain the key idea in your own words."}</p>
