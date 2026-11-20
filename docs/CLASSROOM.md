@@ -16,7 +16,7 @@
 1. Install Ollama from https://ollama.com/
 2. Run: ollama pull qwen2.5:3b
 3. Ensure Ollama is running.
-4. Allow exact browser origins in Ollama's OLLAMA_ORIGINS environment variable. For local development include http://localhost:3000. For the deployed TraceX site include https://tracex-gdbl.vercel.app. Restart Ollama after changing the environment.
+4. In PowerShell, set Ollama browser origins with: $env:OLLAMA_ORIGINS="http://localhost:3000,https://tracex-gdbl.vercel.app". Quit and reopen Ollama. For a permanent user-level setting, use [Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS", "http://localhost:3000,https://tracex-gdbl.vercel.app", "User"), then quit and reopen Ollama.
 5. Open /classroom, select Local Ollama and press Test Ollama to list installed models. Or select Chrome on-device AI and use Check Chrome AI.
 
 Do not set OLLAMA_ORIGINS=* on a public or shared computer. Allow only origins you control. A deployed TraceX page calls the Ollama process on the student's own computer, not a remote cloud model. Browser mixed-content/CORS/security policies may block this connection on some devices.
