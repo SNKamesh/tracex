@@ -13,12 +13,14 @@ import { doc, updateDoc } from "firebase/firestore";
 const THEME_KEY = "tracex:theme";
 
 const themes = [
-  { name: "AMOLED", key: "amoled", description: "Pure black for deep contrast.", bg: "#000000" },
-  { name: "Dark",   key: "dark",   description: "Soft dark theme for night study.", bg: "#0f172a" },
-  { name: "Light",  key: "light",  description: "Clean and bright for daytime.", bg: "#e2e8f0" },
+  { name: "AMOLED", key: "amoled", description: "Near-black surfaces with warm, low-glare accents.", bg: "#050605" },
+  { name: "Dark", key: "dark", description: "Warm charcoal for comfortable everyday study.", bg: "#171916" },
+  { name: "Light", key: "light", description: "Soft paper tones with clear, readable contrast.", bg: "#F4F2EC" },
 ];
 
 function applyTheme(themeKey: string) {
+  document.documentElement.dataset.theme = themeKey;
+  document.documentElement.style.colorScheme = themeKey === "light" ? "light" : "dark";
   document.body.classList.remove("tracex-theme-amoled", "tracex-theme-dark", "tracex-theme-light");
   document.body.classList.add(`tracex-theme-${themeKey}`);
   window.dispatchEvent(new CustomEvent("tracex-theme-change", { detail: themeKey }));
@@ -80,17 +82,18 @@ export default function ThemeClient() {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      padding: "40px 16px",
+      padding: "36px 16px",
     }}>
       <div style={{ width: "100%", maxWidth: "900px" }}>
-        <h1 style={{ textAlign: "center", fontSize: "28px", fontWeight: 700, marginBottom: "8px" }}>
-          Choose your Theme
+        <p style={{ textAlign: "center", fontSize: "11px", fontWeight: 700, letterSpacing: ".16em", textTransform: "uppercase", color: subColor, marginBottom: "10px" }}>Appearance</p>
+        <h1 style={{ textAlign: "center", fontSize: "32px", fontWeight: 650, letterSpacing: "-.04em", marginBottom: "8px" }}>
+          Make TraceX feel like yours.
         </h1>
-        <p style={{ textAlign: "center", color: subColor, marginBottom: "32px" }}>
-          Pick one before entering Home.
+        <p style={{ textAlign: "center", color: subColor, marginBottom: "32px", fontSize: "13px" }}>
+          Choose a comfortable palette for your study workspace.
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "16px" }}>
           {themes.map((theme) => (
             <button
               key={theme.key}

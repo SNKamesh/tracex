@@ -210,10 +210,10 @@ export default function Friends() {
       <AppShell>
         <PageHeader title="Friends" subtitle="Connect, motivate, and study together." />
         <div className="space-y-4 animate-pulse">
-          <div className="h-24 rounded-xl bg-slate-800/50" />
-          <div className="h-32 rounded-xl bg-slate-800/50" />
-          <div className="h-24 rounded-xl bg-slate-800/50" />
-          <div className="h-40 rounded-xl bg-slate-800/50" />
+          <div className="h-24 rounded-xl bg-[var(--surface)]" />
+          <div className="h-32 rounded-xl bg-[var(--surface)]" />
+          <div className="h-24 rounded-xl bg-[var(--surface)]" />
+          <div className="h-40 rounded-xl bg-[var(--surface)]" />
         </div>
       </AppShell>
     );
@@ -222,7 +222,7 @@ export default function Friends() {
   if (!myUid) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center h-64 text-slate-400">
+        <div className="flex items-center justify-center h-64 text-[var(--muted)]">
           Please sign in to use Friends.
         </div>
       </AppShell>
@@ -240,7 +240,7 @@ export default function Friends() {
       <SectionCard title="Your TraceX ID" description="Share this with friends so they can add you.">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
-            <span className="rounded-lg bg-slate-800 px-4 py-2 font-mono text-lg font-bold tracking-widest text-white">
+            <span className="rounded-lg bg-[var(--background-soft)] px-4 py-2 font-mono text-lg font-bold tracking-widest text-[var(--text)]">
               {myTraceId}
             </span>
             <Button variant="secondary" onClick={handleCopy}>
@@ -248,7 +248,7 @@ export default function Friends() {
             </Button>
           </div>
           {copied && (
-            <p className="text-xs text-green-400 ml-1">
+            <p className="text-xs text-[var(--success)] ml-1">
               TraceX ID copied to clipboard!
             </p>
           )}
@@ -269,25 +269,25 @@ export default function Friends() {
           />
           <Button onClick={sendRequest}>Send Request</Button>
         </div>
-        {searchErr && <p className="mt-2 text-xs text-red-400">{searchErr}</p>}
-        {searchOk  && <p className="mt-2 text-xs text-green-400">{searchOk}</p>}
+        {searchErr && <p className="mt-2 text-xs text-[var(--danger)]">{searchErr}</p>}
+        {searchOk  && <p className="mt-2 text-xs text-[var(--success)]">{searchOk}</p>}
       </SectionCard>
 
       {/* Incoming Requests */}
       <SectionCard title="Requests" description="Approve or reject incoming invites.">
         {requests.length === 0 ? (
-          <p className="text-sm text-slate-500">No pending requests.</p>
+          <p className="text-sm text-[var(--muted)]">No pending requests.</p>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {requests.map((req) => (
               <div
                 key={req.uid}
-                className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-200"
+                className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text)]"
               >
                 <div>
                   {/* UPDATED: TraceX ID is bold and blue, Name is small text below */}
-                  <p className="font-semibold font-mono text-blue-400">{req.traceXId}</p>
-                  <p className="text-xs text-slate-400">{req.name}</p>
+                  <p className="font-semibold font-mono text-[var(--primary)]">{req.traceXId}</p>
+                  <p className="text-xs text-[var(--muted)]">{req.name}</p>
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={() => acceptRequest(req.uid)}>Accept</Button>
@@ -302,24 +302,24 @@ export default function Friends() {
       {/* Friends List */}
       <SectionCard title="Friends List" description="Status, session joins, and motivation cards.">
         {friends.length === 0 ? (
-          <p className="text-sm text-slate-500">No friends yet. Add someone using their TraceX ID!</p>
+          <p className="text-sm text-[var(--muted)]">No friends yet. Add someone using their TraceX ID!</p>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {friends.map((friend) => (
               <div
                 key={friend.uid}
-                className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-200"
+                className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text)]"
               >
                 <div>
                   {/* UPDATED: TraceX ID is bold and blue, Name is small text below */}
-                  <p className="font-semibold font-mono text-blue-400">{friend.traceXId}</p>
-                  <p className="text-xs text-slate-400">{friend.name}</p>
+                  <p className="font-semibold font-mono text-[var(--primary)]">{friend.traceXId}</p>
+                  <p className="text-xs text-[var(--muted)]">{friend.name}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
                     friend.status === "Online"
                       ? "bg-green-900/40 text-green-300"
-                      : "bg-red-900/20 text-red-400"
+                      : "bg-red-900/20 text-[var(--danger)]"
                   }`}>
                     {friend.status === "Online" ? "🟢" : "🔴"} {friend.status}
                   </span>

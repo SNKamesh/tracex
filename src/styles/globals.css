@@ -4,264 +4,107 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ==================================================
-   TRACE X GLOBAL DESIGN ENGINE
-   Production UI Foundation
-================================================== */
-
-/* ---------- RESET ---------- */
 *,
 *::before,
-*::after {
-  box-sizing: border-box;
-}
+*::after { box-sizing: border-box; }
 
 html {
   min-height: 100%;
   background: var(--background);
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
 }
 
 body {
   min-height: 100%;
   margin: 0;
   font-family: var(--font-primary), system-ui, sans-serif;
-  background:
-    radial-gradient(
-      circle at top left,
-      color-mix(in srgb, var(--primary), transparent 86%),
-      transparent 35%
-    ),
-    var(--background);
+  background: var(--background);
   color: var(--text);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  transition: background 250ms var(--ease), color 250ms var(--ease);
+  transition: background 220ms var(--ease), color 220ms var(--ease);
 }
 
-#__next {
-  min-height: 100vh;
-}
+#__next { min-height: 100vh; }
 
-/* ==================================================
-   TYPOGRAPHY
-================================================== */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+h1, h2, h3, h4, h5, h6 {
   color: var(--text);
-  letter-spacing: -0.03em;
+  letter-spacing: -.035em;
 }
 
-p,
-span {
-  color: inherit;
-}
+p, span { color: inherit; }
+a { color: inherit; text-decoration: none; }
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .55; }
 
-/* ==================================================
-   LINKS
-================================================== */
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-/* ==================================================
-   FORMS
-================================================== */
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: .55;
-}
-
-input,
-textarea,
-select {
+input, textarea, select {
   background: var(--surface-solid);
   color: var(--text);
   border: 1px solid var(--border);
-  transition:
-    border-color 200ms var(--ease),
-    box-shadow 200ms var(--ease);
+  transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease), background 160ms var(--ease);
 }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: .78; }
 
-input::placeholder,
-textarea::placeholder {
-  color: var(--muted);
-}
-
-/* ==================================================
-   PREMIUM ACCESSIBILITY FOCUS
-================================================== */
-*:focus {
-  outline: none;
-}
-
-button:focus-visible,
-a:focus-visible {
+:focus { outline: none; }
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
   outline: 2px solid var(--primary);
-  outline-offset: 4px;
+  outline-offset: 3px;
 }
-
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
+input:focus-visible, textarea:focus-visible, select:focus-visible {
   border-color: var(--primary);
-  box-shadow:
-    0 0 0 3px
-    color-mix(in srgb, var(--primary), transparent 78%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary), transparent 82%);
 }
 
-/* ==================================================
-   PREMIUM COMPONENT SYSTEM
-================================================== */
-.glass,
-.tx-glass {
-  background: var(--surface);
-  backdrop-filter: blur(22px) saturate(160%);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
+::selection { background: color-mix(in srgb, var(--primary), transparent 38%); color: white; }
+
+.tx-page-enter { animation: tx-page-enter .28s var(--ease) both; }
+@keyframes tx-page-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.card,
 .tx-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: var(--space-6);
-  box-shadow: var(--shadow);
-  transition:
-    transform 220ms var(--ease),
-    background 220ms var(--ease);
+  box-shadow: var(--shadow-sm);
 }
-
-.tx-card:hover {
-  transform: translateY(-3px);
+.tx-eyebrow {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
 }
+.tx-muted { color: var(--muted); }
+.tx-divider { border-color: var(--border); }
 
-.tx-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: .5rem;
-  border: none;
-  border-radius: var(--radius-md);
-  padding: .75rem 1.25rem;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  font-weight: 600;
-  transition:
-    transform 200ms var(--ease),
-    filter 200ms var(--ease);
-}
-
-.tx-button:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.08);
-}
-
-.chip,
-.tx-chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: .35rem .75rem;
-  background: color-mix(in srgb, var(--primary), transparent 85%);
-  color: var(--text);
-  font-size: .75rem;
-  font-weight: 600;
-}
-
-/* ==================================================
-   SCROLLBAR
-================================================== */
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--background);
-}
-
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: var(--background); }
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--primary), transparent 65%);
+  background: color-mix(in srgb, var(--muted), transparent 58%);
+  border: 2px solid var(--background);
   border-radius: 999px;
 }
 
-/* ==================================================
-   SELECTION
-================================================== */
-::selection {
-  background: var(--primary);
-  color: white;
-}
-
-/* ==================================================
-   TRACE X INTRO — measured wordmark only
-   The component owns animation state. Global CSS only
-   keeps the measured X geometry consistent.
-================================================== */
-body .tracex-intro .wordmark-anchor-x,
-body .tracex-intro .final-wordmark-x {
-  font-size: 1em !important;
-  margin-left: .24em !important;
-  transform: translateY(0) !important;
-}
-
-/* ==================================================
-   TRACE X INTRO — no collision effect
-   Keep the flying X at its final size and remove the
-   decorative impact line; the measured target remains
-   the source of truth for the final landing position.
-================================================== */
-body .tracex-intro .moving-x {
-  transform: translate(-50%, -50%) scale(1) !important;
-}
-
-body .tracex-intro .impact-line {
-  opacity: 0 !important;
-  transform: translate(-50%, -50%) !important;
-}
-
-/* ==================================================
-   REDUCED MOTION
-================================================== */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    transition: none !important;
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
     scroll-behavior: auto !important;
   }
 }
 
-
-/* TraceX Classroom board entrance */
+/* Classroom board entrance */
 @keyframes classroom-write {
   from { opacity: 0; transform: translateY(7px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.classroom-write {
-  animation: classroom-write .48s ease-out both;
-}
-.classroom-board .classroom-write:nth-child(2) {
-  animation-delay: .12s;
-}
+.classroom-write { animation: classroom-write .48s ease-out both; }
+.classroom-board .classroom-write:nth-child(2) { animation-delay: .12s; }
 @media (prefers-reduced-motion: reduce) {
   .classroom-write { animation: none; }
 }

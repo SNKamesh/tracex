@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
+import { Image, Music2, Quote, X, Volume2 } from "lucide-react";
 
 interface ImmersiveRoomProps {
   onAddFocusTime: (seconds: number) => void;
@@ -61,20 +62,20 @@ export default function ImmersiveVirtualRoom({ onAddFocusTime }: ImmersiveRoomPr
       <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-20">
         <div className="flex gap-3">
           <div className="bg-slate-950/80 border border-slate-800 backdrop-blur-xl px-4 py-2 rounded-xl flex items-center gap-3">
-            <span className="text-[10px] uppercase font-black tracking-widest text-blue-400">Room Clock</span>
+            <span className="text-[10px] uppercase font-black tracking-widest text-blue-400">Session time</span>
             <span className="font-mono text-sm font-bold text-white">{formatTime(roomSeconds)}</span>
           </div>
           <div className="bg-slate-950/80 border border-slate-800 backdrop-blur-xl px-4 py-2 rounded-xl flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${isRoomActive ? "bg-emerald-500 animate-pulse" : "bg-slate-600"}`} />
-            <span className="text-xs text-slate-300 font-medium">455 Studying Live</span>
+            <span className="text-xs text-slate-300 font-medium">Personal focus space</span>
           </div>
         </div>
 
         {/* Floating Controller Panel Selectors */}
         <div className="flex gap-2 bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/50 backdrop-blur-md">
-          <button onClick={() => setActiveMenu(activeMenu === "background" ? null : "background")} className={`p-2 rounded-lg text-sm transition-all ${activeMenu === "background" ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-900"}`} title="Change Workspace Canvas">🖼️</button>
-          <button onClick={() => setActiveMenu(activeMenu === "sound" ? null : "sound")} className={`p-2 rounded-lg text-sm transition-all ${activeMenu === "sound" ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-900"}`} title="Audio Soundboard Mixers">🎵</button>
-          <button onClick={() => setActiveMenu(activeMenu === "quotes" ? null : "quotes")} className={`p-2 rounded-lg text-sm transition-all ${activeMenu === "quotes" ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-900"}`} title="Inspirational Context Rules">✍️</button>
+          <button onClick={() => setActiveMenu(activeMenu === "background" ? null : "background")} className={`p-2 rounded-lg text-sm transition-all ${activeMenu === "background" ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-900"}`} title="Change Workspace Canvas"><Image size={16}/></button>
+          <button onClick={() => setActiveMenu(activeMenu === "sound" ? null : "sound")} className={`p-2 rounded-lg text-sm transition-all ${activeMenu === "sound" ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-900"}`} title="Audio Soundboard Mixers"><Music2 size={16}/></button>
+          <button onClick={() => setActiveMenu(activeMenu === "quotes" ? null : "quotes")} className={`p-2 rounded-lg text-sm transition-all ${activeMenu === "quotes" ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-900"}`} title="Inspirational Context Rules"><Quote size={16}/></button>
         </div>
       </div>
 
@@ -103,7 +104,7 @@ export default function ImmersiveVirtualRoom({ onAddFocusTime }: ImmersiveRoomPr
               {activeMenu === "sound" && "Soundscape Mixing Studio"}
               {activeMenu === "quotes" && "Focus Manifesto Quotes"}
             </h4>
-            <button onClick={() => setActiveMenu(null)} className="text-slate-500 hover:text-slate-300 text-xs">✕</button>
+            <button onClick={() => setActiveMenu(null)} className="text-slate-500 hover:text-slate-300 text-xs"><X size={14}/></button>
           </div>
 
           {/* 1. BACKGROUND SELECTION PANEL GRID */}

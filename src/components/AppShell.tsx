@@ -3,92 +3,18 @@
 import React from "react";
 import Sidebar from "./Sidebar";
 
-
-export default function AppShell({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-
-
+export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
-
     <div
-
-      style={{
-
-        background:
-          "var(--background)",
-
-        color:
-          "var(--text)",
-
-      }}
-
-
-      className="
-
-        min-h-screen
-
-        flex
-
-        transition-colors
-
-        duration-300
-
-      "
-
+      className="min-h-screen flex"
+      style={{ background: "var(--background)", color: "var(--text)" }}
     >
-
-
       <Sidebar />
-
-
-
-      <main
-
-        className="
-
-          flex-1
-
-          min-h-screen
-
-          px-8
-
-          py-8
-
-          overflow-x-hidden
-
-        "
-
-      >
-
-
-        <div
-
-          className="
-
-            mx-auto
-
-            w-full
-
-            max-w-[1500px]
-
-          "
-
-        >
-
+      <main className="min-w-0 flex-1 min-h-screen px-4 pb-24 pt-20 sm:px-6 sm:pt-20 lg:px-10 lg:pb-10 lg:pt-8">
+        <div className="mx-auto w-full max-w-[1480px] tx-page-enter">
           {children}
-
         </div>
-
-
       </main>
-
-
-
     </div>
-
   );
-
 }
