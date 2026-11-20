@@ -1,22 +1,19 @@
 {
   "manifest_version": 3,
   "name": "TraceX Website Blocker",
-  "version": "1.0",
-  "description": "Blocks distracting websites and syncs with TraceX Focus System.",
-  "permissions": [
-    "tabs",
-    "storage",
-    "webNavigation"
+  "version": "1.1",
+  "description": "Blocks distracting websites and syncs the blocked-site list with TraceX.",
+  "permissions": ["tabs", "storage", "webNavigation"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://tracex-gdbl.vercel.app/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
   ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "action": {
-    "default_popup": "popup.html"
-  },
+  "action": { "default_popup": "popup.html" },
   "icons": {
     "16": "icon.png",
     "32": "icon.png",
