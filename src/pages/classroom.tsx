@@ -109,7 +109,8 @@ function StepBoard({ step, styleId }: { step: LessonStep; styleId: string }) {
         {step.boardPoints.length > 0 && <div className="my-7 space-y-3">
           {step.boardPoints.map((point, index) => <div className="classroom-write flex gap-3 text-lg leading-8" key={index}><span className="font-bold text-blue-700">✦</span><span>{point}</span></div>)}
         </div>}
-        {step.waveform && <WaveformDiagram waveform={step.waveform}/>}\n        {step.equation && <div className="my-7 rounded-xl border border-blue-200 bg-blue-50/70 px-5 py-6 text-center">
+        {step.waveform && <WaveformDiagram waveform={step.waveform}/>}
+        {step.equation && <div className="my-7 rounded-xl border border-blue-200 bg-blue-50/70 px-5 py-6 text-center">
           <div className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Key equation</div>
           <div className="break-words font-mono text-xl font-semibold text-blue-950 sm:text-2xl">{step.equation}</div>
         </div>}
