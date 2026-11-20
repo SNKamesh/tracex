@@ -8,8 +8,12 @@ import Button from "./Button";
 import PageHeader from "./PageHeader";
 import SectionCard from "./SectionCard";
 import StudyPlanList from "./StudyPlanList";
+import { auth } from "@/lib/firebase";
+import { api } from "@/lib/api";
 
 type OnboardingData = { name?: string; studyType?: string; tracexId?: string };
+type RecentPage = { path: string; title: string; visitedAt: number };
+type RecentSession = { id: string; durationSeconds?: number; endedAt?: number | string; worldName?: string | null };
 
 function greetingByHour(hour: number) {
   if (hour < 12) return "Good morning";
@@ -52,6 +56,9 @@ export default function HomeClient() {
   const [loaded, setLoaded] = useState(false);
   const [idCopied, setIdCopied] = useState(false);
   const [copyError, setCopyError] = useState("");
+  const [recentPages, setRecentPages] = useState<RecentPage[]>([]);
+  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+  const [recentSessionsUnavailable, setRecentSessionsUnavailable] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +114,41 @@ export default function HomeClient() {
     return () => { cancelled = true; unsubscribe?.(); };
   }, []);
 
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("tracex:recently-opened") || "[]");
+      if (Array.isArray(stored)) setRecentPages(stored.filter((item) => item && typeof item.path === "string" && typeof item.title === "string").slice(0, 6));
+    } catch {
+      localStorage.removeItem("tracex:recently-opened");
+    }
+
+    let active = true;
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const response = await api.get<{ sessions?: RecentSession[] }>("/api/sessions", token);
+        if (active) setRecentSessions(Array.isArray(response.sessions) ? response.sessions.slice(0, 3) : []);
+      } catch (requestError) {
+        console.error("Unable to load recent focus sessions", requestError);
+        if (active) setRecentSessionsUnavailable(true);
+      }
+    });
+    return () => { active = false; unsubscribe(); };
+  }, []);
+
+  function formatRecentDuration(seconds = 0) {
+    const total = Math.max(0, Number(seconds) || 0);
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+  }
+
+  function formatRecentDate(value?: number | string) {
+    const timestamp = typeof value === "number" ? value : typeof value === "string" ? Date.parse(value) : 0;
+    return timestamp > 0 ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(timestamp)) : "Saved session";
+  }
+
   const greeting = useMemo(() => greetingByHour(new Date().getHours()), []);
   const title = loaded ? `${greeting}, ${onboarding.name || "there"}` : greeting;
 
@@ -155,21 +197,27 @@ export default function HomeClient() {
           <StudyPlanList />
         </SectionCard>
         <div className="space-y-4">
-          <SectionCard title="Pick up where you left off" description="Move straight into the tool you need.">
-            <div className="space-y-2">
-              {[
-                { label: "Focus sessions", detail: "A timer and a quieter workspace", href: "/sessions", icon: Clock3 },
-                { label: "Your study plans", detail: "Tasks, priorities and reminders", href: "/study-plans", icon: CalendarDays },
-                { label: "File Converter", detail: "Convert documents and images", href: "/converter", icon: FileStack },
-                { label: "Classroom", detail: "Learn from your material", href: "/classroom", icon: BookOpen },
-              ].map(({ label, detail, href, icon: Icon }) => (
-                <button key={href} type="button" onClick={() => router.push(href)} className="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors hover:bg-[var(--surface-hover)]" style={{ borderColor: "var(--border)" }}>
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px]" style={{ background: "var(--background-soft)", color: "var(--primary)" }}><Icon size={17} /></span>
-                  <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold">{label}</span><span className="mt-0.5 block text-[11px]" style={{ color: "var(--muted)" }}>{detail}</span></span>
+          <SectionCard title="Recently opened" description="Pages you visited most recently on this device.">
+            {recentPages.length ? <div className="space-y-2">
+              {recentPages.map((page) => (
+                <button key={page.path} type="button" onClick={() => router.push(page.path)} className="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors hover:bg-[var(--surface-hover)]" style={{ borderColor: "var(--border)" }}>
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px]" style={{ background: "var(--background-soft)", color: "var(--primary)" }}><ArrowRight size={16} /></span>
+                  <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold">{page.title}</span><span className="mt-0.5 block text-[11px]" style={{ color: "var(--muted)" }}>Opened {formatRecentDate(page.visitedAt)}</span></span>
                   <ArrowRight size={15} style={{ color: "var(--muted)" }} />
                 </button>
               ))}
-            </div>
+            </div> : <p className="py-3 text-xs" style={{ color: "var(--muted)" }}>Your recently visited pages will appear here as you use TraceX.</p>}
+          </SectionCard>
+          <SectionCard title="Recent focus sessions" description="The latest sessions saved to your account.">
+            {recentSessions.length ? <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+              {recentSessions.map((session) => (
+                <div key={session.id} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0"><p className="truncate text-xs font-semibold">{session.worldName || "Personal focus session"}</p><p className="mt-1 text-[10px]" style={{ color: "var(--muted)" }}>{formatRecentDate(session.endedAt)}</p></div>
+                  <span className="shrink-0 text-xs font-semibold tabular-nums">{formatRecentDuration(session.durationSeconds)}</span>
+                </div>
+              ))}
+              <button type="button" onClick={() => router.push("/dashboard")} className="pt-3 text-[11px] font-semibold hover:underline" style={{ color: "var(--primary)" }}>View full progress</button>
+            </div> : <p className="py-3 text-xs" style={{ color: "var(--muted)" }}>{recentSessionsUnavailable ? "Session history is currently unavailable." : "Saved sessions will appear here after you complete and save a focus timer."}</p>}
           </SectionCard>
           <div className="rounded-[18px] border p-5" style={{ borderColor: "var(--border)", background: "var(--background-soft)" }}>
             <div className="flex items-center gap-2 text-[13px] font-semibold"><Focus size={16} style={{ color: "var(--primary)" }} /> Start small</div>

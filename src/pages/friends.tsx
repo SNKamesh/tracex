@@ -63,6 +63,7 @@ export default function Friends() {
         await setDoc(ref, {
           name,
           email:        user.email,
+          hideOnlineStatus: false,
           status:       "Online",
           friends:      [],
           sentReqs:     [],
@@ -73,7 +74,7 @@ export default function Friends() {
         const data = snap.data();
         setMyTraceId(data.tracexId || "");
         setMyName(data.name || "");
-        await updateDoc(ref, { status: "Online" });
+        await updateDoc(ref, { status: data.hideOnlineStatus ? "Offline" : "Online" });
       }
 
       setLoading(false);
@@ -121,7 +122,7 @@ export default function Friends() {
           uid:      s.id,
           name:     s.data()!.name,
           traceXId: s.data()!.tracexId,
-          status:   s.data()!.status || "Offline",
+          status:   s.data()!.hideOnlineStatus ? "Offline" : (s.data()!.status || "Offline"),
         }));
       setFriends(friendData);
     });
@@ -135,7 +136,7 @@ export default function Friends() {
     const unsubs = friends.map((friend) =>
       onSnapshot(doc(db, "users", friend.uid), (snap) => {
         if (!snap.exists()) return;
-        const newStatus = snap.data().status || "Offline";
+        const newStatus = snap.data().hideOnlineStatus ? "Offline" : (snap.data().status || "Offline");
         setFriends((prev) =>
           prev.map((f) =>
             f.uid === friend.uid ? { ...f, status: newStatus } : f
