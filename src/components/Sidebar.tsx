@@ -11,6 +11,7 @@ import {
   Users,
   FileStack,
   Bot,
+  GraduationCap,
   ShieldOff,
   Palette,
   Settings,
@@ -32,6 +33,8 @@ const navItems = [
   { name:"File Converter", href:"/converter", icon:FileStack, anim:"convert" },
 
   { name:"NoteX Bot", href:"/notex", icon:Bot, anim:"bot" },
+
+  { name:"Classroom", href:"/classroom", icon:GraduationCap, anim:"bot" },
 
   { name:"Blocker", href:"/blocker", icon:ShieldOff, anim:"shield" },
 
