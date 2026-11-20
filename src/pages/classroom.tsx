@@ -268,6 +268,39 @@ export default function ClassroomPage() {
     setAnswer("");
     const asked = question.trim();
     try {
+      const replacementIntent = /\b(delete|remove|replace|overwrite)\b/i.test(asked) && /\b(question|doubt)\b/i.test(asked);
+      const ordinalMatch = asked.match(/\b(1st|first|2nd|second|3rd|third|4th|fourth|5th|fifth|6th|sixth|7th|seventh|8th|eighth|9th|ninth|10th|tenth)\s+(?:question|doubt)\b|\b(?:question|doubt)\s*(?:number\s*)?(\d{1,2})\b/i);
+      const ordinalMap: Record<string, number> = { "1st": 1, first: 1, "2nd": 2, second: 2, "3rd": 3, third: 3, "4th": 4, fourth: 4, "5th": 5, fifth: 5, "6th": 6, sixth: 6, "7th": 7, seventh: 7, "8th": 8, eighth: 8, "9th": 9, ninth: 9, "10th": 10, tenth: 10 };
+      const targetDoubt = ordinalMatch ? (ordinalMatch[2] ? Number(ordinalMatch[2]) : ordinalMap[(ordinalMatch[1] || "").toLowerCase()]) : null;
+
+      if (replacementIntent && targetDoubt && /line\s*cod|technique|waveform|graph|draw|coding/i.test(asked)) {
+        const existing = plan?.steps || [];
+        const sectionPattern = new RegExp("^(Doubt|Answer)\\s+" + String(targetDoubt).padStart(2, "0") + "(?:\\b|[.\\s—-])");
+        const matchingIndexes = existing.map((step, index) => sectionPattern.test(step.title) ? index : -1).filter((index) => index >= 0);
+        if (!matchingIndexes.length) {
+          setAnswer("I couldn't find Question " + targetDoubt + " in the current board, so I haven't deleted anything. Check the lesson sidebar and tell me its exact heading.");
+          return;
+        }
+        const insertAt = Math.min(...matchingIndexes);
+        const replacementSteps = createWaveformDoubtSteps(material, asked, targetDoubt);
+        if (!replacementSteps) {
+          setAnswer("I found Question " + targetDoubt + ", but couldn't identify a supported line-coding sequence in the uploaded material. Nothing was deleted.");
+          return;
+        }
+        const nextSteps = existing.filter((step) => !sectionPattern.test(step.title));
+        const insertionIndex = Math.min(insertAt, nextSteps.length);
+        nextSteps.splice(insertionIndex, 0, ...replacementSteps);
+
+        // Remove the accidental latest doubt page when it is clearly just an instruction to edit another question.
+        const accidentalInstructionPattern = /^Doubt\s+\d{2}\s+—\s+.*\b(delete|remove|replace|overwrite)\b/i;
+        const cleanedSteps = nextSteps.filter((step) => !accidentalInstructionPattern.test(step.title));
+        setPlan((current) => current ? { ...current, steps: cleanedSteps } : current);
+        setStepIndex(insertionIndex);
+        setAnswer("Replaced all pages belonging to Question " + targetDoubt + " with the step-by-step line-coding techniques and waveform graphs. Other lesson pages were kept.");
+        setQuestion("");
+        return;
+      }
+
       const doubtNumber = plan ? plan.steps.filter((step) => step.title.startsWith("Doubt ")).length + 1 : 1;
       const waveformSteps = createWaveformDoubtSteps(material, asked, doubtNumber);
       if (waveformSteps) {
@@ -277,7 +310,6 @@ export default function ClassroomPage() {
         setQuestion("");
       } else {
         const explanation = await answerLocalQuestion(model, material, currentStep, asked, provider);
-        const doubtNumber = plan ? plan.steps.filter((step) => step.title.startsWith("Doubt ")).length + 1 : 1;
         const doubtIntro: LessonStep = {
           title: "Doubt " + String(doubtNumber).padStart(2, "0") + " — " + asked.slice(0, 80),
           explanation: "Your question has been added to the lesson. The following page contains the teacher's answer.",
@@ -296,7 +328,6 @@ export default function ClassroomPage() {
     } catch (error) { setAnswer("Local AI is unavailable: " + (error instanceof Error ? error.message : "connection failed")); }
     finally { setBusy(false); }
   }
-
   async function checkStudentAnswer() {
     if (!material || !currentStep || !studentAnswer.trim()) return;
     const prompt = currentStep.checkQuestion || "Explain the main idea in this lesson step.";
