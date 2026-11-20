@@ -1,5 +1,4 @@
 "use client";
-
 import { useMemo, useState } from "react";
 import { Globe2, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import AppShell from "./AppShell";
@@ -12,8 +11,9 @@ function normalizeDomain(value: string) {
   const trimmed = value.trim().toLowerCase();
   if (!trimmed) return "";
   try {
-    const parsed = new URL(trimmed.includes("://") ? trimmed : \`https://\${trimmed}\`);
-    return parsed.hostname.replace(/^www\\./, "");
+    const parsed = new URL(trimmed.includes("://") ? trimmed : "https://" + trimmed);
+    const hostname = parsed.hostname.toLowerCase();
+    return hostname.startsWith("www.") ? hostname.slice(4) : hostname;
   } catch {
     return "";
   }
@@ -32,12 +32,12 @@ export default function BlockerClient() {
     setSites((current) => [...current, domain]);
     setInput("");
     setError("");
-    setNotice(\`\${domain} added to this page's list.\`);
+    setNotice(domain + " added to this page's list.");
   };
 
   const removeSite = (site: string) => {
     setSites((current) => current.filter((item) => item !== site));
-    setNotice(\`\${site} removed.\`);
+    setNotice(site + " removed.");
   };
 
   const siteCount = useMemo(() => sites.length, [sites]);
@@ -60,7 +60,7 @@ export default function BlockerClient() {
               <p className="mt-1 text-[11px]" style={{ color: "var(--muted)" }}>Add a domain to start building your distraction list.</p>
             </div> : sites.map((site) => <div key={site} className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderColor: "var(--border)" }}>
               <span className="flex items-center gap-2 text-[13px]"><Globe2 size={15} style={{ color: "var(--muted)" }} />{site}</span>
-              <button type="button" onClick={() => removeSite(site)} aria-label={\`Remove \${site}\`} className="rounded-lg p-2 transition-colors hover:bg-[var(--surface-hover)]" style={{ color: "var(--muted)" }}><Trash2 size={15} /></button>
+              <button type="button" onClick={() => removeSite(site)} aria-label={"Remove " + site} className="rounded-lg p-2 transition-colors hover:bg-[var(--surface-hover)]" style={{ color: "var(--muted)" }}><Trash2 size={15} /></button>
             </div>)}
           </div>
         </SectionCard>
@@ -68,11 +68,11 @@ export default function BlockerClient() {
           <div className="tx-card p-5">
             <div className="flex items-center gap-2 text-[13px] font-semibold"><ShieldCheck size={17} style={{ color: "var(--primary)" }} /> List status</div>
             <p className="mt-4 text-[30px] font-semibold tracking-tight">{siteCount}</p>
-            <p className="text-[11px]" style={{ color: "var(--muted)" }}>domains in this page's current list</p>
+            <p className="text-[11px]" style={{ color: "var(--muted)" }}>domains in this page list</p>
           </div>
           <div className="rounded-xl border p-4 text-[12px] leading-relaxed" style={{ borderColor: "var(--border)", background: "var(--background-soft)", color: "var(--muted)" }}>
             <p className="font-semibold" style={{ color: "var(--text)" }}>Extension connection</p>
-            <p className="mt-2">This screen currently manages a temporary in-page list. It does not yet sync changes to the Chrome extension or actively block sites. I won't show a connected status until that integration is implemented.</p>
+            <p className="mt-2">This screen currently manages a temporary in-page list. It does not yet sync changes to the Chrome extension or actively block sites. I will not show a connected status until that integration is implemented.</p>
           </div>
         </div>
       </div>
