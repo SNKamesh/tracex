@@ -109,7 +109,7 @@ export default function SettingsClient() {
     setPrivacyMode(next);
     setMessage("");
     try {
-      await setDoc(doc(db, "users", uid), { hideOnlineStatus: next }, { merge: true });
+      await setDoc(doc(db, "users", uid), { hideOnlineStatus: next, status: next ? "Offline" : "Online" }, { merge: true });
       setMessage(next
         ? "Online status is hidden from your TraceX friends."
         : "Your online status can be shown to your TraceX friends.");

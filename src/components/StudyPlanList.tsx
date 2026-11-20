@@ -158,6 +158,7 @@ export default function StudyPlanList() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const notifiedRef = useRef<Set<string>>(new Set());
+  const migratingReminderIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     return auth.onAuthStateChanged((user) => {
@@ -184,9 +185,16 @@ export default function StudyPlanList() {
       (snapshot) => {
         const nextItems = snapshot.docs.map((document) => {
           const data = document.data() as Omit<Task, "id">;
-          const legacyReminderAt = !data.reminderAt && data.reminderTime
-            ? nextReminderTimestamp(data.reminderTime)
-            : null;
+          let legacyReminderAt: number | null = null;
+          if (typeof data.reminderAt !== "number" && data.reminderTime) {
+            legacyReminderAt = nextReminderTimestamp(data.reminderTime);
+            if (legacyReminderAt && !migratingReminderIdsRef.current.has(document.id)) {
+              migratingReminderIdsRef.current.add(document.id);
+              void updateDoc(doc(db, "users", uid, "studyPlans", document.id), { reminderAt: legacyReminderAt })
+                .catch((migrationError) => console.error("Could not migrate legacy study reminder", migrationError))
+                .finally(() => migratingReminderIdsRef.current.delete(document.id));
+            }
+          }
           return {
             id: document.id,
             ...data,
@@ -250,8 +258,7 @@ export default function StudyPlanList() {
           setNotice("A reminder is due, but browser notifications are not allowed. Enable them below or in your browser's site settings.");
         }
 
-        const alarm = new Audio("/alarm.mp3");
-        void alarm.play().catch(() => undefined);
+        // Desktop alerts are the supported reminder channel; no missing sound asset is requested here.
       });
     };
 

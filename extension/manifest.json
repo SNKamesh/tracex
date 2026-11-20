@@ -13,11 +13,5 @@
       "run_at": "document_start"
     }
   ],
-  "action": { "default_popup": "popup.html" },
-  "icons": {
-    "16": "icon.png",
-    "32": "icon.png",
-    "48": "icon.png",
-    "128": "icon.png"
-  }
+  "action": { "default_popup": "popup.html" }
 }
