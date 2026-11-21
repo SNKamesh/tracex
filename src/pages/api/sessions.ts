@@ -55,9 +55,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .get();
 
       const latestSessions = snapshot.docs
-        .map((document) => ({ id: document.id, ...document.data() }))
-        .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt))
-        .slice(0, 30);
+        .sort((a, b) => timestampMillis(b.get("createdAt")) - timestampMillis(a.get("createdAt")))
+        .slice(0, 30)
+        .map((document) => ({ id: document.id, ...document.data() }));
 
       return res.status(200).json({ sessions: latestSessions });
     }
