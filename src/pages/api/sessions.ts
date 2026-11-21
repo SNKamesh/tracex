@@ -5,6 +5,24 @@ import { getAdminDb } from "@/lib/firebaseAdmin";
 
 type ErrorResponse = { error: string };
 
+function timestampMillis(value: unknown): number {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  if (value && typeof value === "object") {
+    const candidate = value as { toMillis?: () => number; _seconds?: number; seconds?: number };
+    if (typeof candidate.toMillis === "function") {
+      try { return candidate.toMillis(); } catch { return 0; }
+    }
+    if (typeof candidate._seconds === "number") return candidate._seconds * 1000;
+    if (typeof candidate.seconds === "number") return candidate.seconds * 1000;
+  }
+  return 0;
+}
+
 async function authenticatedUid(req: NextApiRequest): Promise<string | null> {
   const authorization = req.headers.authorization;
   if (!authorization?.startsWith("Bearer ")) return null;
@@ -30,15 +48,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const sessions = db.collection("sessions");
 
     if (req.method === "GET") {
+      // Query only by userId, which uses Firestore's automatic single-field index.
+      // Sorting here avoids requiring a composite (userId + createdAt) index in Firebase Console.
       const snapshot = await sessions
         .where("userId", "==", uid)
-        .orderBy("createdAt", "desc")
-        .limit(30)
         .get();
 
-      return res.status(200).json({
-        sessions: snapshot.docs.map((document) => ({ id: document.id, ...document.data() })),
-      });
+      const latestSessions = snapshot.docs
+        .map((document) => ({ id: document.id, ...document.data() }))
+        .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt))
+        .slice(0, 30);
+
+      return res.status(200).json({ sessions: latestSessions });
     }
 
     const body = req.body as {
